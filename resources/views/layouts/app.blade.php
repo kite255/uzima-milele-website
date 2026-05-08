@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <title>@yield('title', 'Uzima Milele')</title>
+
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        lato: ['Lato', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#0083CB',
+                        primaryDark: '#076994',
+                        navy: '#0E3D4F',
+                        accent: '#F4B122',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="font-lato bg-gray-50 text-gray-900 antialiased">
+
+    @php
+        $unreadNotificationsCount = auth()->check()
+            ? auth()->user()->unreadNotifications()->count()
+            : 0;
+    @endphp
+
+    @includeIf('partials.navbar', [
+        'unreadNotificationsCount' => $unreadNotificationsCount
+    ])
+
+    {{-- 
+        pt-24 fixes pages being hidden behind the fixed/sticky navbar on mobile.
+        md:pt-28 gives a little more breathing space on larger screens.
+    --}}
+    <main class="min-h-screen pt-24 md:pt-28">
+        @yield('content')
+    </main>
+
+    @includeIf('partials.footer', [
+        'unreadNotificationsCount' => $unreadNotificationsCount
+    ])
+
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
