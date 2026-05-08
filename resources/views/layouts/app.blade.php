@@ -58,11 +58,7 @@
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
-    {{-- 
-        pt-24 fixes pages being hidden behind the fixed/sticky navbar on mobile.
-        md:pt-28 gives a little more breathing space on larger screens.
-    --}}
-    <main class="min-h-screen pt-24 md:pt-28">
+    <main class="min-h-screen">
         @yield('content')
     </main>
 
