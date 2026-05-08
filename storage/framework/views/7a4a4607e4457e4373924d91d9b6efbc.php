@@ -1,1 +1,0 @@
-<?php /**PATH C:\Users\User\Downloads\UzimaMilelefiles\UzimaSite\uzima-website\resources\views\testimonials\index.blade.php ENDPATH**/ ?>
