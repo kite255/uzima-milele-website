@@ -12,24 +12,21 @@ class StudentDashboardController extends Controller
     {
         $user = auth()->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Student certificates
-        |--------------------------------------------------------------------------
-        */
         $certificates = Certificate::with('lesson')
             ->where('user_id', $user->id)
             ->latest()
             ->get()
             ->keyBy('lesson_id');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Show only lessons the student enrolled in
-        | Keep enrollment date/time using pivot enrolled_at
-        |--------------------------------------------------------------------------
-        */
         $lessons = $user->enrolledLessons()
+            ->withPivot([
+                'enrolled_at',
+                'study_pace',
+                'study_hours_per_week',
+                'target_completion_date',
+                'schedule_started_at',
+                'schedule_updated_at',
+            ])
             ->with([
                 'modules' => fn ($q) => $q
                     ->where('is_published', true)
@@ -100,11 +97,6 @@ class StudentDashboardController extends Controller
                 return $lesson;
             });
 
-        /*
-        |--------------------------------------------------------------------------
-        | Dashboard statistics
-        |--------------------------------------------------------------------------
-        */
         $totalLessons = $lessons->count();
 
         $completedLessons = $lessons
@@ -115,11 +107,6 @@ class StudentDashboardController extends Controller
             ? round($lessons->avg('progress'))
             : 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Quiz results
-        |--------------------------------------------------------------------------
-        */
         $quizResults = QuizResult::with('quiz')
             ->where('user_id', $user->id)
             ->whereNotNull('quiz_id')

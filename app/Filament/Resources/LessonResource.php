@@ -159,6 +159,67 @@ class LessonResource extends Resource
                     ])
                     ->columns(2),
 
+                Forms\Components\Section::make('Course Timeline & Schedule Settings')
+                    ->description('These settings power the Coursera-style learning schedule. Admin/instructor sets the course rules; student chooses the study pace.')
+                    ->schema([
+
+                        Forms\Components\TextInput::make('estimated_duration_minutes')
+                            ->label('Estimated Duration')
+                            ->numeric()
+                            ->minValue(1)
+                            ->suffix('minutes')
+                            ->placeholder('Example: 180')
+                            ->helperText('Total estimated time required to complete this course. Example: 60 = 1 hour, 180 = 3 hours.'),
+
+                        Forms\Components\Select::make('recommended_study_pace')
+                            ->label('Recommended Study Pace')
+                            ->options([
+                                'relaxed' => 'Taratibu - 1 hour/week',
+                                'regular' => 'Kawaida - 3 hours/week',
+                                'intensive' => 'Haraka - 5 hours/week',
+                                'custom' => 'Ratiba Maalum - Student chooses hours/week',
+                            ])
+                            ->default('regular')
+                            ->searchable()
+                            ->helperText('This can be used as the recommended/default learning pace for students.'),
+
+                        Forms\Components\TextInput::make('min_completion_days')
+                            ->label('Minimum Completion Days')
+                            ->numeric()
+                            ->minValue(1)
+                            ->placeholder('Example: 3')
+                            ->helperText('Optional. Prevents an unrealistic completion plan that is too short.'),
+
+                        Forms\Components\TextInput::make('max_completion_days')
+                            ->label('Maximum Completion Days')
+                            ->numeric()
+                            ->minValue(1)
+                            ->placeholder('Example: 30')
+                            ->helperText('Optional. Recommended maximum number of days to complete this course.'),
+
+                        Forms\Components\DatePicker::make('course_deadline')
+                            ->label('Course Deadline')
+                            ->native(false)
+                            ->placeholder('Select deadline date')
+                            ->helperText('Optional. If set, the student target completion date should not go beyond this date.'),
+
+                        Forms\Components\Toggle::make('allow_schedule_reset')
+                            ->label('Allow Student to Reset Schedule')
+                            ->default(true)
+                            ->onColor('success')
+                            ->helperText('If enabled, students may later change their learning schedule.'),
+
+                        Forms\Components\TextInput::make('reminder_days_before_deadline')
+                            ->label('Reminder Days Before Deadline')
+                            ->numeric()
+                            ->minValue(1)
+                            ->placeholder('Example: 2')
+                            ->helperText('Optional. Later this can be used to notify students before their target/deadline.'),
+
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
+
                 Forms\Components\Section::make('Course Overview')
                     ->description('Write the lesson overview, objectives, and introduction here.')
                     ->schema([
@@ -217,6 +278,53 @@ class LessonResource extends Resource
                     ->placeholder('No level')
                     ->searchable(),
 
+                Tables\Columns\TextColumn::make('estimated_duration_minutes')
+                    ->label('Duration')
+                    ->formatStateUsing(function ($state) {
+                        if (! $state) {
+                            return '—';
+                        }
+
+                        $hours = intdiv((int) $state, 60);
+                        $minutes = (int) $state % 60;
+
+                        if ($hours > 0 && $minutes > 0) {
+                            return "{$hours}h {$minutes}m";
+                        }
+
+                        if ($hours > 0) {
+                            return "{$hours}h";
+                        }
+
+                        return "{$minutes}m";
+                    })
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('recommended_study_pace')
+                    ->label('Recommended Pace')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'relaxed' => 'Taratibu',
+                        'regular' => 'Kawaida',
+                        'intensive' => 'Haraka',
+                        'custom' => 'Ratiba Maalum',
+                        default => '—',
+                    })
+                    ->badge()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('course_deadline')
+                    ->label('Deadline')
+                    ->date('d M Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\IconColumn::make('allow_schedule_reset')
+                    ->label('Reset')
+                    ->boolean()
+                    ->toggleable(),
+
                 Tables\Columns\IconColumn::make('is_published')
                     ->label('Published')
                     ->boolean(),
@@ -267,6 +375,15 @@ class LessonResource extends Resource
                         'Beginner' => 'Beginner',
                         'Intermediate' => 'Intermediate',
                         'Advanced' => 'Advanced',
+                    ]),
+
+                Tables\Filters\SelectFilter::make('recommended_study_pace')
+                    ->label('Recommended Pace')
+                    ->options([
+                        'relaxed' => 'Taratibu',
+                        'regular' => 'Kawaida',
+                        'intensive' => 'Haraka',
+                        'custom' => 'Ratiba Maalum',
                     ]),
             ])
             ->actions([

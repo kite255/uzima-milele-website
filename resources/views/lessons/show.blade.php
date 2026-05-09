@@ -95,18 +95,39 @@
                     Maswali {{ $totalQuestions }}
                 </span>
 
+                @if($lesson->estimated_duration_label)
+                    <span class="bg-white/10 rounded-full px-4 py-2 font-bold">
+                        Muda {{ $lesson->estimated_duration_label }}
+                    </span>
+                @endif
+
                 <span class="bg-white/10 rounded-full px-4 py-2 font-bold">
                     Cheti
                 </span>
             </div>
 
             @if($studentIsEnrolled && $enrollment)
-                <p class="mt-5 text-sm text-white/80">
-                    Ulijiunga tarehe
-                    <span class="font-bold text-white">
-                        {{ optional($enrollment->enrolled_at)->format('d M Y, H:i') }}
-                    </span>
-                </p>
+                <div class="mt-5 space-y-2 text-sm text-white/80">
+                    <p>
+                        Ulijiunga tarehe
+                        <span class="font-bold text-white">
+                            {{ optional($enrollment->enrolled_at)->format('d M Y, H:i') }}
+                        </span>
+                    </p>
+
+                    @if($enrollment->target_completion_date)
+                        <p>
+                            Ratiba yako:
+                            <span class="font-bold text-white">
+                                {{ $enrollment->study_hours_per_week }} saa kwa wiki
+                            </span>
+                            · Lengo:
+                            <span class="font-bold text-white">
+                                {{ $enrollment->target_completion_date->format('d M Y') }}
+                            </span>
+                        </p>
+                    @endif
+                </div>
             @endif
 
             <div class="mt-8 flex flex-col sm:flex-row gap-4">
@@ -122,14 +143,10 @@
                             Nenda Dashboard
                         </a>
                     @else
-                        <form method="POST" action="{{ route('lessons.enroll', $lesson) }}">
-                            @csrf
-
-                            <button type="submit"
-                                    class="inline-flex justify-center rounded-xl bg-accent text-navy font-black px-7 py-4 hover:opacity-90 transition">
-                                Jiunge na Somo →
-                            </button>
-                        </form>
+                        <a href="#learning-schedule"
+                           class="inline-flex justify-center rounded-xl bg-accent text-navy font-black px-7 py-4 hover:opacity-90 transition">
+                            Chagua Ratiba →
+                        </a>
                     @endif
                 @else
                     <a href="{{ $loginUrl }}"
@@ -308,14 +325,10 @@
                                         Kamilisha mada zote kwanza
                                     </span>
                                 @else
-                                    <form method="POST" action="{{ route('lessons.enroll', $lesson) }}">
-                                        @csrf
-
-                                        <button type="submit"
-                                                class="inline-flex justify-center rounded-xl bg-accent text-navy font-bold px-6 py-3 hover:opacity-90 transition">
-                                            Jiunge Kwanza
-                                        </button>
-                                    </form>
+                                    <a href="#learning-schedule"
+                                       class="inline-flex justify-center rounded-xl bg-accent text-navy font-bold px-6 py-3 hover:opacity-90 transition">
+                                        Jiunge Kwanza
+                                    </a>
                                 @endif
                             @else
                                 <a href="{{ $loginUrl }}"
@@ -346,7 +359,6 @@
                     </span>
                 </div>
 
-                {{-- ASK QUESTION FORM --}}
                 @auth
                     @if($isEnrolled)
                         <form method="POST"
@@ -410,7 +422,6 @@
                     </div>
                 @endauth
 
-                {{-- QUESTIONS LIST --}}
                 <div class="space-y-5">
                     @forelse($lesson->publishedQuestions as $question)
                         <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -487,14 +498,49 @@
 
         <aside class="space-y-6 h-fit lg:sticky lg:top-32">
 
-            <div class="bg-white rounded-2xl shadow-sm p-6">
+            <div id="learning-schedule" class="bg-white rounded-2xl shadow-sm p-6 scroll-mt-32">
                 <h3 class="text-xl font-black text-navy">
                     Anza Somo Hili
                 </h3>
 
                 <p class="mt-3 text-gray-600">
-                    Jiunge na somo ili lijitokeze kwenye dashibodi yako na uweze kufuatilia maendeleo yako.
+                    Chagua kasi yako ya kujifunza kama Coursera ili mfumo uweze kukuwekea lengo la kukamilisha.
                 </p>
+
+                @if($lesson->estimated_duration_label || $lesson->recommended_study_pace_label || $lesson->course_deadline)
+    <div class="mt-5 rounded-2xl bg-primary/5 border border-primary/10 p-4">
+        <p class="text-sm font-black text-navy">
+            Muhtasari wa Ratiba
+        </p>
+
+        @if($lesson->estimated_duration_label)
+            <p class="mt-2 text-sm text-gray-600">
+                Muda wa Somo:
+                <span class="font-bold text-primary">
+                    {{ $lesson->estimated_duration_label }}
+                </span>
+            </p>
+        @endif
+
+        @if($lesson->recommended_study_pace_label)
+            <p class="mt-1 text-sm text-gray-600">
+                Ratiba Inayopendekezwa:
+                <span class="font-bold text-primary">
+                    {{ $lesson->recommended_study_pace_label }}
+                </span>
+            </p>
+        @endif
+
+        @if($lesson->course_deadline)
+            <p class="mt-1 text-sm text-gray-600">
+                Mwisho wa Somo:
+                <span class="font-bold text-navy">
+                    {{ $lesson->course_deadline->format('d M Y') }}
+                </span>
+            </p>
+        @endif
+    </div>
+@endif
 
                 @if($studentIsEnrolled && $enrollment)
                     <div class="mt-4 rounded-xl bg-green-50 border border-green-200 p-4">
@@ -506,6 +552,41 @@
                             {{ optional($enrollment->enrolled_at)->format('d M Y, H:i') }}
                         </p>
                     </div>
+
+                    @if($enrollment->target_completion_date)
+                        <div class="mt-4 rounded-xl bg-primary/5 border border-primary/10 p-4">
+                            <p class="text-sm font-black text-navy">
+                                Ratiba yako ya kujifunza
+                            </p>
+
+                            <p class="mt-2 text-sm text-gray-600">
+                                Kasi:
+                                <span class="font-bold text-primary">
+                                    {{ $enrollment->study_pace_label }} · {{ $enrollment->study_hours_per_week }} saa kwa wiki
+                                </span>
+                            </p>
+
+                            <p class="mt-1 text-sm text-gray-600">
+                                Lengo:
+                                <span class="font-bold text-navy">
+                                    {{ $enrollment->target_completion_date->format('d M Y') }}
+                                </span>
+                            </p>
+
+                            @if(! is_null($enrollment->remaining_days))
+                                <p class="mt-1 text-sm {{ $enrollment->is_behind_schedule ? 'text-red-600' : 'text-gray-600' }}">
+                                    @if($enrollment->is_behind_schedule)
+                                        Umepita muda wa lengo lako.
+                                    @else
+                                        Siku zilizobaki:
+                                        <span class="font-bold">
+                                            {{ $enrollment->remaining_days }}
+                                        </span>
+                                    @endif
+                                </p>
+                            @endif
+                        </div>
+                    @endif
                 @endif
 
                 <div class="mt-6 space-y-3">
@@ -521,14 +602,89 @@
                                 Nenda Dashboard
                             </a>
                         @else
-                            <form method="POST" action="{{ route('lessons.enroll', $lesson) }}">
-                                @csrf
+                           <form method="POST"
+      action="{{ route('lessons.enroll', $lesson) }}"
+      x-data="{ pace: 'regular' }"
+      class="space-y-4">
+    @csrf
 
-                                <button type="submit"
-                                        class="w-full inline-flex justify-center rounded-xl bg-primary text-white font-bold px-6 py-3 hover:bg-primaryDark transition">
-                                    Jiunge na Somo
-                                </button>
-                            </form>
+    <div class="space-y-3">
+        <label
+            class="block cursor-pointer rounded-2xl border p-4 transition"
+            :class="pace === 'relaxed'
+                ? 'border-primary bg-primary/5'
+                : 'border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5'"
+        >
+            <input type="radio"
+                   name="study_pace"
+                   value="relaxed"
+                   x-model="pace"
+                   class="mr-2">
+            <span class="font-black text-navy">Taratibu</span>
+            <span class="block text-xs text-gray-500 mt-1">Saa 1 kwa wiki</span>
+        </label>
+
+        <label
+            class="block cursor-pointer rounded-2xl border p-4 transition"
+            :class="pace === 'regular'
+                ? 'border-primary bg-primary/5'
+                : 'border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5'"
+        >
+            <input type="radio"
+                   name="study_pace"
+                   value="regular"
+                   x-model="pace"
+                   class="mr-2">
+            <span class="font-black text-navy">Kawaida</span>
+            <span class="block text-xs text-gray-500 mt-1">Saa 3 kwa wiki</span>
+        </label>
+
+        <label
+            class="block cursor-pointer rounded-2xl border p-4 transition"
+            :class="pace === 'intensive'
+                ? 'border-primary bg-primary/5'
+                : 'border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5'"
+        >
+            <input type="radio"
+                   name="study_pace"
+                   value="intensive"
+                   x-model="pace"
+                   class="mr-2">
+            <span class="font-black text-navy">Haraka</span>
+            <span class="block text-xs text-gray-500 mt-1">Saa 5 kwa wiki</span>
+        </label>
+
+        <label
+            class="block cursor-pointer rounded-2xl border p-4 transition"
+            :class="pace === 'custom'
+                ? 'border-primary bg-primary/5'
+                : 'border-gray-200 bg-gray-50 hover:border-primary/40 hover:bg-primary/5'"
+        >
+            <input type="radio"
+                   name="study_pace"
+                   value="custom"
+                   x-model="pace"
+                   class="mr-2">
+
+            <span class="font-black text-navy">Ratiba Maalum</span>
+            <span class="block text-xs text-gray-500 mt-1">Chagua saa zako kwa wiki</span>
+
+            <div x-show="pace === 'custom'" x-cloak>
+                <input type="number"
+                       name="study_hours_per_week"
+                       min="1"
+                       max="40"
+                       value="3"
+                       class="mt-3 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-primary focus:ring-primary/20">
+            </div>
+        </label>
+    </div>
+
+    <button type="submit"
+            class="w-full inline-flex justify-center rounded-xl bg-primary text-white font-bold px-6 py-3 hover:bg-primaryDark transition">
+        Jiunge na Somo
+    </button>
+</form>
                         @endif
                     @else
                         <a href="{{ $loginUrl }}"
@@ -558,6 +714,13 @@
                         <span class="text-gray-500">Maswali</span>
                         <span class="font-bold text-navy">{{ $totalQuestions }}</span>
                     </div>
+
+                    @if($lesson->estimated_duration_label)
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Muda</span>
+                            <span class="font-bold text-navy">{{ $lesson->estimated_duration_label }}</span>
+                        </div>
+                    @endif
 
                     <div class="flex justify-between">
                         <span class="text-gray-500">Cheti</span>

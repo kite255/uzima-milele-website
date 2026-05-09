@@ -44,6 +44,12 @@
             </div>
         @endif
 
+        @if(session('info'))
+            <div class="mb-6 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 px-6 py-4 font-bold">
+                {{ session('info') }}
+            </div>
+        @endif
+
         @if(session('error'))
             <div class="mb-6 rounded-2xl bg-red-50 border border-red-200 text-red-700 px-6 py-4 font-bold">
                 {{ session('error') }}
@@ -136,7 +142,28 @@
                         $finalQuiz = $lesson->final_quiz ?? $lesson->finalQuiz ?? null;
 
                         $nextTopic = $lesson->next_topic ?? null;
+
                         $enrolledAt = $lesson->pivot?->enrolled_at ?? null;
+                        $studyPace = $lesson->pivot?->study_pace ?? null;
+                        $studyHoursPerWeek = $lesson->pivot?->study_hours_per_week ?? null;
+                        $targetCompletionDate = $lesson->pivot?->target_completion_date ?? null;
+
+                        $studyPaceLabel = match ($studyPace) {
+                            'relaxed' => 'Taratibu',
+                            'regular' => 'Kawaida',
+                            'intensive' => 'Haraka',
+                            'custom' => 'Ratiba Maalum',
+                            default => null,
+                        };
+
+                        $remainingDays = null;
+                        $isBehindSchedule = false;
+
+                        if ($targetCompletionDate) {
+                            $targetDate = \Carbon\Carbon::parse($targetCompletionDate);
+                            $remainingDays = now()->startOfDay()->diffInDays($targetDate->copy()->startOfDay(), false);
+                            $isBehindSchedule = now()->greaterThan($targetDate);
+                        }
                     @endphp
 
                     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden">
@@ -163,6 +190,68 @@
                                         {{ \Carbon\Carbon::parse($enrolledAt)->format('d M Y, H:i') }}
                                     </span>
                                 </p>
+                            @endif
+
+                            {{-- LEARNING SCHEDULE --}}
+                            @if($targetCompletionDate)
+                                <div class="mb-5 rounded-2xl bg-primary/5 border border-primary/10 p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-black text-navy">
+                                                Ratiba yako ya kujifunza
+                                            </p>
+
+                                            <p class="mt-1 text-xs text-gray-600">
+                                                Kasi:
+                                                <span class="font-bold text-primary">
+                                                    {{ $studyPaceLabel ?? 'Kawaida' }}
+                                                    @if($studyHoursPerWeek)
+                                                        · {{ $studyHoursPerWeek }} saa/wiki
+                                                    @endif
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        @if($isBehindSchedule)
+                                            <span class="shrink-0 rounded-full bg-red-100 text-red-700 px-3 py-1 text-[11px] font-black">
+                                                Umechelewa
+                                            </span>
+                                        @else
+                                            <span class="shrink-0 rounded-full bg-green-100 text-green-700 px-3 py-1 text-[11px] font-black">
+                                                Inaendelea
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
+                                        <div class="rounded-xl bg-white border border-primary/10 p-3">
+                                            <p class="text-gray-500">Lengo</p>
+                                            <p class="font-black text-navy mt-1">
+                                                {{ \Carbon\Carbon::parse($targetCompletionDate)->format('d M Y') }}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-white border border-primary/10 p-3">
+                                            <p class="text-gray-500">
+                                                {{ $isBehindSchedule ? 'Hali' : 'Siku zilizobaki' }}
+                                            </p>
+
+                                            <p class="font-black {{ $isBehindSchedule ? 'text-red-600' : 'text-navy' }} mt-1">
+                                                @if($isBehindSchedule)
+                                                    Pita muda
+                                                @else
+                                                    {{ $remainingDays }} siku
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="mb-5 rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+                                    <p class="text-xs font-bold text-yellow-700">
+                                        Bado hujaweka ratiba ya kujifunza kwa somo hili.
+                                    </p>
+                                </div>
                             @endif
 
                             <p class="text-sm text-gray-500 mb-5 line-clamp-3">
