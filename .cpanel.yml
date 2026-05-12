@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/uzimamil/repositories/uzima-milele-website/
+    - export DEPLOYPATH=/home/uzimamil/public_html/new.uzimamilele.or.tz/
     - /bin/cp -R app $DEPLOYPATH
     - /bin/cp -R bootstrap $DEPLOYPATH
     - /bin/cp -R config $DEPLOYPATH
@@ -10,6 +10,6 @@ deployment:
     - /bin/cp -R resources $DEPLOYPATH
     - /bin/cp -R routes $DEPLOYPATH
     - /bin/cp -R storage $DEPLOYPATH
-    - /bin/cp -R composer.json $DEPLOYPATH
-    - /bin/cp -R composer.lock $DEPLOYPATH
-    - /bin/cp -R artisan $DEPLOYPATH
+    - /bin/cp composer.json $DEPLOYPATH
+    - /bin/cp composer.lock $DEPLOYPATH
+    - /bin/cp artisan $DEPLOYPATH
