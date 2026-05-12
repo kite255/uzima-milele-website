@@ -163,7 +163,7 @@
     <div class="border-t border-white/10 py-4 text-center text-sm text-white/50">
         © {{ date('Y') }} Uzima Milele. All rights reserved.
         <span class="mx-2">•</span>
-        Version 2.0.0
+        Version 3.2.0
     </div>
 
 </footer>
