@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/uzimamil/public_html/new.uzimamilele.or.tz/new/
+    - export DEPLOYPATH=/home/uzimamil/live_uzimamilele/
     - /bin/cp -R app $DEPLOYPATH
     - /bin/cp -R bootstrap $DEPLOYPATH
     - /bin/cp -R config $DEPLOYPATH
