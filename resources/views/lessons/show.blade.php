@@ -338,10 +338,12 @@
                                             </span>
                                         @endif
 
-                                        <span class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black transition-transform duration-300"
-                                              :class="openModule === {{ $moduleIndex }} ? 'rotate-180' : ''">
-                                            ↓
-                                        </span>
+                                      <span class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center transition-transform duration-200"
+      :class="openModule === {{ $moduleIndex }} ? 'rotate-180' : ''">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+</span>
                                     </div>
                                 </div>
                             </button>

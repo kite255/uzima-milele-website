@@ -74,6 +74,22 @@ class LessonResource extends Resource
                             ->placeholder('Uzima Milele Ministry')
                             ->helperText('Select instructor or leave empty to show Uzima Milele Ministry.'),
 
+                        Forms\Components\Select::make('prerequisite_lesson_id')
+                            ->label('Required Previous Lesson')
+                            ->options(function (?Lesson $record): array {
+                                return Lesson::query()
+                                    ->where('is_published', true)
+                                    ->when($record, fn (Builder $query) => $query->where('id', '!=', $record->id))
+                                    ->orderBy('title')
+                                    ->pluck('title', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->placeholder('No previous lesson required')
+                            ->helperText('Optional. Select the lesson students must complete before starting this lesson.'),
+
                         Forms\Components\Textarea::make('description')
                             ->label('Short Description')
                             ->placeholder('Write a short summary of what the student will learn.')
@@ -311,6 +327,12 @@ class LessonResource extends Resource
                     ->wrap()
                     ->weight('bold'),
 
+                Tables\Columns\TextColumn::make('prerequisiteLesson.title')
+                    ->label('Previous Lesson')
+                    ->placeholder('None')
+                    ->searchable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('instructor.name')
                     ->label('Instructor')
                     ->placeholder('Uzima Milele Ministry')
@@ -414,6 +436,12 @@ class LessonResource extends Resource
                     ->searchable()
                     ->preload(),
 
+                Tables\Filters\SelectFilter::make('prerequisite_lesson_id')
+                    ->label('Required Previous Lesson')
+                    ->relationship('prerequisiteLesson', 'title')
+                    ->searchable()
+                    ->preload(),
+
                 Tables\Filters\SelectFilter::make('category')
                     ->label('Category')
                     ->options([
@@ -459,7 +487,7 @@ class LessonResource extends Resource
                     ->icon('heroicon-o-bell-alert')
                     ->color('warning')
                     ->modalHeading('Send Lesson Reminder')
-                    ->modalDescription('This reminder checks students who enrolled but have not completed all topics. You can later connect this action to email, SMS, or notifications.')
+                    ->modalDescription('This reminder checks students who enrolled but have not completed all topics.')
                     ->requiresConfirmation()
                     ->action(function (Lesson $record): void {
                         $totalTopics = $record->modules()
@@ -525,7 +553,8 @@ class LessonResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()
+            ->with('prerequisiteLesson');
 
         if (auth()->user()?->role === 'instructor') {
             return $query->where('instructor_id', auth()->id());

@@ -25,7 +25,10 @@ class LessonController extends Controller
 
         $lessons = Lesson::query()
             ->where('is_published', true)
-            ->with(['instructor'])
+            ->with([
+                'instructor',
+                'prerequisiteLesson',
+            ])
             ->withCount('enrollments')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -84,6 +87,7 @@ class LessonController extends Controller
 
         $lesson->load([
             'instructor',
+            'prerequisiteLesson',
             'publishedQuestions.user',
             'publishedQuestions.answeredBy',
 
@@ -149,6 +153,10 @@ class LessonController extends Controller
 
         $isEnrolled = (bool) $enrollment;
 
+        $canStartLesson = $lesson->canBeStartedBy(auth()->user());
+
+        $isLocked = ! $canStartLesson;
+
         return view('lessons.show', compact(
             'lesson',
             'allTopics',
@@ -156,7 +164,9 @@ class LessonController extends Controller
             'modulesCount',
             'questionsCount',
             'enrollment',
-            'isEnrolled'
+            'isEnrolled',
+            'canStartLesson',
+            'isLocked'
         ));
     }
 
@@ -169,6 +179,18 @@ class LessonController extends Controller
     public function learn(Request $request, Lesson $lesson)
     {
         abort_if(! $lesson->is_published, 404);
+
+        $lesson->load('prerequisiteLesson');
+
+        if (! $lesson->canBeStartedBy(auth()->user())) {
+            return redirect()
+                ->route('lessons.show', $lesson->slug)
+                ->with(
+                    'error',
+                    'Somo hili limefungwa. Tafadhali kamilisha kwanza somo lililotangulia: ' .
+                    ($lesson->prerequisiteLesson?->title ?? 'somo la awali') . '.'
+                );
+        }
 
         $enrollment = LessonEnrollment::query()
             ->where('user_id', auth()->id())
@@ -184,6 +206,7 @@ class LessonController extends Controller
 
         $lesson->load([
             'instructor',
+            'prerequisiteLesson',
 
             'modules' => fn ($q) => $q
                 ->where('is_published', true)
@@ -312,6 +335,18 @@ class LessonController extends Controller
     {
         abort_if(! $lesson->is_published, 404);
 
+        $lesson->load('prerequisiteLesson');
+
+        if (! $lesson->canBeStartedBy(auth()->user())) {
+            return redirect()
+                ->route('lessons.show', $lesson->slug)
+                ->with(
+                    'error',
+                    'Huwezi kuanza somo hili bado. Tafadhali kamilisha kwanza somo lililotangulia: ' .
+                    ($lesson->prerequisiteLesson?->title ?? 'somo la awali') . '.'
+                );
+        }
+
         $validated = $request->validate([
             'study_pace' => [
                 'nullable',
@@ -371,6 +406,14 @@ class LessonController extends Controller
     {
         abort_if(! $lesson->is_published, 404);
 
+        $lesson->load('prerequisiteLesson');
+
+        if (! $lesson->canBeStartedBy(auth()->user())) {
+            return redirect()
+                ->route('lessons.show', $lesson->slug)
+                ->with('error', 'Somo hili limefungwa. Kamilisha kwanza somo lililotangulia.');
+        }
+
         $isEnrolled = LessonEnrollment::query()
             ->where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
@@ -417,6 +460,14 @@ class LessonController extends Controller
     public function resetSchedule(Request $request, Lesson $lesson)
     {
         abort_if(! $lesson->is_published, 404);
+
+        $lesson->load('prerequisiteLesson');
+
+        if (! $lesson->canBeStartedBy(auth()->user())) {
+            return redirect()
+                ->route('lessons.show', $lesson->slug)
+                ->with('error', 'Somo hili limefungwa. Kamilisha kwanza somo lililotangulia.');
+        }
 
         $enrollment = LessonEnrollment::query()
             ->where('user_id', auth()->id())

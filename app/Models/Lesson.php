@@ -18,6 +18,7 @@ class Lesson extends Model
 
     protected $fillable = [
         'instructor_id',
+        'prerequisite_lesson_id',
         'title',
         'slug',
         'description',
@@ -60,6 +61,16 @@ class Lesson extends Model
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function prerequisiteLesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class, 'prerequisite_lesson_id');
+    }
+
+    public function dependentLessons(): HasMany
+    {
+        return $this->hasMany(Lesson::class, 'prerequisite_lesson_id');
     }
 
     public function modules(): HasMany
@@ -262,19 +273,6 @@ class Lesson extends Model
         $estimatedHours = $this->estimated_duration_hours;
         $hoursPerWeek = max(1, $this->getPaceHours($pace, $customHours));
 
-        /*
-        |--------------------------------------------------------------------------
-        | Human-friendly learning schedule
-        |--------------------------------------------------------------------------
-        | Example:
-        | If lesson duration is 2 hours:
-        | - Taratibu: about 2 weeks
-        | - Kawaida: about 1 week
-        | - Haraka: about 3 days
-        |
-        | This feels clearer than showing very technical calculations.
-        */
-
         if ($estimatedHours <= 3) {
             $daysNeeded = match ($pace) {
                 self::PACE_RELAXED => 14,
@@ -394,6 +392,83 @@ class Lesson extends Model
     public function getDefaultCompletionLabelAttribute(): string
     {
         return $this->formatCompletionDuration($this->default_completion_days);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prerequisite / Lesson Completion Logic
+    |--------------------------------------------------------------------------
+    */
+
+    public function hasPrerequisite(): bool
+    {
+        return filled($this->prerequisite_lesson_id);
+    }
+
+    public function prerequisiteTitle(): ?string
+    {
+        return $this->prerequisiteLesson?->title;
+    }
+
+    public function isCompletedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $totalTopics = $this->publishedTopics()->count();
+
+        if ($totalTopics <= 0) {
+            return false;
+        }
+
+        $completedTopics = LessonProgress::query()
+            ->where('user_id', $user->id)
+            ->where('lesson_id', $this->id)
+            ->distinct('lesson_topic_id')
+            ->count('lesson_topic_id');
+
+        if ($completedTopics < $totalTopics) {
+            return false;
+        }
+
+        $finalQuiz = $this->finalQuiz()
+            ->where('is_published', true)
+            ->first();
+
+        if ($finalQuiz && $finalQuiz->is_required) {
+            return QuizResult::query()
+                ->where('user_id', $user->id)
+                ->where('quiz_id', $finalQuiz->id)
+                ->where('passed', true)
+                ->exists();
+        }
+
+        return true;
+    }
+
+    public function canBeStartedBy(?User $user): bool
+    {
+        if (! $this->hasPrerequisite()) {
+            return true;
+        }
+
+        if (! $user) {
+            return false;
+        }
+
+        $prerequisite = $this->prerequisiteLesson;
+
+        if (! $prerequisite) {
+            return true;
+        }
+
+        return $prerequisite->isCompletedBy($user);
+    }
+
+    public function getIsLockedForCurrentUserAttribute(): bool
+    {
+        return ! $this->canBeStartedBy(auth()->user());
     }
 
     /*

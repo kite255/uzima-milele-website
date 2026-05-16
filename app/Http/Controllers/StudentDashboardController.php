@@ -14,7 +14,7 @@ class StudentDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Certificates
+        | Vyeti vya mwanafunzi
         |--------------------------------------------------------------------------
         */
         $certificates = Certificate::query()
@@ -26,7 +26,7 @@ class StudentDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Enrolled Lessons
+        | Masomo ambayo mwanafunzi amejiunga nayo
         |--------------------------------------------------------------------------
         */
         $lessons = $user->enrolledLessons()
@@ -40,33 +40,34 @@ class StudentDashboardController extends Controller
             ])
             ->with([
                 'instructor',
+                'prerequisiteLesson',
 
-                'modules' => fn ($q) => $q
+                'modules' => fn ($query) => $query
                     ->where('is_published', true)
                     ->orderBy('order'),
 
-                'modules.topics' => fn ($q) => $q
+                'modules.topics' => fn ($query) => $query
                     ->where('is_published', true)
                     ->orderBy('order'),
 
-                'modules.topics.quiz' => fn ($q) => $q
+                'modules.topics.quiz' => fn ($query) => $query
                     ->where('is_published', true),
 
-                'modules.topics.quiz.questions' => fn ($q) => $q
+                'modules.topics.quiz.questions' => fn ($query) => $query
                     ->where('is_active', true)
                     ->orderBy('sort_order'),
 
-                'modules.quizzes' => fn ($q) => $q
+                'modules.quizzes' => fn ($query) => $query
                     ->where('is_published', true),
 
-                'modules.quizzes.questions' => fn ($q) => $q
+                'modules.quizzes.questions' => fn ($query) => $query
                     ->where('is_active', true)
                     ->orderBy('sort_order'),
 
-                'finalQuiz' => fn ($q) => $q
+                'finalQuiz' => fn ($query) => $query
                     ->where('is_published', true),
 
-                'finalQuiz.questions' => fn ($q) => $q
+                'finalQuiz.questions' => fn ($query) => $query
                     ->where('is_active', true)
                     ->orderBy('sort_order'),
             ])
@@ -77,7 +78,7 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Topics and Progress
+                | Mada na maendeleo ya somo
                 |--------------------------------------------------------------------------
                 */
                 $allTopics = $lesson->modules
@@ -111,7 +112,7 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Next Topic
+                | Mada inayofuata
                 |--------------------------------------------------------------------------
                 */
                 $lesson->next_topic = $allTopics
@@ -119,14 +120,14 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Completion Logic
+                | Kukamilika kwa mada zote
                 |--------------------------------------------------------------------------
                 */
                 $topicsCompleted = $totalTopics > 0 && $completedTopics >= $totalTopics;
 
                 /*
                 |--------------------------------------------------------------------------
-                | Final Quiz Logic
+                | Jaribio la mwisho
                 |--------------------------------------------------------------------------
                 */
                 $finalQuiz = $lesson->finalQuiz;
@@ -145,7 +146,7 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Certificate Logic
+                | Cheti cha somo
                 |--------------------------------------------------------------------------
                 */
                 $certificate = $certificates->get($lesson->id);
@@ -161,12 +162,73 @@ class StudentDashboardController extends Controller
 
                 $lesson->is_completed = $topicsCompleted && $finalQuizPassed;
 
+                /*
+                |--------------------------------------------------------------------------
+                | Mfumo wa kufungua somo baada ya somo la awali kukamilika
+                |--------------------------------------------------------------------------
+                */
+                $lesson->can_start = method_exists($lesson, 'canBeStartedBy')
+                    ? $lesson->canBeStartedBy($user)
+                    : true;
+
+                $lesson->is_locked = ! $lesson->can_start;
+
+                $lesson->prerequisite_title = $lesson->prerequisiteLesson
+                    ? $lesson->prerequisiteLesson->title
+                    : null;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Maandishi ya hali ya somo kwa dashboard
+                |--------------------------------------------------------------------------
+                */
+                if ($lesson->is_locked) {
+                    $lesson->status_label = 'Limefungwa';
+                    $lesson->status_color = 'yellow';
+                    $lesson->status_message = $lesson->prerequisite_title
+                        ? 'Kamilisha kwanza somo la awali: ' . $lesson->prerequisite_title
+                        : 'Kamilisha somo la awali ili kufungua somo hili.';
+                } elseif ($lesson->is_completed) {
+                    $lesson->status_label = 'Limekamilika';
+                    $lesson->status_color = 'green';
+                    $lesson->status_message = 'Hongera, umekamilisha somo hili.';
+                } elseif ($lesson->progress > 0) {
+                    $lesson->status_label = 'Unaendelea';
+                    $lesson->status_color = 'blue';
+                    $lesson->status_message = 'Endelea kujifunza kutoka ulipoishia.';
+                } else {
+                    $lesson->status_label = 'Lipo wazi';
+                    $lesson->status_color = 'blue';
+                    $lesson->status_message = 'Unaweza kuanza somo hili.';
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Maandishi ya hatua inayofuata
+                |--------------------------------------------------------------------------
+                */
+                if ($lesson->is_locked) {
+                    $lesson->next_action_label = 'Kamilisha Somo la Awali';
+                } elseif ($lesson->next_topic) {
+                    $lesson->next_action_label = $lesson->progress > 0
+                        ? 'Endelea Kujifunza'
+                        : 'Anza Kujifunza';
+                } elseif ($lesson->is_completed && $certificate) {
+                    $lesson->next_action_label = 'Tazama Cheti';
+                } elseif ($lesson->can_generate_certificate) {
+                    $lesson->next_action_label = 'Tengeneza Cheti';
+                } elseif ($finalQuizRequired && ! $finalQuizPassed && $finalQuiz) {
+                    $lesson->next_action_label = 'Fanya Jaribio la Mwisho';
+                } else {
+                    $lesson->next_action_label = 'Tazama Somo';
+                }
+
                 return $lesson;
             });
 
         /*
         |--------------------------------------------------------------------------
-        | Dashboard Stats
+        | Takwimu za dashboard
         |--------------------------------------------------------------------------
         */
         $totalLessons = $lessons->count();
@@ -183,7 +245,7 @@ class StudentDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Quiz Results
+        | Matokeo ya majaribio
         |--------------------------------------------------------------------------
         */
         $quizResults = QuizResult::query()

@@ -25,9 +25,43 @@
             : 0
     );
 
-    $currentTopicCompleted = $currentTopic
-        ? in_array($currentTopic->id, $completedTopicIds)
+    $progressPercent = min(100, max(0, (int) $progressPercent));
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sequential Topic Unlock Logic
+    |--------------------------------------------------------------------------
+    */
+    $unlockedTopicIds = [];
+    $firstIncompleteFound = false;
+
+    foreach ($allTopics as $topicItem) {
+        if (! $firstIncompleteFound) {
+            $unlockedTopicIds[] = $topicItem->id;
+        }
+
+        if (! in_array($topicItem->id, $completedTopicIds, true)) {
+            $firstIncompleteFound = true;
+        }
+    }
+
+    $currentTopicIsLocked = $currentTopic
+        ? ! in_array($currentTopic->id, $unlockedTopicIds, true)
         : false;
+
+    if ($currentTopicIsLocked) {
+        $currentTopic = $allTopics->first(fn ($topicItem) => in_array($topicItem->id, $unlockedTopicIds, true));
+    }
+
+    $currentTopicCompleted = $currentTopic
+        ? in_array($currentTopic->id, $completedTopicIds, true)
+        : false;
+
+    $currentModuleIndex = $modules->search(function ($module) use ($currentTopic) {
+        return $currentTopic && ($module->topics ?? collect())->contains('id', $currentTopic->id);
+    });
+
+    $currentModuleIndex = $currentModuleIndex === false ? 0 : $currentModuleIndex;
 
     $coverUrl = $lesson->cover_image
         ? Storage::disk('public')->url($lesson->cover_image)
@@ -38,6 +72,17 @@
         : null;
 
     $finalQuiz = $finalQuiz ?? $lesson->finalQuiz;
+
+    $allTopicsCompleted = $allTopicsCompleted ?? (
+        $totalTopics > 0 && $completedTopicsCount >= $totalTopics
+    );
+
+    $statusLabels = [
+        'open' => 'Wazi',
+        'current' => 'Sasa',
+        'locked' => 'Imefungwa',
+        'completed' => 'Imekamilika',
+    ];
 @endphp
 
 <section class="bg-gray-50 py-10">
@@ -46,23 +91,25 @@
         {{-- SIDEBAR --}}
         <aside class="relative z-10 space-y-6 h-fit mb-8 lg:mb-0 lg:sticky lg:top-32">
 
-            {{-- COURSE CONTENT CARD --}}
-            <div class="bg-white rounded-2xl shadow-sm p-6">
-                <div class="flex items-start justify-between gap-4 mb-6">
-                    <div>
+            {{-- COURSE CARD --}}
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+
+                {{-- SIMPLE HEADER --}}
+                <div class="mb-6">
+                    <div class="flex items-center justify-between gap-4">
                         <p class="text-xs font-black text-primary uppercase tracking-wide">
                             Somo
                         </p>
 
-                        <h2 class="text-2xl font-black text-navy leading-tight">
-                            {{ $lesson->title }}
-                        </h2>
+                        <a href="{{ route('lessons.show', $lesson->slug) }}"
+                           class="text-xs font-bold text-primary hover:text-primaryDark">
+                            Muhtasari
+                        </a>
                     </div>
 
-                    <a href="{{ route('lessons.show', $lesson->slug) }}"
-                       class="shrink-0 text-xs font-bold text-primary hover:text-primaryDark">
-                        Muhtasari
-                    </a>
+                    <h2 class="mt-2 text-xl font-black text-navy leading-snug">
+                        {{ $lesson->title }}
+                    </h2>
                 </div>
 
                 {{-- PROGRESS --}}
@@ -74,7 +121,7 @@
 
                     <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                         <div class="bg-primary h-3 rounded-full transition-all duration-300"
-                             style="width: {{ min(100, max(0, $progressPercent)) }}%">
+                             style="width: {{ $progressPercent }}%">
                         </div>
                     </div>
 
@@ -83,55 +130,196 @@
                     </p>
                 </div>
 
-                {{-- MODULES --}}
-                <div class="space-y-6">
+                {{-- MODULES - PROFESSIONAL DROPDOWN --}}
+                <div x-data="{ openModule: {{ (int) $currentModuleIndex }} }" class="space-y-4">
                     @forelse($modules as $module)
-                        <div>
-                            <h3 class="font-black text-primary mb-3 leading-snug">
-                                {{ $module->title }}
-                            </h3>
+                        @php
+                            $moduleIndex = $loop->index;
 
-                            <div class="space-y-2">
-                                @forelse($module->topics as $topic)
-                                    @php
-                                        $isActiveTopic = $currentTopic && $currentTopic->id === $topic->id;
-                                        $isCompletedTopic = in_array($topic->id, $completedTopicIds);
-                                    @endphp
+                            $moduleTopics = $module->topics ?? collect();
+                            $moduleTopicIds = $moduleTopics->pluck('id')->toArray();
 
-                                    <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $topic->id]) }}"
-                                       class="flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition
-                                            {{ $isActiveTopic
-                                                ? 'bg-primary text-white border-primary shadow'
-                                                : 'bg-white text-gray-700 border-gray-200 hover:border-primary/40 hover:text-primary' }}">
+                            $moduleHasUnlockedTopic = count(array_intersect($moduleTopicIds, $unlockedTopicIds)) > 0;
 
-                                        <span class="font-semibold leading-relaxed">
-                                            {{ $loop->iteration }}. {{ $topic->title }}
+                            $moduleCompleted = count($moduleTopicIds) > 0
+                                && count(array_intersect($moduleTopicIds, $completedTopicIds)) >= count($moduleTopicIds);
+
+                            $moduleQuiz = $module->quiz ?? ($module->quizzes?->first());
+                            $moduleQuizLocked = ! $moduleCompleted;
+
+                            $moduleLocked = ! $moduleHasUnlockedTopic && ! $moduleCompleted;
+                            $moduleCurrent = $currentTopic && $moduleTopics->contains('id', $currentTopic->id);
+
+                            $completedInModule = count(array_intersect($moduleTopicIds, $completedTopicIds));
+                            $totalInModule = count($moduleTopicIds);
+
+                            $moduleProgress = $totalInModule > 0
+                                ? min(100, round(($completedInModule / $totalInModule) * 100))
+                                : 0;
+                        @endphp
+
+                        <div class="rounded-2xl border bg-white overflow-hidden transition shadow-sm hover:shadow-md
+                            {{ $moduleCurrent ? 'border-primary/30 ring-2 ring-primary/10' : 'border-gray-200' }}
+                            {{ $moduleLocked ? 'opacity-75' : '' }}">
+
+                            {{-- MODULE HEADER --}}
+                            <button type="button"
+                                    class="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-gray-50 transition"
+                                    @click="openModule = openModule === {{ $moduleIndex }} ? null : {{ $moduleIndex }}">
+
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] font-black uppercase tracking-wide text-gray-400">
+                                            Moduli {{ $loop->iteration }}
                                         </span>
 
-                                        @if($isCompletedTopic)
-                                            <span class="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black
-                                                {{ $isActiveTopic ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700' }}">
-                                                ✓
-                                            </span>
-                                        @endif
-                                    </a>
-                                @empty
-                                    <p class="text-sm text-gray-500">
-                                        Hakuna mada kwenye moduli hii.
-                                    </p>
-                                @endforelse
-                            </div>
+                                        <span class="text-[11px] text-gray-400">
+                                            {{ $completedInModule }}/{{ $totalInModule }} mada
+                                        </span>
+                                    </div>
 
-                            @php
-                                $moduleQuiz = $module->quiz ?? ($module->quizzes?->first());
-                            @endphp
+                                    <h3 class="mt-1 font-black leading-snug
+                                        {{ $moduleLocked ? 'text-gray-400' : 'text-primary' }}">
+                                        {{ $module->title }}
+                                    </h3>
+                                </div>
 
-                            @if($moduleQuiz)
-                                <a href="{{ route('quiz.show', $moduleQuiz->id) }}"
-                                   class="mt-3 inline-flex w-full justify-center rounded-xl bg-accent text-navy font-bold px-4 py-3 text-sm hover:opacity-90 transition">
-                                    Jaribio la Moduli
-                                </a>
+                                <div class="shrink-0 flex items-center gap-2">
+                                    @if($moduleCompleted)
+                                        <span class="text-[11px] font-black rounded-full bg-green-50 text-green-700 border border-green-100 px-3 py-1">
+                                            {{ $statusLabels['completed'] }}
+                                        </span>
+                                    @elseif($moduleLocked)
+                                        <span class="text-[11px] font-black rounded-full bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1">
+                                            {{ $statusLabels['locked'] }}
+                                        </span>
+                                    @elseif($moduleCurrent)
+                                        <span class="text-[11px] font-black rounded-full bg-primary/10 text-primary border border-primary/10 px-3 py-1">
+                                            {{ $statusLabels['current'] }}
+                                        </span>
+                                    @else
+                                        <span class="text-[11px] font-black rounded-full bg-primary/10 text-primary border border-primary/10 px-3 py-1">
+                                            {{ $statusLabels['open'] }}
+                                        </span>
+                                    @endif
+
+                                    <span class="w-8 h-8 rounded-full border flex items-center justify-center transition-transform duration-200
+                                        {{ $moduleLocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-primary/10 text-primary border-primary/10' }}"
+                                          :class="openModule === {{ $moduleIndex }} ? 'rotate-180' : ''">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </span>
+                                </div>
+                            </button>
+
+                            {{-- MODULE PROGRESS LINE --}}
+                            @if($totalInModule > 0)
+                                <div class="px-5 pb-4">
+                                    <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-1.5 bg-primary rounded-full"
+                                             style="width: {{ $moduleProgress }}%">
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
+
+                            {{-- TOPICS --}}
+                            <div x-show="openModule === {{ $moduleIndex }}"
+                                 x-cloak
+                                 class="border-t border-gray-100 bg-white">
+
+                                <div class="divide-y divide-gray-100">
+                                    @forelse($moduleTopics as $topic)
+                                        @php
+                                            $isActiveTopic = $currentTopic && $currentTopic->id === $topic->id;
+                                            $isCompletedTopic = in_array($topic->id, $completedTopicIds, true);
+                                            $isUnlockedTopic = in_array($topic->id, $unlockedTopicIds, true);
+                                            $isLockedTopic = ! $isUnlockedTopic;
+                                        @endphp
+
+                                        @if($isLockedTopic)
+                                            <div class="px-5 py-4 text-sm bg-gray-50">
+                                                <div class="flex items-center justify-between gap-4">
+                                                    <div class="min-w-0">
+                                                        <p class="font-bold text-gray-400 leading-snug">
+                                                            {{ $loop->iteration }}. {{ $topic->title }}
+                                                        </p>
+
+                                                        <p class="mt-1 text-xs text-gray-400">
+                                                            Kamilisha mada iliyotangulia ili kufungua.
+                                                        </p>
+                                                    </div>
+
+                                                    <span class="shrink-0 text-[11px] font-black rounded-full bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1">
+                                                        {{ $statusLabels['locked'] }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $topic->id]) }}"
+                                               class="block px-5 py-4 text-sm transition
+                                                    {{ $isActiveTopic ? 'bg-primary/10' : 'hover:bg-gray-50' }}">
+
+                                                <div class="flex items-center justify-between gap-4">
+                                                    <div class="min-w-0">
+                                                        <p class="font-bold leading-snug {{ $isActiveTopic ? 'text-primary' : 'text-navy' }}">
+                                                            {{ $loop->iteration }}. {{ $topic->title }}
+                                                        </p>
+
+                                                        @if($isActiveTopic)
+                                                            <p class="mt-1 text-xs text-primary">
+                                                                Unaendelea kujifunza mada hii.
+                                                            </p>
+                                                        @elseif($isCompletedTopic)
+                                                            <p class="mt-1 text-xs text-green-700">
+                                                                Mada hii imekamilika.
+                                                            </p>
+                                                        @else
+                                                            <p class="mt-1 text-xs text-gray-500">
+                                                                Mada hii ipo wazi.
+                                                            </p>
+                                                        @endif
+                                                    </div>
+
+                                                    @if($isCompletedTopic)
+                                                        <span class="shrink-0 text-[11px] font-black rounded-full bg-green-50 text-green-700 border border-green-100 px-3 py-1">
+                                                            {{ $statusLabels['completed'] }}
+                                                        </span>
+                                                    @elseif($isActiveTopic)
+                                                        <span class="shrink-0 text-[11px] font-black rounded-full bg-primary text-white px-3 py-1">
+                                                            {{ $statusLabels['current'] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="shrink-0 text-[11px] font-black rounded-full bg-primary/10 text-primary border border-primary/10 px-3 py-1">
+                                                            {{ $statusLabels['open'] }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </a>
+                                        @endif
+                                    @empty
+                                        <p class="text-sm text-gray-500 px-5 py-4">
+                                            Hakuna mada kwenye moduli hii.
+                                        </p>
+                                    @endforelse
+
+                                    @if($moduleQuiz)
+                                        <div class="px-5 py-4">
+                                            @if($moduleQuizLocked)
+                                                <div class="w-full rounded-xl bg-gray-100 text-gray-500 font-bold px-4 py-3 text-sm text-center">
+                                                    Jaribio litafunguka baada ya kumaliza mada zote.
+                                                </div>
+                                            @else
+                                                <a href="{{ route('quiz.show', $moduleQuiz->id) }}"
+                                                   class="inline-flex w-full justify-center rounded-xl bg-accent text-navy font-bold px-4 py-3 text-sm hover:opacity-90 transition">
+                                                    Fanya Jaribio la Moduli
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     @empty
                         <p class="text-sm text-gray-500">
@@ -143,7 +331,7 @@
 
             {{-- SCHEDULE CARD --}}
             @if($enrollment ?? null)
-                <div class="bg-white rounded-2xl shadow-sm p-6">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                     <h3 class="text-xl font-black text-navy">
                         Ratiba Yako
                     </h3>
@@ -255,7 +443,7 @@
         </aside>
 
         {{-- MAIN CONTENT --}}
-        <main class="relative z-0 font-lato lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 md:p-10 min-w-0">
+        <main class="relative z-0 font-lato lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10 min-w-0">
 
             @if(session('success'))
                 <div class="mb-6 rounded-xl bg-green-50 text-green-700 border border-green-200 px-5 py-4 font-bold">
@@ -285,188 +473,205 @@
 
             @if($currentTopic)
 
-                <div class="mb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div>
-                            <p class="text-sm text-primary font-bold uppercase tracking-wide">
-                                Mada ya Somo
-                            </p>
+                @if($currentTopicIsLocked)
+                    <div class="rounded-2xl bg-yellow-50 border border-yellow-200 p-6 text-yellow-800">
+                        <h2 class="text-2xl font-black">
+                            Mada hii imefungwa kwa sasa
+                        </h2>
 
-                            <h2 class="text-3xl md:text-4xl font-black text-navy mt-2 leading-tight">
-                                {{ $currentTopic->title }}
-                            </h2>
-                        </div>
-
-                        @if($currentTopicCompleted)
-                            <span class="w-fit rounded-full bg-green-100 text-green-700 font-black px-4 py-2 text-sm">
-                                Imekamilika
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                @if($currentTopic->video_url)
-                    @php
-                        $videoUrl = $currentTopic->video_url;
-
-                        if (str_contains($videoUrl, 'youtube.com/watch?v=')) {
-                            $videoUrl = str_replace('watch?v=', 'embed/', $videoUrl);
-                        }
-
-                        if (str_contains($videoUrl, 'youtu.be/')) {
-                            $videoId = basename(parse_url($videoUrl, PHP_URL_PATH));
-                            $videoUrl = 'https://www.youtube.com/embed/' . $videoId;
-                        }
-
-                        if (str_contains($videoUrl, 'youtube.com/live/')) {
-                            $path = parse_url($videoUrl, PHP_URL_PATH);
-                            $videoId = str_replace('/live/', '', $path);
-                            $videoUrl = 'https://www.youtube.com/embed/' . $videoId;
-                        }
-
-                        $videoUrl = strtok($videoUrl, '?');
-                    @endphp
-
-                    <div class="mb-8 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
-                        <div class="aspect-video bg-black">
-                            <iframe
-                                class="w-full h-full"
-                                src="{{ $videoUrl }}"
-                                title="{{ $currentTopic->title }}"
-                                frameborder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowfullscreen>
-                            </iframe>
-                        </div>
-                    </div>
-                @elseif($coverUrl)
-                    <img src="{{ $coverUrl }}"
-                         alt="{{ $lesson->title }}"
-                         class="w-full h-72 object-cover rounded-2xl mb-8">
-                @endif
-
-                <div class="font-lato max-w-none text-gray-700 leading-relaxed space-y-4
-                            [&_h2]:text-2xl [&_h2]:font-black [&_h2]:text-navy [&_h2]:mt-6 [&_h2]:mb-3
-                            [&_h3]:text-xl [&_h3]:font-black [&_h3]:text-navy [&_h3]:mt-5 [&_h3]:mb-2
-                            [&_p]:text-base [&_p]:leading-8 [&_p]:text-gray-700
-                            [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
-                            [&_li]:mb-2 [&_a]:text-primary [&_a]:font-bold
-                            [&_img]:rounded-2xl [&_img]:shadow-sm">
-                    {!! html_entity_decode($currentTopic->content) !!}
-                </div>
-
-                {{-- TOPIC ACTIONS --}}
-                <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-4">
-
-                    @if(! $currentTopicCompleted)
-                        <form method="POST" action="{{ route('lessons.progress', $lesson->slug) }}">
-                            @csrf
-
-                            <input type="hidden" name="lesson_topic_id" value="{{ $currentTopic->id }}">
-
-                            <button type="submit"
-                                    class="w-full sm:w-auto bg-green-600 text-white font-bold px-6 py-3 rounded-xl shadow hover:bg-green-700 transition">
-                                Nimemaliza Mada Hii
-                            </button>
-                        </form>
-                    @else
-                        <span class="inline-flex items-center justify-center bg-green-50 text-green-700 border border-green-200 font-bold px-6 py-3 rounded-xl text-center">
-                            Imekamilika
-                        </span>
-                    @endif
-
-                    @if($topicPdfUrl)
-                        <a href="{{ $topicPdfUrl }}"
-                           target="_blank"
-                           class="inline-flex items-center justify-center bg-accent text-navy font-bold px-6 py-3 rounded-xl shadow hover:opacity-90 transition text-center">
-                            Pakua PDF
-                        </a>
-                    @endif
-
-                    @if($currentTopic->quiz)
-                        <a href="{{ route('quiz.show', $currentTopic->quiz->id) }}"
-                           class="inline-flex items-center justify-center bg-primary text-white font-bold px-6 py-3 rounded-xl shadow hover:bg-primaryDark transition text-center">
-                            Jibu Maswali
-                        </a>
-                    @endif
-                </div>
-
-                {{-- PREVIOUS / NEXT --}}
-                <div class="mt-12 pt-6 border-t flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-                    @if($previousTopic)
-                        <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $previousTopic->id]) }}"
-                           class="rounded-xl border border-gray-200 px-5 py-3 text-sm font-bold text-gray-700 hover:text-primary hover:border-primary/40 transition">
-                            ← Iliyopita: {{ $previousTopic->title }}
-                        </a>
-                    @else
-                        <span></span>
-                    @endif
-
-                    @if($nextTopic)
-                        @php
-                            $nextLocked = ! $currentTopicCompleted;
-                        @endphp
-
-                        @if($nextLocked)
-                            <span class="rounded-xl bg-gray-100 px-5 py-3 text-sm font-bold text-gray-400 text-center cursor-not-allowed">
-                                Kamilisha mada hii ili kuendelea
-                            </span>
-                        @else
-                            <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $nextTopic->id]) }}"
-                               class="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primaryDark transition text-center">
-                                Inayofuata: {{ $nextTopic->title }} →
-                            </a>
-                        @endif
-                    @endif
-                </div>
-
-                {{-- FINAL LESSON ACTIONS --}}
-                @if($allTopicsCompleted ?? false)
-                    <div class="mt-10 rounded-2xl border border-green-200 bg-green-50 p-6">
-                        <h3 class="text-xl font-black text-green-700">
-                            Hongera! Umekamilisha mada zote za somo hili.
-                        </h3>
-
-                        <p class="mt-2 text-sm text-green-700/80">
-                            Hatua inayofuata ni kufanya jaribio la mwisho au kupata cheti cha kukamilisha somo.
+                        <p class="mt-2 text-sm">
+                            Tafadhali kamilisha mada iliyotangulia kabla ya kuendelea.
                         </p>
+                    </div>
+                @else
 
-                        <div class="mt-5 flex flex-col sm:flex-row flex-wrap gap-3">
+                    <div class="mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                            <div>
+                                <p class="text-sm text-primary font-bold uppercase tracking-wide">
+                                    Mada ya Somo
+                                </p>
 
-                            @if($finalQuiz && ! ($finalQuizPassed ?? false))
-                                <a href="{{ route('quiz.show', $finalQuiz->id) }}"
-                                   class="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-black text-navy hover:bg-yellow-500 transition">
-                                    Fanya Jaribio la Mwisho
-                                </a>
-                            @endif
+                                <h2 class="text-3xl md:text-4xl font-black text-navy mt-2 leading-tight">
+                                    {{ $currentTopic->title }}
+                                </h2>
+                            </div>
 
-                            @if($certificate ?? null)
-                                <a href="{{ route('certificates.show', $certificate->certificate_number) }}"
-                                   class="inline-flex items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-black text-white hover:bg-green-700 transition">
-                                    Tazama Cheti
-                                </a>
-
-                                <a href="{{ route('certificates.download', $certificate->certificate_number) }}"
-                                   class="inline-flex items-center justify-center rounded-xl border border-green-300 bg-white px-6 py-3 text-sm font-black text-green-700 hover:bg-green-100 transition">
-                                    Pakua Cheti
-                                </a>
-                            @elseif($canGenerateCertificate ?? false)
-                                <form method="POST" action="{{ route('certificates.issue', $lesson->id) }}">
-                                    @csrf
-
-                                    <button type="submit"
-                                            class="w-full sm:w-auto rounded-xl bg-accent px-6 py-3 text-sm font-black text-navy hover:bg-yellow-500 transition">
-                                        Tengeneza Cheti
-                                    </button>
-                                </form>
-                            @elseif($finalQuiz && ! ($finalQuizPassed ?? false))
-                                <span class="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-gray-500 border border-green-200">
-                                    Lazima ufaulu jaribio la mwisho ili kupata cheti.
+                            @if($currentTopicCompleted)
+                                <span class="w-fit rounded-full bg-green-100 text-green-700 font-black px-4 py-2 text-sm">
+                                    Imekamilika
+                                </span>
+                            @else
+                                <span class="w-fit rounded-full bg-primary/10 text-primary font-black px-4 py-2 text-sm">
+                                    Unaendelea
                                 </span>
                             @endif
-
                         </div>
                     </div>
+
+                    @if($currentTopic->video_url)
+                        @php
+                            $videoUrl = $currentTopic->video_url;
+
+                            if (str_contains($videoUrl, 'youtube.com/watch?v=')) {
+                                $videoUrl = str_replace('watch?v=', 'embed/', $videoUrl);
+                            }
+
+                            if (str_contains($videoUrl, 'youtu.be/')) {
+                                $videoId = basename(parse_url($videoUrl, PHP_URL_PATH));
+                                $videoUrl = 'https://www.youtube.com/embed/' . $videoId;
+                            }
+
+                            if (str_contains($videoUrl, 'youtube.com/live/')) {
+                                $path = parse_url($videoUrl, PHP_URL_PATH);
+                                $videoId = str_replace('/live/', '', $path);
+                                $videoUrl = 'https://www.youtube.com/embed/' . $videoId;
+                            }
+
+                            $videoUrl = strtok($videoUrl, '?');
+                        @endphp
+
+                        <div class="mb-8 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+                            <div class="aspect-video bg-black">
+                                <iframe
+                                    class="w-full h-full"
+                                    src="{{ $videoUrl }}"
+                                    title="{{ $currentTopic->title }}"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+                        </div>
+                    @elseif($coverUrl)
+                        <img src="{{ $coverUrl }}"
+                             alt="{{ $lesson->title }}"
+                             class="w-full h-72 object-cover rounded-2xl mb-8">
+                    @endif
+
+                    <div class="font-lato max-w-none text-gray-700 leading-relaxed space-y-4
+                                [&_h2]:text-2xl [&_h2]:font-black [&_h2]:text-navy [&_h2]:mt-6 [&_h2]:mb-3
+                                [&_h3]:text-xl [&_h3]:font-black [&_h3]:text-navy [&_h3]:mt-5 [&_h3]:mb-2
+                                [&_p]:text-base [&_p]:leading-8 [&_p]:text-gray-700
+                                [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6
+                                [&_li]:mb-2 [&_a]:text-primary [&_a]:font-bold
+                                [&_img]:rounded-2xl [&_img]:shadow-sm">
+                        {!! html_entity_decode($currentTopic->content) !!}
+                    </div>
+
+                    {{-- TOPIC ACTIONS --}}
+                    <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-4">
+
+                        @if(! $currentTopicCompleted)
+                            <form method="POST" action="{{ route('lessons.progress', $lesson->slug) }}">
+                                @csrf
+
+                                <input type="hidden" name="lesson_topic_id" value="{{ $currentTopic->id }}">
+
+                                <button type="submit"
+                                        class="w-full sm:w-auto bg-green-600 text-white font-bold px-6 py-3 rounded-xl shadow hover:bg-green-700 transition">
+                                    Nimemaliza Mada Hii
+                                </button>
+                            </form>
+                        @else
+                            <span class="inline-flex items-center justify-center bg-green-50 text-green-700 border border-green-200 font-bold px-6 py-3 rounded-xl text-center">
+                                Mada Imekamilika
+                            </span>
+                        @endif
+
+                        @if($topicPdfUrl)
+                            <a href="{{ $topicPdfUrl }}"
+                               target="_blank"
+                               class="inline-flex items-center justify-center bg-accent text-navy font-bold px-6 py-3 rounded-xl shadow hover:opacity-90 transition text-center">
+                                Pakua PDF
+                            </a>
+                        @endif
+
+                        @if($currentTopic->quiz)
+                            <a href="{{ route('quiz.show', $currentTopic->quiz->id) }}"
+                               class="inline-flex items-center justify-center bg-primary text-white font-bold px-6 py-3 rounded-xl shadow hover:bg-primaryDark transition text-center">
+                                Jibu Maswali
+                            </a>
+                        @endif
+                    </div>
+
+                    {{-- PREVIOUS / NEXT --}}
+                    <div class="mt-12 pt-6 border-t flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+                        @if($previousTopic)
+                            <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $previousTopic->id]) }}"
+                               class="rounded-xl border border-gray-200 px-5 py-3 text-sm font-bold text-gray-700 hover:text-primary hover:border-primary/40 transition">
+                                Iliyopita: {{ $previousTopic->title }}
+                            </a>
+                        @else
+                            <span></span>
+                        @endif
+
+                        @if($nextTopic)
+                            @php
+                                $nextLocked = ! $currentTopicCompleted || ! in_array($nextTopic->id, $unlockedTopicIds, true);
+                            @endphp
+
+                            @if($nextLocked)
+                                <span class="rounded-xl bg-gray-100 px-5 py-3 text-sm font-bold text-gray-400 text-center cursor-not-allowed">
+                                    Kamilisha mada ya sasa ili kufungua inayofuata
+                                </span>
+                            @else
+                                <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $nextTopic->id]) }}"
+                                   class="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primaryDark transition text-center">
+                                    Inayofuata: {{ $nextTopic->title }}
+                                </a>
+                            @endif
+                        @endif
+                    </div>
+
+                    {{-- FINAL LESSON ACTIONS --}}
+                    @if($allTopicsCompleted ?? false)
+                        <div class="mt-10 rounded-2xl border border-green-200 bg-green-50 p-6">
+                            <h3 class="text-xl font-black text-green-700">
+                                Hongera! Umekamilisha mada zote za somo hili.
+                            </h3>
+
+                            <p class="mt-2 text-sm text-green-700/80">
+                                Hatua inayofuata ni kufanya jaribio la mwisho au kupata cheti cha kukamilisha somo.
+                            </p>
+
+                            <div class="mt-5 flex flex-col sm:flex-row flex-wrap gap-3">
+
+                                @if($finalQuiz && ! ($finalQuizPassed ?? false))
+                                    <a href="{{ route('quiz.show', $finalQuiz->id) }}"
+                                       class="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-black text-navy hover:bg-yellow-500 transition">
+                                        Fanya Jaribio la Mwisho
+                                    </a>
+                                @endif
+
+                                @if($certificate ?? null)
+                                    <a href="{{ route('certificates.show', $certificate->certificate_number) }}"
+                                       class="inline-flex items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-black text-white hover:bg-green-700 transition">
+                                        Tazama Cheti
+                                    </a>
+
+                                    <a href="{{ route('certificates.download', $certificate->certificate_number) }}"
+                                       class="inline-flex items-center justify-center rounded-xl border border-green-300 bg-white px-6 py-3 text-sm font-black text-green-700 hover:bg-green-100 transition">
+                                        Pakua Cheti
+                                    </a>
+                                @elseif($canGenerateCertificate ?? false)
+                                    <form method="POST" action="{{ route('certificates.issue', $lesson->id) }}">
+                                        @csrf
+
+                                        <button type="submit"
+                                                class="w-full sm:w-auto rounded-xl bg-accent px-6 py-3 text-sm font-black text-navy hover:bg-yellow-500 transition">
+                                            Tengeneza Cheti
+                                        </button>
+                                    </form>
+                                @elseif($finalQuiz && ! ($finalQuizPassed ?? false))
+                                    <span class="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-gray-500 border border-green-200">
+                                        Lazima ufaulu jaribio la mwisho ili kupata cheti.
+                                    </span>
+                                @endif
+
+                            </div>
+                        </div>
+                    @endif
                 @endif
 
             @else

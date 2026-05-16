@@ -39,7 +39,7 @@
                 </h1>
 
                 <p class="text-white/85 mt-3 max-w-2xl">
-                    Endelea kujifunza, fuatilia maendeleo yako, kamilisha masomo na upate vyeti vyako.
+                    Endelea kujifunza kwa mpangilio. Masomo yanayofuata yatafunguka baada ya kukamilisha somo lililotangulia.
                 </p>
             </div>
 
@@ -76,7 +76,7 @@
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
-                <p class="text-sm text-gray-500">Maendeleo</p>
+                <p class="text-sm text-gray-500">Maendeleo ya Jumla</p>
                 <h2 class="text-3xl font-black text-primary mt-2">
                     {{ $dashboardProgress }}%
                 </h2>
@@ -116,9 +116,15 @@
         {{-- LESSONS --}}
         <div class="mb-10">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-black text-navy">
-                    Endelea Kujifunza
-                </h2>
+                <div>
+                    <h2 class="text-2xl font-black text-navy">
+                        Endelea Kujifunza
+                    </h2>
+
+                    <p class="text-sm text-gray-500 mt-1">
+                        Masomo yenye sharti yatafunguka baada ya kukamilisha somo lililotangulia.
+                    </p>
+                </div>
 
                 <a href="{{ route('lessons.index') }}"
                    class="hidden sm:inline-flex text-sm font-bold text-primary hover:text-primaryDark">
@@ -160,6 +166,24 @@
 
                         $studyPaceLabel = $paceLabels[$studyPace] ?? null;
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Prerequisite / Lesson Lock Logic
+                        |--------------------------------------------------------------------------
+                        */
+                        $prerequisiteLesson = $lesson->prerequisiteLesson ?? null;
+
+                        $canStartLesson = method_exists($lesson, 'canBeStartedBy')
+                            ? $lesson->canBeStartedBy($authUser)
+                            : true;
+
+                        $isLocked = ! $canStartLesson;
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Schedule Status
+                        |--------------------------------------------------------------------------
+                        */
                         $remainingDays = null;
                         $isBehindSchedule = false;
                         $isDueToday = false;
@@ -191,22 +215,60 @@
                             : null;
                     @endphp
 
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden">
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden {{ $isLocked ? 'opacity-90' : '' }}">
 
-                        @if($imageUrl)
-                            <img src="{{ $imageUrl }}"
-                                 class="w-full h-48 object-cover"
-                                 alt="{{ $lesson->title }}">
-                        @else
-                            <div class="h-48 bg-gradient-to-br from-primary to-navy flex items-center justify-center text-white font-black text-2xl">
-                                Uzima Milele
-                            </div>
-                        @endif
+                        <div class="relative">
+                            @if($imageUrl)
+                                <img src="{{ $imageUrl }}"
+                                     class="w-full h-48 object-cover"
+                                     alt="{{ $lesson->title }}">
+                            @else
+                                <div class="h-48 bg-gradient-to-br from-primary to-navy flex items-center justify-center text-white font-black text-2xl">
+                                    Uzima Milele
+                                </div>
+                            @endif
+
+                            @if($isLocked)
+                                <div class="absolute inset-0 bg-navy/70 flex items-center justify-center text-white text-center px-6">
+                                    <div>
+                                        <div class="w-14 h-14 mx-auto rounded-full bg-white/20 flex items-center justify-center text-2xl font-black">
+                                            🔒
+                                        </div>
+
+                                        <p class="mt-3 font-black">
+                                            Somo limefungwa
+                                        </p>
+
+                                        @if($prerequisiteLesson)
+                                            <p class="mt-1 text-xs text-white/80">
+                                                Kamilisha kwanza: {{ $prerequisiteLesson->title }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
 
                         <div class="p-6">
-                            <h3 class="font-black text-lg text-navy mb-2 leading-snug">
-                                {{ $lesson->title }}
-                            </h3>
+                            <div class="flex items-start justify-between gap-3 mb-2">
+                                <h3 class="font-black text-lg text-navy leading-snug">
+                                    {{ $lesson->title }}
+                                </h3>
+
+                                @if($isLocked)
+                                    <span class="shrink-0 rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-black px-3 py-1">
+                                        Locked
+                                    </span>
+                                @elseif($lessonProgress >= 100)
+                                    <span class="shrink-0 rounded-full bg-green-100 text-green-700 text-[11px] font-black px-3 py-1">
+                                        Completed
+                                    </span>
+                                @else
+                                    <span class="shrink-0 rounded-full bg-primary/10 text-primary text-[11px] font-black px-3 py-1">
+                                        Open
+                                    </span>
+                                @endif
+                            </div>
 
                             @if($enrolledAt)
                                 <p class="mb-3 text-xs text-gray-500">
@@ -215,6 +277,27 @@
                                         {{ Carbon::parse($enrolledAt)->format('d M Y, H:i') }}
                                     </span>
                                 </p>
+                            @endif
+
+                            {{-- PREREQUISITE MESSAGE --}}
+                            @if($prerequisiteLesson)
+                                <div class="mb-5 rounded-2xl {{ $isLocked ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200' }} border p-4">
+                                    <p class="text-xs font-black {{ $isLocked ? 'text-yellow-700' : 'text-green-700' }}">
+                                        Somo la awali:
+                                    </p>
+
+                                    <p class="mt-1 text-sm font-bold {{ $isLocked ? 'text-yellow-800' : 'text-green-800' }}">
+                                        {{ $prerequisiteLesson->title }}
+                                    </p>
+
+                                    <p class="mt-1 text-xs {{ $isLocked ? 'text-yellow-700' : 'text-green-700' }}">
+                                        @if($isLocked)
+                                            Kamilisha somo hili la awali ili kufungua somo hili.
+                                        @else
+                                            Umeruhusiwa kuendelea na somo hili.
+                                        @endif
+                                    </p>
+                                </div>
                             @endif
 
                             {{-- LEARNING SCHEDULE --}}
@@ -310,8 +393,20 @@
                                 {{ $completedTopics }} / {{ $totalTopics }} mada zimekamilika
                             </p>
 
-                            {{-- CONTINUE / COMPLETE --}}
-                            @if($nextTopic)
+                            {{-- ACTION BUTTON --}}
+                            @if($isLocked)
+                                @if($prerequisiteLesson)
+                                    <a href="{{ route('lessons.show', $prerequisiteLesson->slug) }}"
+                                       class="block text-center bg-yellow-500 hover:bg-yellow-600 text-navy font-bold py-3 rounded-xl transition">
+                                        Kamilisha Somo la Awali
+                                    </a>
+                                @else
+                                    <button disabled
+                                            class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed">
+                                        Somo Limefungwa
+                                    </button>
+                                @endif
+                            @elseif($nextTopic)
                                 <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $nextTopic->id]) }}"
                                    class="block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
                                     {{ $lessonProgress > 0 ? 'Endelea Kusoma' : 'Anza Kusoma' }}
@@ -336,33 +431,35 @@
                             @endif
 
                             {{-- CERTIFICATE ACTIONS --}}
-                            @if($certificate)
-                                <a href="{{ route('certificates.show', $certificate->certificate_number) }}"
-                                   class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition">
-                                    Tazama Cheti
-                                </a>
+                            @if(! $isLocked)
+                                @if($certificate)
+                                    <a href="{{ route('certificates.show', $certificate->certificate_number) }}"
+                                       class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition">
+                                        Tazama Cheti
+                                    </a>
 
-                                <a href="{{ route('certificates.download', $certificate->certificate_number) }}"
-                                   class="mt-2 block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
-                                    Download Cheti
-                                </a>
-                            @elseif($lessonProgress < 100)
-                                <p class="mt-3 text-xs text-gray-500 text-center">
-                                    Kamilisha mada zote ili kupata cheti.
-                                </p>
-                            @elseif($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
-                                <p class="mt-2 text-xs text-gray-500 text-center">
-                                    Lazima ufaulu jaribio la mwisho ili kupata cheti.
-                                </p>
-                            @elseif($canGenerateCertificate)
-                                <form action="{{ route('certificates.issue', $lesson->id) }}" method="POST" class="mt-3">
-                                    @csrf
+                                    <a href="{{ route('certificates.download', $certificate->certificate_number) }}"
+                                       class="mt-2 block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
+                                        Download Cheti
+                                    </a>
+                                @elseif($lessonProgress < 100)
+                                    <p class="mt-3 text-xs text-gray-500 text-center">
+                                        Kamilisha mada zote ili kupata cheti.
+                                    </p>
+                                @elseif($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
+                                    <p class="mt-2 text-xs text-gray-500 text-center">
+                                        Lazima ufaulu jaribio la mwisho ili kupata cheti.
+                                    </p>
+                                @elseif($canGenerateCertificate)
+                                    <form action="{{ route('certificates.issue', $lesson->id) }}" method="POST" class="mt-3">
+                                        @csrf
 
-                                    <button type="submit"
-                                            class="w-full bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition">
-                                        Tengeneza Cheti
-                                    </button>
-                                </form>
+                                        <button type="submit"
+                                                class="w-full bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition">
+                                            Tengeneza Cheti
+                                        </button>
+                                    </form>
+                                @endif
                             @endif
                         </div>
                     </div>
