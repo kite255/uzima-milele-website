@@ -8,6 +8,7 @@ use App\Models\LessonEnrollment;
 use App\Models\LessonProgress;
 use App\Models\QuizResult;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LessonController extends Controller
 {
@@ -24,7 +25,7 @@ class LessonController extends Controller
 
         $lessons = Lesson::query()
             ->where('is_published', true)
-            ->with(['instructor', 'enrollments'])
+            ->with(['instructor'])
             ->withCount('enrollments')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -39,7 +40,8 @@ class LessonController extends Controller
             ->paginate(9)
             ->withQueryString();
 
-        $categories = Lesson::where('is_published', true)
+        $categories = Lesson::query()
+            ->where('is_published', true)
             ->whereNotNull('category')
             ->where('category', '!=', '')
             ->select('category')
@@ -47,7 +49,8 @@ class LessonController extends Controller
             ->orderBy('category')
             ->pluck('category');
 
-        $levels = Lesson::where('is_published', true)
+        $levels = Lesson::query()
+            ->where('is_published', true)
             ->whereNotNull('level')
             ->where('level', '!=', '')
             ->select('level')
@@ -81,7 +84,6 @@ class LessonController extends Controller
 
         $lesson->load([
             'instructor',
-            'enrollments',
             'publishedQuestions.user',
             'publishedQuestions.answeredBy',
 
@@ -138,9 +140,14 @@ class LessonController extends Controller
 
         $questionsCount = $topicQuestionsCount + $moduleQuestionsCount + $finalQuestionsCount;
 
-        $isEnrolled = auth()->check()
-            ? $lesson->enrollments->contains('user_id', auth()->id())
-            : false;
+        $enrollment = auth()->check()
+            ? LessonEnrollment::query()
+                ->where('user_id', auth()->id())
+                ->where('lesson_id', $lesson->id)
+                ->first()
+            : null;
+
+        $isEnrolled = (bool) $enrollment;
 
         return view('lessons.show', compact(
             'lesson',
@@ -148,6 +155,7 @@ class LessonController extends Controller
             'totalTopics',
             'modulesCount',
             'questionsCount',
+            'enrollment',
             'isEnrolled'
         ));
     }
@@ -162,11 +170,13 @@ class LessonController extends Controller
     {
         abort_if(! $lesson->is_published, 404);
 
-        $isEnrolled = LessonEnrollment::where('user_id', auth()->id())
+        $enrollment = LessonEnrollment::query()
+            ->where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
-            ->exists();
+            ->with('lesson')
+            ->first();
 
-        if (! $isEnrolled) {
+        if (! $enrollment) {
             return redirect()
                 ->route('lessons.show', $lesson->slug)
                 ->with('error', 'Tafadhali jiunge na somo hili kwanza ili uanze kujifunza.');
@@ -174,7 +184,6 @@ class LessonController extends Controller
 
         $lesson->load([
             'instructor',
-            'enrollments',
 
             'modules' => fn ($q) => $q
                 ->where('is_published', true)
@@ -232,22 +241,24 @@ class LessonController extends Controller
             ? $allTopics[$currentIndex + 1]
             : null;
 
-        $completedTopicIds = LessonProgress::where('user_id', auth()->id())
+        $completedTopicIds = LessonProgress::query()
+            ->where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
             ->pluck('lesson_topic_id')
+            ->unique()
             ->toArray();
 
-        $completedTopicsCount = count(array_unique($completedTopicIds));
+        $completedTopicsCount = count($completedTopicIds);
 
         $totalTopics = $allTopics->count();
 
         $progressPercent = $totalTopics > 0
-            ? round(($completedTopicsCount / $totalTopics) * 100)
+            ? (int) round(($completedTopicsCount / $totalTopics) * 100)
             : 0;
 
         /*
         |--------------------------------------------------------------------------
-        | Final quiz + certificate status
+        | Final Quiz + Certificate Status
         |--------------------------------------------------------------------------
         */
         $allTopicsCompleted = $totalTopics > 0 && $completedTopicsCount >= $totalTopics;
@@ -257,13 +268,15 @@ class LessonController extends Controller
         $finalQuizPassed = true;
 
         if ($finalQuiz) {
-            $finalQuizPassed = QuizResult::where('user_id', auth()->id())
+            $finalQuizPassed = QuizResult::query()
+                ->where('user_id', auth()->id())
                 ->where('quiz_id', $finalQuiz->id)
                 ->where('passed', true)
                 ->exists();
         }
 
-        $certificate = Certificate::where('user_id', auth()->id())
+        $certificate = Certificate::query()
+            ->where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
             ->first();
 
@@ -273,6 +286,7 @@ class LessonController extends Controller
 
         return view('lessons.learn', compact(
             'lesson',
+            'enrollment',
             'currentTopic',
             'previousTopic',
             'nextTopic',
@@ -291,26 +305,61 @@ class LessonController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Manual Enrollment Fallback
+    | Enroll Student With Learning Schedule
     |--------------------------------------------------------------------------
     */
-    public function enroll(Lesson $lesson)
+    public function enroll(Request $request, Lesson $lesson)
     {
         abort_if(! $lesson->is_published, 404);
 
-        LessonEnrollment::firstOrCreate(
-            [
-                'user_id' => auth()->id(),
-                'lesson_id' => $lesson->id,
+        $validated = $request->validate([
+            'study_pace' => [
+                'nullable',
+                'string',
+                Rule::in([
+                    Lesson::PACE_RELAXED,
+                    Lesson::PACE_REGULAR,
+                    Lesson::PACE_INTENSIVE,
+                    Lesson::PACE_CUSTOM,
+                ]),
             ],
-            [
-                'enrolled_at' => now(),
-            ]
+            'study_hours_per_week' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:40',
+            ],
+        ]);
+
+        $pace = $validated['study_pace']
+            ?? $lesson->default_study_pace
+            ?? Lesson::PACE_REGULAR;
+
+        $customHours = $pace === Lesson::PACE_CUSTOM
+            ? (int) ($validated['study_hours_per_week'] ?? $lesson->getPaceHours(Lesson::PACE_REGULAR))
+            : null;
+
+        $existingEnrollment = LessonEnrollment::query()
+            ->where('user_id', auth()->id())
+            ->where('lesson_id', $lesson->id)
+            ->first();
+
+        if ($existingEnrollment) {
+            return redirect()
+                ->route('lessons.learn', $lesson->slug)
+                ->with('success', 'Tayari umejiunga na somo hili. Karibu uendelee kujifunza.');
+        }
+
+        LessonEnrollment::createForLesson(
+            user: auth()->user(),
+            lesson: $lesson,
+            pace: $pace,
+            customHours: $customHours
         );
 
         return redirect()
             ->route('lessons.learn', $lesson->slug)
-            ->with('success', 'Umejiunga na somo hili. Karibu ujifunze.');
+            ->with('success', 'Umejiunga na somo hili. Ratiba yako ya kujifunza imeandaliwa.');
     }
 
     /*
@@ -322,7 +371,8 @@ class LessonController extends Controller
     {
         abort_if(! $lesson->is_published, 404);
 
-        $isEnrolled = LessonEnrollment::where('user_id', auth()->id())
+        $isEnrolled = LessonEnrollment::query()
+            ->where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
             ->exists();
 
@@ -336,7 +386,16 @@ class LessonController extends Controller
             'lesson_topic_id' => ['required', 'integer', 'exists:lesson_topics,id'],
         ]);
 
-        LessonProgress::firstOrCreate(
+        $topicBelongsToLesson = $lesson->topics()
+            ->where('lesson_topics.id', $validated['lesson_topic_id'])
+            ->exists();
+
+        if (! $topicBelongsToLesson) {
+            return back()
+                ->with('error', 'Mada hii si sehemu ya somo hili.');
+        }
+
+        LessonProgress::query()->firstOrCreate(
             [
                 'user_id' => auth()->id(),
                 'lesson_id' => $lesson->id,
@@ -348,5 +407,56 @@ class LessonController extends Controller
         );
 
         return back()->with('success', 'Mada imewekwa kama imekamilika.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reset Learning Schedule
+    |--------------------------------------------------------------------------
+    */
+    public function resetSchedule(Request $request, Lesson $lesson)
+    {
+        abort_if(! $lesson->is_published, 404);
+
+        $enrollment = LessonEnrollment::query()
+            ->where('user_id', auth()->id())
+            ->where('lesson_id', $lesson->id)
+            ->with('lesson')
+            ->firstOrFail();
+
+        if (! $enrollment->canResetSchedule()) {
+            return back()
+                ->with('error', 'Samahani, mfumo hauruhusu kubadili ratiba ya somo hili.');
+        }
+
+        $validated = $request->validate([
+            'study_pace' => [
+                'required',
+                'string',
+                Rule::in([
+                    Lesson::PACE_RELAXED,
+                    Lesson::PACE_REGULAR,
+                    Lesson::PACE_INTENSIVE,
+                    Lesson::PACE_CUSTOM,
+                ]),
+            ],
+            'study_hours_per_week' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:40',
+            ],
+        ]);
+
+        $pace = $validated['study_pace'];
+
+        $customHours = $pace === Lesson::PACE_CUSTOM
+            ? (int) ($validated['study_hours_per_week'] ?? $lesson->getPaceHours(Lesson::PACE_REGULAR))
+            : null;
+
+        $enrollment->resetSchedule($pace, $customHours);
+
+        return back()
+            ->with('success', 'Ratiba yako ya kujifunza imebadilishwa.');
     }
 }

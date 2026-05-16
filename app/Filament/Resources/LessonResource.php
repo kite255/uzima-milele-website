@@ -4,11 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LessonResource\Pages;
 use App\Filament\Resources\LessonResource\RelationManagers\ModulesRelationManager;
-use App\Mail\LessonReminderMail;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
-use App\Notifications\LessonReminderNotification;
-use App\Services\SmsService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification as AdminNotification;
@@ -16,7 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class LessonResource extends Resource
@@ -160,48 +156,89 @@ class LessonResource extends Resource
                     ->columns(2),
 
                 Forms\Components\Section::make('Course Timeline & Schedule Settings')
-                    ->description('These settings power the Coursera-style learning schedule. Admin/instructor sets the course rules; student chooses the study pace.')
+                    ->description('The course owner/admin sets the allocated course time. Students choose their study pace, and the system calculates the target completion date.')
                     ->schema([
 
                         Forms\Components\TextInput::make('estimated_duration_minutes')
-                            ->label('Estimated Duration')
+                            ->label('Total Course Time')
                             ->numeric()
                             ->minValue(1)
+                            ->default(180)
+                            ->required()
                             ->suffix('minutes')
-                            ->placeholder('Example: 180')
-                            ->helperText('Total estimated time required to complete this course. Example: 60 = 1 hour, 180 = 3 hours.'),
+                            ->live(onBlur: true)
+                            ->placeholder('Example: 120')
+                            ->helperText('Total time allocated by the course owner. Example: 60 = 1 hour, 120 = 2 hours, 180 = 3 hours.'),
+
+                        Forms\Components\Placeholder::make('duration_preview')
+                            ->label('Duration Preview')
+                            ->content(function (Forms\Get $get): string {
+                                $minutesTotal = (int) ($get('estimated_duration_minutes') ?: 180);
+
+                                $hours = intdiv($minutesTotal, 60);
+                                $minutes = $minutesTotal % 60;
+
+                                if ($hours > 0 && $minutes > 0) {
+                                    return "{$hours} hour(s) {$minutes} minute(s)";
+                                }
+
+                                if ($hours > 0) {
+                                    return "{$hours} hour(s)";
+                                }
+
+                                return "{$minutes} minute(s)";
+                            }),
 
                         Forms\Components\Select::make('recommended_study_pace')
                             ->label('Recommended Study Pace')
                             ->options([
-                                'relaxed' => 'Taratibu - 1 hour/week',
-                                'regular' => 'Kawaida - 3 hours/week',
-                                'intensive' => 'Haraka - 5 hours/week',
-                                'custom' => 'Ratiba Maalum - Student chooses hours/week',
+                                Lesson::PACE_RELAXED => 'Taratibu - 1 hour/week',
+                                Lesson::PACE_REGULAR => 'Kawaida - 3 hours/week',
+                                Lesson::PACE_INTENSIVE => 'Haraka - 5 hours/week',
+                                Lesson::PACE_CUSTOM => 'Ratiba Maalum - Student chooses hours/week',
                             ])
-                            ->default('regular')
+                            ->default(Lesson::PACE_REGULAR)
                             ->searchable()
-                            ->helperText('This can be used as the recommended/default learning pace for students.'),
+                            ->required()
+                            ->helperText('This is the recommended/default learning pace for students.'),
 
                         Forms\Components\TextInput::make('min_completion_days')
                             ->label('Minimum Completion Days')
                             ->numeric()
                             ->minValue(1)
                             ->placeholder('Example: 3')
-                            ->helperText('Optional. Prevents an unrealistic completion plan that is too short.'),
+                            ->rules([
+                                fn (Forms\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    $maxDays = (int) $get('max_completion_days');
+
+                                    if ($value && $maxDays && (int) $value > $maxDays) {
+                                        $fail('Minimum completion days cannot be greater than maximum completion days.');
+                                    }
+                                },
+                            ])
+                            ->helperText('Optional. Prevents unrealistic short completion time.'),
 
                         Forms\Components\TextInput::make('max_completion_days')
                             ->label('Maximum Completion Days')
                             ->numeric()
                             ->minValue(1)
                             ->placeholder('Example: 30')
-                            ->helperText('Optional. Recommended maximum number of days to complete this course.'),
+                            ->rules([
+                                fn (Forms\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    $minDays = (int) $get('min_completion_days');
+
+                                    if ($value && $minDays && (int) $value < $minDays) {
+                                        $fail('Maximum completion days cannot be less than minimum completion days.');
+                                    }
+                                },
+                            ])
+                            ->helperText('Optional. Maximum recommended days to complete this course.'),
 
                         Forms\Components\DatePicker::make('course_deadline')
                             ->label('Course Deadline')
                             ->native(false)
                             ->placeholder('Select deadline date')
-                            ->helperText('Optional. If set, the student target completion date should not go beyond this date.'),
+                            ->helperText('Optional. Student target completion date should not go beyond this date.'),
 
                         Forms\Components\Toggle::make('allow_schedule_reset')
                             ->label('Allow Student to Reset Schedule')
@@ -214,7 +251,21 @@ class LessonResource extends Resource
                             ->numeric()
                             ->minValue(1)
                             ->placeholder('Example: 2')
-                            ->helperText('Optional. Later this can be used to notify students before their target/deadline.'),
+                            ->helperText('Optional. Used later for reminders before student target/deadline.'),
+
+                        Forms\Components\Placeholder::make('schedule_example')
+                            ->label('Example')
+                            ->content(function (Forms\Get $get): string {
+                                $minutesTotal = (int) ($get('estimated_duration_minutes') ?: 120);
+                                $estimatedHours = max(1, (int) ceil($minutesTotal / 60));
+
+                                if ($estimatedHours <= 3) {
+                                    return 'For a short lesson like 2 hours: Taratibu ≈ 2 weeks, Kawaida ≈ 1 week, Haraka ≈ 3 days.';
+                                }
+
+                                return "For this {$estimatedHours}-hour lesson, the system will calculate target dates based on student pace.";
+                            })
+                            ->columnSpanFull(),
 
                     ])
                     ->columns(2)
@@ -278,40 +329,42 @@ class LessonResource extends Resource
                     ->placeholder('No level')
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('estimated_duration_minutes')
-                    ->label('Duration')
-                    ->formatStateUsing(function ($state) {
-                        if (! $state) {
-                            return '—';
-                        }
-
-                        $hours = intdiv((int) $state, 60);
-                        $minutes = (int) $state % 60;
-
-                        if ($hours > 0 && $minutes > 0) {
-                            return "{$hours}h {$minutes}m";
-                        }
-
-                        if ($hours > 0) {
-                            return "{$hours}h";
-                        }
-
-                        return "{$minutes}m";
+                Tables\Columns\TextColumn::make('estimated_duration_label')
+                    ->label('Owner Time')
+                    ->placeholder('—')
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('estimated_duration_minutes', $direction);
                     })
-                    ->sortable()
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('recommended_study_pace')
                     ->label('Recommended Pace')
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'relaxed' => 'Taratibu',
-                        'regular' => 'Kawaida',
-                        'intensive' => 'Haraka',
-                        'custom' => 'Ratiba Maalum',
+                        Lesson::PACE_RELAXED => 'Taratibu',
+                        Lesson::PACE_REGULAR => 'Kawaida',
+                        Lesson::PACE_INTENSIVE => 'Haraka',
+                        Lesson::PACE_CUSTOM => 'Ratiba Maalum',
                         default => '—',
                     })
                     ->badge()
                     ->toggleable(),
+
+                Tables\Columns\TextColumn::make('default_completion_label')
+                    ->label('Estimated Completion')
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('min_completion_days')
+                    ->label('Min Days')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('max_completion_days')
+                    ->label('Max Days')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('course_deadline')
                     ->label('Deadline')
@@ -333,6 +386,12 @@ class LessonResource extends Resource
                     ->label('Modules')
                     ->counts('modules')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('enrollments_count')
+                    ->label('Students')
+                    ->counts('enrollments')
+                    ->sortable()
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')
@@ -380,39 +439,29 @@ class LessonResource extends Resource
                 Tables\Filters\SelectFilter::make('recommended_study_pace')
                     ->label('Recommended Pace')
                     ->options([
-                        'relaxed' => 'Taratibu',
-                        'regular' => 'Kawaida',
-                        'intensive' => 'Haraka',
-                        'custom' => 'Ratiba Maalum',
+                        Lesson::PACE_RELAXED => 'Taratibu',
+                        Lesson::PACE_REGULAR => 'Kawaida',
+                        Lesson::PACE_INTENSIVE => 'Haraka',
+                        Lesson::PACE_CUSTOM => 'Ratiba Maalum',
                     ]),
             ])
             ->actions([
+
+                Tables\Actions\Action::make('viewPublic')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->url(fn (Lesson $record): string => route('lessons.show', $record->slug))
+                    ->openUrlInNewTab(),
 
                 Tables\Actions\Action::make('sendReminder')
                     ->label('Send Reminder')
                     ->icon('heroicon-o-bell-alert')
                     ->color('warning')
                     ->modalHeading('Send Lesson Reminder')
-                    ->modalDescription('Reminder will be sent only to students who enrolled but have not completed all topics.')
-                    ->form([
-                        Forms\Components\Select::make('mode')
-                            ->label('Reminder Mode')
-                            ->options([
-                                'email' => 'Email only',
-                                'notification' => 'Dashboard notification only',
-                                'both' => 'Email + Dashboard notification',
-                                'sms' => 'SMS only',
-                                'email_sms' => 'Email + SMS',
-                                'notification_sms' => 'Notification + SMS',
-                                'all' => 'Email + Notification + SMS',
-                            ])
-                            ->default('both')
-                            ->required(),
-                    ])
+                    ->modalDescription('This reminder checks students who enrolled but have not completed all topics. You can later connect this action to email, SMS, or notifications.')
                     ->requiresConfirmation()
-                    ->action(function (Lesson $record, array $data): void {
-                        $mode = $data['mode'] ?? 'both';
-
+                    ->action(function (Lesson $record): void {
                         $totalTopics = $record->modules()
                             ->where('is_published', true)
                             ->withCount([
@@ -424,79 +473,38 @@ class LessonResource extends Resource
                         if ($totalTopics <= 0) {
                             AdminNotification::make()
                                 ->title('No published topics found')
-                                ->body('This lesson has no published topics.')
+                                ->body('This lesson has no published topics to track.')
                                 ->warning()
                                 ->send();
 
                             return;
                         }
 
-                        $sentCount = 0;
-                        $emailCount = 0;
-                        $notificationCount = 0;
-                        $smsCount = 0;
+                        $pendingStudents = 0;
 
                         $enrollments = $record->enrollments()
                             ->with('user')
                             ->get();
 
                         foreach ($enrollments as $enrollment) {
-                            $user = $enrollment->user;
-
-                            if (! $user) {
+                            if (! $enrollment->user) {
                                 continue;
                             }
 
-                            $completedTopics = LessonProgress::where('user_id', $user->id)
+                            $completedTopics = LessonProgress::query()
+                                ->where('user_id', $enrollment->user_id)
                                 ->where('lesson_id', $record->id)
                                 ->distinct('lesson_topic_id')
                                 ->count('lesson_topic_id');
 
-                            if ($completedTopics >= $totalTopics) {
-                                continue;
+                            if ($completedTopics < $totalTopics) {
+                                $pendingStudents++;
                             }
-
-                            if (in_array($mode, ['email', 'both', 'email_sms', 'all']) && $user->email) {
-                                Mail::to($user->email)->send(
-                                    new LessonReminderMail(
-                                        lesson: $record,
-                                        user: $user,
-                                        completedTopics: $completedTopics,
-                                        totalTopics: $totalTopics
-                                    )
-                                );
-
-                                $emailCount++;
-                            }
-
-                            if (in_array($mode, ['notification', 'both', 'notification_sms', 'all'])) {
-                                $user->notify(
-                                    new LessonReminderNotification(
-                                        lesson: $record,
-                                        completedTopics: $completedTopics,
-                                        totalTopics: $totalTopics
-                                    )
-                                );
-
-                                $notificationCount++;
-                            }
-
-                            if (in_array($mode, ['sms', 'email_sms', 'notification_sms', 'all']) && $user->phone) {
-                                $smsMessage = "Habari {$user->name}, tunakukumbusha kuendelea na somo \"{$record->title}\" kwenye Uzima Milele. Umeshakamilisha {$completedTopics}/{$totalTopics} mada. Ingia dashboard kuendelea.";
-
-                                $smsSent = app(SmsService::class)->send($user->phone, $smsMessage);
-
-                                if ($smsSent) {
-                                    $smsCount++;
-                                }
-                            }
-
-                            $sentCount++;
                         }
 
                         AdminNotification::make()
-                            ->title('Reminder sent')
-                            ->body("Students reached: {$sentCount}. Emails: {$emailCount}. Notifications: {$notificationCount}. SMS: {$smsCount}.")
+                            ->title('Reminder check completed')
+                            ->body("Pending students: {$pendingStudents}. You can connect email/SMS sending later.")
                             ->success()
                             ->send();
                     }),

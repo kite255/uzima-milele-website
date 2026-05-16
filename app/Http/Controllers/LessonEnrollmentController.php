@@ -30,63 +30,36 @@ class LessonEnrollmentController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Use student's selected pace, or admin recommended pace, or regular
+        | Decide the student's study pace
         |--------------------------------------------------------------------------
+        | Priority:
+        | 1. Student selected pace
+        | 2. Course owner/admin recommended pace
+        | 3. Regular pace
         */
         $studyPace = $data['study_pace']
             ?? $lesson->recommended_study_pace
             ?? 'regular';
 
-        $hoursPerWeek = match ($studyPace) {
-            'relaxed' => 1,
-            'regular' => 3,
-            'intensive' => 5,
-            'custom' => (int) ($data['study_hours_per_week'] ?? 3),
-            default => 3,
-        };
-
         /*
         |--------------------------------------------------------------------------
-        | Calculate target completion date from estimated course duration
+        | Calculate weekly hours and target completion date
         |--------------------------------------------------------------------------
+        | This uses the course owner's allocated time:
+        | estimated_duration_minutes, min_completion_days,
+        | max_completion_days, and course_deadline.
         */
-        $estimatedMinutes = (int) ($lesson->estimated_duration_minutes ?? 60);
-        $estimatedHours = max(1, ceil($estimatedMinutes / 60));
+        $customHours = $data['study_hours_per_week'] ?? null;
 
-        $weeksNeeded = max(1, ceil($estimatedHours / $hoursPerWeek));
-        $targetCompletionDate = now()->addWeeks($weeksNeeded);
+        $hoursPerWeek = $lesson->getPaceHours(
+            pace: $studyPace,
+            customHours: $customHours
+        );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Apply admin/instructor timeline rules
-        |--------------------------------------------------------------------------
-        | 1. Minimum completion days
-        | 2. Maximum completion days
-        | 3. Course deadline
-        */
-        if ($lesson->min_completion_days) {
-            $minimumDate = now()->addDays((int) $lesson->min_completion_days);
-
-            if ($targetCompletionDate->lessThan($minimumDate)) {
-                $targetCompletionDate = $minimumDate;
-            }
-        }
-
-        if ($lesson->max_completion_days) {
-            $maximumDate = now()->addDays((int) $lesson->max_completion_days);
-
-            if ($targetCompletionDate->greaterThan($maximumDate)) {
-                $targetCompletionDate = $maximumDate;
-            }
-        }
-
-        if ($lesson->course_deadline) {
-            $deadlineDate = $lesson->course_deadline->copy()->endOfDay();
-
-            if ($targetCompletionDate->greaterThan($deadlineDate)) {
-                $targetCompletionDate = $deadlineDate;
-            }
-        }
+        $targetCompletionDate = $lesson->calculateTargetCompletionDate(
+            pace: $studyPace,
+            customHours: $customHours
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -102,9 +75,9 @@ class LessonEnrollmentController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | If already enrolled and schedule reset is disabled
+        | Prevent schedule changes if admin disabled reset
         |--------------------------------------------------------------------------
-        | Existing students should not be able to change schedule unless allowed.
+        | Existing students should not change schedule unless allowed.
         | But if the existing enrollment has no schedule yet, we still fill it.
         */
         $hasExistingSchedule = $enrollment->exists
@@ -117,7 +90,7 @@ class LessonEnrollmentController extends Controller
                 ->with('info', 'Tayari umejiunga na somo hili. Kubadilisha ratiba hakujaruhusiwa kwa somo hili.');
         }
 
-        if ($wasNewEnrollment) {
+        if ($wasNewEnrollment || ! $enrollment->enrolled_at) {
             $enrollment->enrolled_at = now();
         }
 

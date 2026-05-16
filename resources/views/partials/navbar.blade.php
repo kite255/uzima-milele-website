@@ -110,7 +110,7 @@
 
                     <button type="submit"
                             class="px-4 py-2 bg-red-600 text-white rounded-full font-semibold hover:bg-red-700 transition">
-                        Toka
+                        Ondoka
                     </button>
                 </form>
             @endauth

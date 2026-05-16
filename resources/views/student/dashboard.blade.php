@@ -5,13 +5,23 @@
 @section('content')
 
 @php
+    use App\Models\Lesson;
+    use Carbon\Carbon;
+    use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
 
     $authUser = auth()->user();
 
-    $dashboardProgress = $progressPercent ?? $overallProgress ?? 0;
+    $dashboardProgress = min(100, max(0, (int) ($progressPercent ?? $overallProgress ?? 0)));
     $certificateCount = isset($certificates) ? $certificates->count() : 0;
     $attemptsCount = $quizAttempts ?? $totalAttempts ?? 0;
+
+    $paceLabels = [
+        Lesson::PACE_RELAXED => 'Taratibu',
+        Lesson::PACE_REGULAR => 'Kawaida',
+        Lesson::PACE_INTENSIVE => 'Haraka',
+        Lesson::PACE_CUSTOM => 'Ratiba Maalum',
+    ];
 @endphp
 
 <section class="bg-gray-50 min-h-screen py-12">
@@ -119,9 +129,9 @@
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($lessons ?? [] as $lesson)
                     @php
-                        $totalTopics = $lesson->total_topics_count ?? 0;
-                        $completedTopics = $lesson->completed_topics_count ?? 0;
-                        $lessonProgress = $lesson->progress ?? 0;
+                        $totalTopics = (int) ($lesson->total_topics_count ?? 0);
+                        $completedTopics = (int) ($lesson->completed_topics_count ?? 0);
+                        $lessonProgress = min(100, max(0, (int) ($lesson->progress ?? 0)));
 
                         $lessonImage = $lesson->cover_image ?? $lesson->image ?? null;
 
@@ -148,28 +158,43 @@
                         $studyHoursPerWeek = $lesson->pivot?->study_hours_per_week ?? null;
                         $targetCompletionDate = $lesson->pivot?->target_completion_date ?? null;
 
-                        $studyPaceLabel = match ($studyPace) {
-                            'relaxed' => 'Taratibu',
-                            'regular' => 'Kawaida',
-                            'intensive' => 'Haraka',
-                            'custom' => 'Ratiba Maalum',
-                            default => null,
-                        };
+                        $studyPaceLabel = $paceLabels[$studyPace] ?? null;
 
                         $remainingDays = null;
                         $isBehindSchedule = false;
+                        $isDueToday = false;
+                        $scheduleStatusLabel = 'Hakuna ratiba';
+                        $scheduleColor = 'gray';
 
                         if ($targetCompletionDate) {
-                            $targetDate = \Carbon\Carbon::parse($targetCompletionDate);
-                            $remainingDays = now()->startOfDay()->diffInDays($targetDate->copy()->startOfDay(), false);
-                            $isBehindSchedule = now()->greaterThan($targetDate);
+                            $targetDate = Carbon::parse($targetCompletionDate)->startOfDay();
+                            $today = now()->startOfDay();
+
+                            $remainingDays = $today->diffInDays($targetDate, false);
+                            $isBehindSchedule = $today->greaterThan($targetDate);
+                            $isDueToday = $today->equalTo($targetDate);
+
+                            if ($isBehindSchedule) {
+                                $scheduleStatusLabel = 'Umechelewa';
+                                $scheduleColor = 'red';
+                            } elseif ($isDueToday) {
+                                $scheduleStatusLabel = 'Lengo ni leo';
+                                $scheduleColor = 'yellow';
+                            } else {
+                                $scheduleStatusLabel = 'Unaendelea vizuri';
+                                $scheduleColor = 'green';
+                            }
                         }
+
+                        $imageUrl = $lessonImage
+                            ? Storage::disk('public')->url($lessonImage)
+                            : null;
                     @endphp
 
                     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden">
 
-                        @if(!empty($lessonImage))
-                            <img src="{{ asset('storage/' . $lessonImage) }}"
+                        @if($imageUrl)
+                            <img src="{{ $imageUrl }}"
                                  class="w-full h-48 object-cover"
                                  alt="{{ $lesson->title }}">
                         @else
@@ -187,7 +212,7 @@
                                 <p class="mb-3 text-xs text-gray-500">
                                     Ulijiunga:
                                     <span class="font-bold text-navy">
-                                        {{ \Carbon\Carbon::parse($enrolledAt)->format('d M Y, H:i') }}
+                                        {{ Carbon::parse($enrolledAt)->format('d M Y, H:i') }}
                                     </span>
                                 </p>
                             @endif
@@ -212,33 +237,43 @@
                                             </p>
                                         </div>
 
-                                        @if($isBehindSchedule)
-                                            <span class="shrink-0 rounded-full bg-red-100 text-red-700 px-3 py-1 text-[11px] font-black">
-                                                Umechelewa
-                                            </span>
-                                        @else
-                                            <span class="shrink-0 rounded-full bg-green-100 text-green-700 px-3 py-1 text-[11px] font-black">
-                                                Inaendelea
-                                            </span>
-                                        @endif
+                                        <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black
+                                            {{ $scheduleColor === 'red'
+                                                ? 'bg-red-100 text-red-700'
+                                                : ($scheduleColor === 'yellow'
+                                                    ? 'bg-yellow-100 text-yellow-700'
+                                                    : 'bg-green-100 text-green-700') }}">
+                                            {{ $scheduleStatusLabel }}
+                                        </span>
                                     </div>
 
                                     <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
                                         <div class="rounded-xl bg-white border border-primary/10 p-3">
                                             <p class="text-gray-500">Lengo</p>
                                             <p class="font-black text-navy mt-1">
-                                                {{ \Carbon\Carbon::parse($targetCompletionDate)->format('d M Y') }}
+                                                {{ Carbon::parse($targetCompletionDate)->format('d M Y') }}
                                             </p>
                                         </div>
 
                                         <div class="rounded-xl bg-white border border-primary/10 p-3">
                                             <p class="text-gray-500">
-                                                {{ $isBehindSchedule ? 'Hali' : 'Siku zilizobaki' }}
+                                                @if($isBehindSchedule)
+                                                    Hali
+                                                @elseif($isDueToday)
+                                                    Lengo
+                                                @else
+                                                    Siku zilizobaki
+                                                @endif
                                             </p>
 
-                                            <p class="font-black {{ $isBehindSchedule ? 'text-red-600' : 'text-navy' }} mt-1">
+                                            <p class="font-black mt-1
+                                                {{ $isBehindSchedule
+                                                    ? 'text-red-600'
+                                                    : ($isDueToday ? 'text-yellow-700' : 'text-navy') }}">
                                                 @if($isBehindSchedule)
                                                     Pita muda
+                                                @elseif($isDueToday)
+                                                    Leo
                                                 @else
                                                     {{ $remainingDays }} siku
                                                 @endif
@@ -277,18 +312,18 @@
 
                             {{-- CONTINUE / COMPLETE --}}
                             @if($nextTopic)
-                                <a href="{{ route('lessons.topics.show', [$lesson, $nextTopic]) }}"
+                                <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $nextTopic->id]) }}"
                                    class="block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
                                     {{ $lessonProgress > 0 ? 'Endelea Kusoma' : 'Anza Kusoma' }}
                                 </a>
                             @elseif($totalTopics > 0 && $lessonProgress >= 100)
-                                @if($finalQuizRequired && !$finalQuizPassed && $finalQuiz)
+                                @if($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
                                     <a href="{{ route('quiz.show', $finalQuiz->id) }}"
                                        class="block text-center bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition">
                                         Fanya Jaribio la Mwisho
                                     </a>
                                 @else
-                                    <a href="{{ route('lessons.show', $lesson->slug) }}"
+                                    <a href="{{ route('lessons.learn', $lesson->slug) }}"
                                        class="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition">
                                         Somo Limekamilika
                                     </a>
@@ -315,7 +350,7 @@
                                 <p class="mt-3 text-xs text-gray-500 text-center">
                                     Kamilisha mada zote ili kupata cheti.
                                 </p>
-                            @elseif($finalQuizRequired && !$finalQuizPassed && $finalQuiz)
+                            @elseif($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
                                 <p class="mt-2 text-xs text-gray-500 text-center">
                                     Lazima ufaulu jaribio la mwisho ili kupata cheti.
                                 </p>

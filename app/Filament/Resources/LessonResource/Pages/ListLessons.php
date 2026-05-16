@@ -13,7 +13,10 @@ class ListLessons extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Create Lesson')
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }

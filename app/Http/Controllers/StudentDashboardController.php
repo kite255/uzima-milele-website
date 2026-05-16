@@ -12,12 +12,23 @@ class StudentDashboardController extends Controller
     {
         $user = auth()->user();
 
-        $certificates = Certificate::with('lesson')
+        /*
+        |--------------------------------------------------------------------------
+        | Certificates
+        |--------------------------------------------------------------------------
+        */
+        $certificates = Certificate::query()
+            ->with('lesson')
             ->where('user_id', $user->id)
             ->latest()
             ->get()
             ->keyBy('lesson_id');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Enrolled Lessons
+        |--------------------------------------------------------------------------
+        */
         $lessons = $user->enrolledLessons()
             ->withPivot([
                 'enrolled_at',
@@ -28,6 +39,8 @@ class StudentDashboardController extends Controller
                 'schedule_updated_at',
             ])
             ->with([
+                'instructor',
+
                 'modules' => fn ($q) => $q
                     ->where('is_published', true)
                     ->orderBy('order'),
@@ -36,17 +49,37 @@ class StudentDashboardController extends Controller
                     ->where('is_published', true)
                     ->orderBy('order'),
 
-                'modules.topics.quiz.questions',
+                'modules.topics.quiz' => fn ($q) => $q
+                    ->where('is_published', true),
+
+                'modules.topics.quiz.questions' => fn ($q) => $q
+                    ->where('is_active', true)
+                    ->orderBy('sort_order'),
+
+                'modules.quizzes' => fn ($q) => $q
+                    ->where('is_published', true),
+
+                'modules.quizzes.questions' => fn ($q) => $q
+                    ->where('is_active', true)
+                    ->orderBy('sort_order'),
 
                 'finalQuiz' => fn ($q) => $q
                     ->where('is_published', true),
 
-                'finalQuiz.questions',
+                'finalQuiz.questions' => fn ($q) => $q
+                    ->where('is_active', true)
+                    ->orderBy('sort_order'),
             ])
             ->where('lessons.is_published', true)
             ->orderByPivot('enrolled_at', 'desc')
             ->get()
             ->map(function ($lesson) use ($user, $certificates) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Topics and Progress
+                |--------------------------------------------------------------------------
+                */
                 $allTopics = $lesson->modules
                     ->flatMap(fn ($module) => $module->topics)
                     ->values();
@@ -55,7 +88,8 @@ class StudentDashboardController extends Controller
 
                 $totalTopics = $allTopics->count();
 
-                $completedTopicIds = LessonProgress::where('user_id', $user->id)
+                $completedTopicIds = LessonProgress::query()
+                    ->where('user_id', $user->id)
                     ->where('lesson_id', $lesson->id)
                     ->whereIn('lesson_topic_id', $topicIds)
                     ->pluck('lesson_topic_id')
@@ -65,60 +99,108 @@ class StudentDashboardController extends Controller
 
                 $completedTopics = count($completedTopicIds);
 
-                $lesson->completed_topics_count = $completedTopics;
-                $lesson->total_topics_count = $totalTopics;
-
-                $lesson->progress = $totalTopics > 0
-                    ? round(($completedTopics / $totalTopics) * 100)
+                $progress = $totalTopics > 0
+                    ? (int) round(($completedTopics / $totalTopics) * 100)
                     : 0;
 
-                $lesson->next_topic = $allTopics
-                    ->first(fn ($topic) => ! in_array($topic->id, $completedTopicIds));
+                $progress = min(100, max(0, $progress));
 
+                $lesson->completed_topics_count = $completedTopics;
+                $lesson->total_topics_count = $totalTopics;
+                $lesson->progress = $progress;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Next Topic
+                |--------------------------------------------------------------------------
+                */
+                $lesson->next_topic = $allTopics
+                    ->first(fn ($topic) => ! in_array($topic->id, $completedTopicIds, true));
+
+                /*
+                |--------------------------------------------------------------------------
+                | Completion Logic
+                |--------------------------------------------------------------------------
+                */
                 $topicsCompleted = $totalTopics > 0 && $completedTopics >= $totalTopics;
 
+                /*
+                |--------------------------------------------------------------------------
+                | Final Quiz Logic
+                |--------------------------------------------------------------------------
+                */
                 $finalQuiz = $lesson->finalQuiz;
+
+                $finalQuizRequired = (bool) ($finalQuiz?->is_required);
 
                 $finalQuizPassed = true;
 
-                if ($finalQuiz && $finalQuiz->is_required) {
-                    $finalQuizPassed = QuizResult::where('user_id', $user->id)
+                if ($finalQuiz && $finalQuizRequired) {
+                    $finalQuizPassed = QuizResult::query()
+                        ->where('user_id', $user->id)
                         ->where('quiz_id', $finalQuiz->id)
                         ->where('passed', true)
                         ->exists();
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | Certificate Logic
+                |--------------------------------------------------------------------------
+                */
+                $certificate = $certificates->get($lesson->id);
+
+                $lesson->certificate = $certificate;
                 $lesson->final_quiz = $finalQuiz;
-                $lesson->final_quiz_required = (bool) ($finalQuiz?->is_required);
+                $lesson->final_quiz_required = $finalQuizRequired;
                 $lesson->final_quiz_passed = $finalQuizPassed;
-                $lesson->can_generate_certificate = $topicsCompleted && $finalQuizPassed;
-                $lesson->certificate = $certificates->get($lesson->id);
+
+                $lesson->can_generate_certificate = $topicsCompleted
+                    && $finalQuizPassed
+                    && ! $certificate;
+
+                $lesson->is_completed = $topicsCompleted && $finalQuizPassed;
 
                 return $lesson;
             });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard Stats
+        |--------------------------------------------------------------------------
+        */
         $totalLessons = $lessons->count();
 
         $completedLessons = $lessons
-            ->filter(fn ($lesson) => $lesson->can_generate_certificate)
+            ->filter(fn ($lesson) => $lesson->is_completed)
             ->count();
 
         $overallProgress = $totalLessons > 0
-            ? round($lessons->avg('progress'))
+            ? (int) round($lessons->avg('progress'))
             : 0;
 
-        $quizResults = QuizResult::with('quiz')
+        $overallProgress = min(100, max(0, $overallProgress));
+
+        /*
+        |--------------------------------------------------------------------------
+        | Quiz Results
+        |--------------------------------------------------------------------------
+        */
+        $quizResults = QuizResult::query()
+            ->with('quiz')
             ->where('user_id', $user->id)
             ->whereNotNull('quiz_id')
             ->latest()
             ->take(10)
             ->get();
 
-        $quizAttempts = QuizResult::where('user_id', $user->id)
+        $quizAttempts = QuizResult::query()
+            ->where('user_id', $user->id)
             ->whereNotNull('quiz_id')
             ->count();
 
-        $passedQuizzes = QuizResult::where('user_id', $user->id)
+        $passedQuizzes = QuizResult::query()
+            ->where('user_id', $user->id)
             ->whereNotNull('quiz_id')
             ->where('passed', true)
             ->count();

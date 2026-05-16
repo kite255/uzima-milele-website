@@ -5,7 +5,6 @@ use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\DevotionController;
 use App\Http\Controllers\WatotoController;
 use App\Http\Controllers\LessonController;
-use App\Http\Controllers\LessonEnrollmentController;
 use App\Http\Controllers\LessonTopicController;
 use App\Http\Controllers\LessonQuestionController;
 use App\Http\Controllers\QuizController;
@@ -124,7 +123,7 @@ Route::prefix('lessons')->name('lessons.')->group(function () {
         Route::get('/{lesson:slug}/learn', [LessonController::class, 'learn'])
             ->name('learn');
 
-        Route::post('/{lesson:slug}/enroll', [LessonEnrollmentController::class, 'store'])
+        Route::post('/{lesson:slug}/enroll', [LessonController::class, 'enroll'])
             ->name('enroll');
 
         Route::post('/{lesson:slug}/questions', [LessonQuestionController::class, 'store'])
@@ -132,6 +131,9 @@ Route::prefix('lessons')->name('lessons.')->group(function () {
 
         Route::post('/{lesson:slug}/progress', [LessonController::class, 'markProgress'])
             ->name('progress');
+
+        Route::patch('/{lesson:slug}/schedule', [LessonController::class, 'resetSchedule'])
+            ->name('schedule.reset');
 
         /*
         |--------------------------------------------------------------------------
