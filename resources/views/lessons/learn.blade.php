@@ -89,7 +89,7 @@
     <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
         {{-- SIDEBAR --}}
-        <aside class="relative z-10 space-y-6 h-fit mb-8 lg:mb-0 lg:sticky lg:top-32">
+        <aside class="relative z-10 space-y-6 h-fit mb-8 lg:mb-0 lg:sticky lg:top-32 order-2 lg:order-1">
 
             {{-- COURSE CARD --}}
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
@@ -443,7 +443,7 @@
         </aside>
 
         {{-- MAIN CONTENT --}}
-        <main class="relative z-0 font-lato lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10 min-w-0">
+       <main class="relative z-0 font-lato lg:col-span-2 bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10 min-w-0 order-1 lg:order-2">
 
             @if(session('success'))
                 <div class="mb-6 rounded-xl bg-green-50 text-green-700 border border-green-200 px-5 py-4 font-bold">
