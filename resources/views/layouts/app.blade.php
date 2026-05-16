@@ -72,11 +72,11 @@
     {{-- Alpine.js --}}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
-    @if (request()->getHost() === 'new.uzimamilele.or.tz')
-        {{-- Elfsight AI Chatbot | Mtumishi Bot --}}
-        <script src="https://elfsightcdn.com/platform.js" async></script>
-        <div class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872" data-elfsight-app-lazy></div>
-    @endif
+@if(request()->getHost() === 'new.uzimamilele.or.tz')
+    <!-- Elfsight AI Chatbot | Mtumishi Bot -->
+    <script src="https://elfsightcdn.com/platform.js" async></script>
+    <div class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872" data-elfsight-app-lazy></div>
+@endif
 
 </body>
 </html>
