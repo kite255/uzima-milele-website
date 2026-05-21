@@ -30,7 +30,7 @@
             </h2>
 
             <p class="text-gray-700 leading-relaxed mb-6 text-lg">
-                Uzima Milele ni huduma ya Kikristo isiyo ya faida ambayo hutoa elimu ya Biblia, afya na jamii kupitia mifumo ya kidijitali kwa lugha ya Kiswahili.
+                Uzima Milele ni huduma ya Kikristo isiyo ya kujinufaisha ambayo hutoa elimu ya Biblia, afya na jamii kupitia mifumo ya kidijitali kwa lugha ya Kiswahili.
             </p>
 
             <p class="text-gray-700 leading-relaxed mb-8 text-lg">
