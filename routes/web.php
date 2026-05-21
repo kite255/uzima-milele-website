@@ -1,22 +1,21 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
-use App\Http\Controllers\WatotoController;
-use App\Http\Controllers\LessonController;
-use App\Http\Controllers\LessonTopicController;
-use App\Http\Controllers\LessonQuestionController;
-use App\Http\Controllers\QuizController;
-use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
+use App\Http\Controllers\LessonController;
+use App\Http\Controllers\LessonQuestionController;
+use App\Http\Controllers\LessonTopicController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\CertificateController;
-use App\Http\Controllers\CertificateVerificationController;
-use App\Http\Controllers\PrayerTestimonyController;
 use App\Http\Controllers\PrayerRequestController;
+use App\Http\Controllers\PrayerTestimonyController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuizController;
+use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TestimonialController;
+use App\Http\Controllers\WatotoController;
 use App\Models\Devotion;
 use Illuminate\Support\Facades\Route;
 
@@ -101,8 +100,10 @@ Route::post('/ushuhuda', [TestimonialController::class, 'store'])
 |--------------------------------------------------------------------------
 | Public Certificate Verification
 |--------------------------------------------------------------------------
+| This route must remain public because QR codes open this page without login.
+|--------------------------------------------------------------------------
 */
-Route::get('/certificates/verify/{certificateNumber}', [CertificateVerificationController::class, 'show'])
+Route::get('/certificates/verify/{certificateNumber}', [CertificateController::class, 'verify'])
     ->name('certificates.verify');
 
 /*
@@ -111,15 +112,23 @@ Route::get('/certificates/verify/{certificateNumber}', [CertificateVerificationC
 |--------------------------------------------------------------------------
 */
 Route::prefix('lessons')->name('lessons.')->group(function () {
-
+    /*
+    |--------------------------------------------------------------------------
+    | Public Lesson Pages
+    |--------------------------------------------------------------------------
+    */
     Route::get('/', [LessonController::class, 'index'])
         ->name('index');
 
     Route::get('/{lesson:slug}', [LessonController::class, 'show'])
         ->name('show');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Authenticated Lesson Learning Pages
+    |--------------------------------------------------------------------------
+    */
     Route::middleware(['auth'])->group(function () {
-
         Route::get('/{lesson:slug}/learn', [LessonController::class, 'learn'])
             ->name('learn');
 
@@ -154,7 +163,6 @@ Route::prefix('lessons')->name('lessons.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('children')->name('children.')->group(function () {
-
     Route::get('/', [WatotoController::class, 'index'])
         ->name('index');
 
@@ -171,7 +179,6 @@ Route::prefix('children')->name('children.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('devotions')->name('devotions.')->group(function () {
-
     Route::get('/', [DevotionController::class, 'index'])
         ->name('index');
 
@@ -185,7 +192,6 @@ Route::prefix('devotions')->name('devotions.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-
     /*
     |--------------------------------------------------------------------------
     | Student Dashboard
@@ -254,6 +260,23 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/certificates/{certificateNumber}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Certificate Print Preview
+    |--------------------------------------------------------------------------
+    | Use this only for testing the Browsershot print view in browser.
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/certificates/{certificateNumber}/print-preview', function (string $certificateNumber) {
+        $certificate = \App\Models\Certificate::with(['user', 'lesson'])
+            ->where('certificate_number', $certificateNumber)
+            ->firstOrFail();
+
+        abort_if($certificate->user_id !== auth()->id(), 403);
+
+        return view('certificates.print', compact('certificate'));
+    })->name('certificates.print-preview');
 
     /*
     |--------------------------------------------------------------------------

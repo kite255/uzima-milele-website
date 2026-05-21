@@ -10,58 +10,77 @@
         {{-- BACK --}}
         <div class="mb-6">
             <a href="{{ route('instructor.questions.index') }}"
-               class="inline-flex rounded-xl bg-white border border-gray-200 px-5 py-3 text-navy font-bold hover:bg-gray-100 transition">
+               class="inline-flex items-center rounded-xl bg-white border border-gray-200 px-5 py-3 text-navy font-bold hover:bg-gray-100 transition">
                 ← Rudi kwenye Maswali
             </a>
         </div>
 
         {{-- HEADER --}}
-        <div class="bg-gradient-to-r from-navy via-primaryDark to-primary rounded-3xl p-8 md:p-10 text-white shadow-lg mb-8">
-            <p class="text-white/80 text-sm font-bold mb-2">
-                Instructor Q&A
-            </p>
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8 mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                <div>
+                    <p class="text-sm font-black uppercase tracking-wide text-primary">
+                        Instructor Q&A
+                    </p>
 
-            <h1 class="text-3xl md:text-4xl font-black">
-                Jibu Swali la Mwanafunzi
-            </h1>
+                    <h1 class="mt-2 text-3xl md:text-4xl font-black text-navy">
+                        Jibu Swali la Mwanafunzi
+                    </h1>
 
-            <p class="text-white/85 mt-3">
-                Andika jibu fupi, wazi, na lenye kujenga kiroho.
-            </p>
+                    <p class="mt-3 text-gray-600 leading-relaxed">
+                        Andika jibu fupi, wazi, na lenye kujenga. Jina lako halitaonekana kwa mwanafunzi; ataona jibu kutoka Timu ya Uzima Milele.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    @if($question->status === 'answered' || $question->answer)
+                        <span class="rounded-full bg-green-50 text-green-700 border border-green-100 px-4 py-2 text-xs font-black">
+                            Answered
+                        </span>
+                    @else
+                        <span class="rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100 px-4 py-2 text-xs font-black">
+                            Pending
+                        </span>
+                    @endif
+
+                    @if(($question->visibility ?? 'private') === 'public')
+                        <span class="rounded-full bg-blue-50 text-blue-700 border border-blue-100 px-4 py-2 text-xs font-black">
+                            Public
+                        </span>
+                    @elseif(($question->visibility ?? 'private') === 'hidden')
+                        <span class="rounded-full bg-red-50 text-red-700 border border-red-100 px-4 py-2 text-xs font-black">
+                            Hidden
+                        </span>
+                    @else
+                        <span class="rounded-full bg-gray-50 text-gray-600 border border-gray-100 px-4 py-2 text-xs font-black">
+                            Private
+                        </span>
+                    @endif
+                </div>
+            </div>
         </div>
 
         {{-- QUESTION CARD --}}
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 mb-8">
-            <div class="flex flex-wrap items-center gap-2 mb-5">
-                @if($question->answer)
-                    <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                        Answered
-                    </span>
-                @else
-                    <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold">
-                        Pending
-                    </span>
-                @endif
 
-                @if($question->is_published)
-                    <span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                        Published
-                    </span>
-                @else
-                    <span class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">
-                        Hidden
-                    </span>
-                @endif
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-5 mb-6">
+            <div class="grid md:grid-cols-3 gap-5 mb-6">
                 <div class="rounded-2xl bg-gray-50 border border-gray-100 p-5">
                     <p class="text-xs uppercase tracking-widest text-gray-400 font-bold">
                         Somo
                     </p>
 
-                    <p class="mt-2 font-black text-navy">
+                    <p class="mt-2 font-black text-navy leading-snug">
                         {{ $question->lesson->title ?? 'Somo' }}
+                    </p>
+                </div>
+
+                <div class="rounded-2xl bg-gray-50 border border-gray-100 p-5">
+                    <p class="text-xs uppercase tracking-widest text-gray-400 font-bold">
+                        Mada
+                    </p>
+
+                    <p class="mt-2 font-black text-navy leading-snug">
+                        {{ $question->lessonTopic->title ?? 'Swali la jumla' }}
                     </p>
                 </div>
 
@@ -75,7 +94,7 @@
                     </p>
 
                     <p class="text-sm text-gray-500 mt-1">
-                        {{ $question->created_at->format('d M Y, H:i') }}
+                        {{ $question->created_at?->format('d M Y, H:i') }}
                     </p>
                 </div>
             </div>
@@ -89,6 +108,24 @@
                     {{ $question->question }}
                 </p>
             </div>
+
+            @if($question->answer)
+                <div class="mt-5 rounded-2xl bg-green-50 border border-green-100 p-5">
+                    <p class="text-sm font-black text-green-700">
+                        Jibu la Sasa
+                    </p>
+
+                    <p class="mt-3 text-gray-700 leading-relaxed">
+                        {{ $question->answer }}
+                    </p>
+
+                    @if($question->answered_at)
+                        <p class="mt-3 text-xs text-gray-500">
+                            Ilijibiwa: {{ $question->answered_at->format('d M Y, H:i') }}
+                        </p>
+                    @endif
+                </div>
+            @endif
         </div>
 
         {{-- ANSWER FORM --}}
@@ -98,7 +135,7 @@
             </h2>
 
             <p class="text-gray-500 mb-6">
-                Jibu hili litaonekana kwenye ukurasa wa somo kwa wanafunzi.
+                Chagua kama jibu libaki private au liwe public kwa wanafunzi wengine baada ya kujibiwa.
             </p>
 
             <form method="POST" action="{{ route('instructor.questions.update', $question) }}">
@@ -112,7 +149,7 @@
 
                     <textarea id="answer"
                               name="answer"
-                              rows="8"
+                              rows="7"
                               required
                               placeholder="Andika jibu hapa..."
                               class="w-full rounded-2xl border border-gray-300 bg-white px-5 py-4 text-base text-navy placeholder-gray-400 shadow-sm outline-none resize-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">{{ old('answer', $question->answer) }}</textarea>
@@ -124,17 +161,54 @@
                     @enderror
                 </div>
 
-                <div class="mt-5 flex items-center gap-3">
-                    <input type="checkbox"
-                           id="is_published"
-                           name="is_published"
-                           value="1"
-                           class="rounded border-gray-300 text-primary focus:ring-primary"
-                           @checked(old('is_published', $question->is_published))>
-
-                    <label for="is_published" class="text-sm font-bold text-navy">
-                        Onyesha swali na jibu kwenye ukurasa wa somo
+                <div class="mt-6">
+                    <label for="visibility" class="block text-sm font-black text-navy mb-2">
+                        Visibility
                     </label>
+
+                    <select id="visibility"
+                            name="visibility"
+                            required
+                            class="w-full rounded-2xl border border-gray-300 bg-white px-5 py-4 text-sm text-navy shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        <option value="private" @selected(old('visibility', $question->visibility ?? 'private') === 'private')>
+                            Private - linaonekana kwa mwanafunzi aliyeuliza na admin/instructor tu
+                        </option>
+
+                        <option value="public" @selected(old('visibility', $question->visibility ?? 'private') === 'public')>
+                            Public - linaonekana kwa wanafunzi wengine baada ya kujibiwa
+                        </option>
+
+                        <option value="hidden" @selected(old('visibility', $question->visibility ?? 'private') === 'hidden')>
+                            Hidden - lifiche kwenye Q&A ya mwanafunzi
+                        </option>
+                    </select>
+
+                    @error('visibility')
+                        <p class="mt-2 text-sm font-bold text-red-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <div class="mt-5 rounded-2xl bg-gray-50 border border-gray-100 p-4">
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox"
+                               id="is_published"
+                               name="is_published"
+                               value="1"
+                               class="mt-1 rounded border-gray-300 text-primary focus:ring-primary"
+                               @checked(old('is_published', $question->is_published ?? true))>
+
+                        <div>
+                            <label for="is_published" class="text-sm font-black text-navy">
+                                Ruhusu swali hili lionekane kwenye mfumo
+                            </label>
+
+                            <p class="mt-1 text-xs text-gray-500 leading-relaxed">
+                                Kwa kawaida acha hii ikiwa imechaguliwa. Tumia visibility ya Hidden kama hutaki lionekane kwenye orodha ya mwanafunzi.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-end">

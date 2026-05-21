@@ -14,7 +14,7 @@ class InstructorQuestionController extends Controller
 
         abort_if(! in_array($user->role, ['admin', 'instructor']), 403);
 
-        $questions = LessonQuestion::with(['lesson', 'user', 'answeredBy'])
+        $questions = LessonQuestion::with(['lesson', 'lessonTopic', 'user', 'answeredBy'])
             ->when($user->role === 'instructor', function ($query) use ($user) {
                 $query->whereHas('lesson', function ($lessonQuery) use ($user) {
                     $lessonQuery->where('instructor_id', $user->id);
@@ -29,7 +29,11 @@ class InstructorQuestionController extends Controller
                     $lessonQuery->where('instructor_id', $user->id);
                 });
             })
-            ->whereNull('answer')
+            ->where('visibility', '!=', LessonQuestion::VISIBILITY_HIDDEN)
+            ->where(function ($query) {
+                $query->whereNull('answer')
+                    ->orWhere('status', LessonQuestion::STATUS_PENDING);
+            })
             ->count();
 
         $answeredCount = LessonQuestion::query()
@@ -38,13 +42,27 @@ class InstructorQuestionController extends Controller
                     $lessonQuery->where('instructor_id', $user->id);
                 });
             })
-            ->whereNotNull('answer')
+            ->where('visibility', '!=', LessonQuestion::VISIBILITY_HIDDEN)
+            ->where(function ($query) {
+                $query->whereNotNull('answer')
+                    ->orWhere('status', LessonQuestion::STATUS_ANSWERED);
+            })
+            ->count();
+
+        $publicCount = LessonQuestion::query()
+            ->when($user->role === 'instructor', function ($query) use ($user) {
+                $query->whereHas('lesson', function ($lessonQuery) use ($user) {
+                    $lessonQuery->where('instructor_id', $user->id);
+                });
+            })
+            ->where('visibility', LessonQuestion::VISIBILITY_PUBLIC)
             ->count();
 
         return view('instructor.questions.index', compact(
             'questions',
             'pendingCount',
-            'answeredCount'
+            'answeredCount',
+            'publicCount'
         ));
     }
 
@@ -52,7 +70,7 @@ class InstructorQuestionController extends Controller
     {
         $this->authorizeInstructorQuestion($question);
 
-        $question->load(['lesson', 'user', 'answeredBy']);
+        $question->load(['lesson', 'lessonTopic', 'user', 'answeredBy']);
 
         return view('instructor.questions.show', compact('question'));
     }
@@ -63,26 +81,24 @@ class InstructorQuestionController extends Controller
 
         $validated = $request->validate([
             'answer' => ['required', 'string', 'min:3', 'max:5000'],
+            'visibility' => ['required', 'string', 'in:private,public,hidden'],
             'is_published' => ['nullable', 'boolean'],
         ]);
 
-        $wasUnanswered = blank($question->answer);
+        $wasUnanswered = blank($question->answer)
+            || $question->status !== LessonQuestion::STATUS_ANSWERED;
 
         $question->update([
             'answer' => $validated['answer'],
+            'status' => LessonQuestion::STATUS_ANSWERED,
+            'visibility' => $validated['visibility'],
             'answered_by' => auth()->id(),
             'answered_at' => now(),
             'is_published' => $request->boolean('is_published', true),
         ]);
 
-        $question->load(['lesson', 'user']);
+        $question->load(['lesson', 'lessonTopic', 'user']);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Notify student when question is answered
-        |--------------------------------------------------------------------------
-        | Send only when the question was previously unanswered.
-        */
         if ($wasUnanswered && $question->user) {
             $question->user->notify(new LessonQuestionAnsweredNotification($question));
         }
