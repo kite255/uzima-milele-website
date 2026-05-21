@@ -10,7 +10,7 @@
         {{-- HEADER --}}
         <div class="relative overflow-hidden mb-8 bg-gradient-to-r from-navy via-primaryDark to-primary rounded-3xl p-8 md:p-10 text-white shadow-lg">
             <div class="relative z-10">
-                <p class="text-white/80 text-sm font-bold mb-2">
+                <p class="text-white/80 text-sm font-bold mb-2 uppercase tracking-[0.25em]">
                     Notifications
                 </p>
 
@@ -19,7 +19,7 @@
                 </h1>
 
                 <p class="text-white/85 mt-3 max-w-2xl">
-                    Tazama taarifa za masomo, maswali, majibu na vyeti.
+                    Tazama taarifa za masomo, maswali, majibu, maombi na vyeti.
                 </p>
             </div>
 
@@ -30,7 +30,7 @@
         {{-- ACTIONS --}}
         <div class="mb-6 flex flex-col sm:flex-row justify-between gap-3">
             <a href="{{ route('dashboard') }}"
-               class="inline-flex justify-center rounded-xl bg-white border border-gray-200 px-5 py-3 text-navy font-bold hover:bg-gray-100 transition">
+               class="inline-flex items-center justify-center rounded-xl bg-white border border-gray-200 px-5 py-3 text-navy font-bold hover:bg-gray-100 transition">
                 ← Rudi Dashboard
             </a>
 
@@ -39,7 +39,7 @@
                     @csrf
 
                     <button type="submit"
-                            class="w-full sm:w-auto inline-flex justify-center rounded-xl bg-primary px-5 py-3 text-white font-bold hover:bg-primaryDark transition">
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-primary px-5 py-3 text-white font-bold hover:bg-primaryDark transition">
                         Mark All as Read
                     </button>
                 </form>
@@ -55,24 +55,47 @@
 
         {{-- LIST --}}
         <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b flex items-center justify-between">
-                <h2 class="text-2xl font-black text-navy">
-                    Orodha ya Taarifa
-                </h2>
+            <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-black text-navy">
+                        Orodha ya Taarifa
+                    </h2>
 
-                <span class="text-sm bg-primary/10 text-primary font-bold px-4 py-2 rounded-full">
+                    <p class="text-sm text-gray-500 mt-1">
+                        Taarifa zote zilizotumwa kwenye akaunti yako.
+                    </p>
+                </div>
+
+                <span class="text-sm bg-primary/10 text-primary font-bold px-4 py-2 rounded-full w-fit">
                     {{ auth()->user()->unreadNotifications()->count() }} mpya
                 </span>
             </div>
 
-            <div class="divide-y">
+            <div class="divide-y divide-gray-100">
                 @forelse($notifications as $notification)
                     @php
                         $data = $notification->data ?? [];
                         $isUnread = is_null($notification->read_at);
+
+                        $title = $data['title']
+                            ?? $data['subject']
+                            ?? 'Notification';
+
+                        $message = $data['message']
+                            ?? $data['body']
+                            ?? $data['description']
+                            ?? 'Una taarifa mpya.';
+
+                        $url = $data['url']
+                            ?? $data['link']
+                            ?? null;
+
+                        $openUrl = $url
+                            ? route('notifications.read', $notification->id)
+                            : route('notifications.read', $notification->id);
                     @endphp
 
-                    <a href="{{ route('notifications.read', $notification->id) }}"
+                    <a href="{{ $openUrl }}"
                        class="block p-6 transition {{ $isUnread ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-gray-50' }}">
                         <div class="flex gap-4">
                             <div class="shrink-0">
@@ -90,13 +113,13 @@
                                 </div>
                             </div>
 
-                            <div class="flex-1">
+                            <div class="flex-1 min-w-0">
                                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                    <h3 class="font-black text-navy">
-                                        {{ $data['title'] ?? 'Notification' }}
+                                    <h3 class="font-black text-navy break-words">
+                                        {{ $title }}
                                     </h3>
 
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 shrink-0">
                                         @if($isUnread)
                                             <span class="px-3 py-1 rounded-full bg-accent/20 text-navy text-xs font-bold">
                                                 New
@@ -109,8 +132,8 @@
                                     </div>
                                 </div>
 
-                                <p class="mt-2 text-gray-600 leading-relaxed">
-                                    {{ $data['message'] ?? 'Una taarifa mpya.' }}
+                                <p class="mt-2 text-gray-600 leading-relaxed break-words">
+                                    {{ $message }}
                                 </p>
 
                                 <p class="mt-3 text-sm font-bold text-primary">
@@ -121,12 +144,25 @@
                     </a>
                 @empty
                     <div class="p-10 text-center">
+                        <div class="mx-auto mb-4 w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 class="w-8 h-8"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 01-6 0m6 0H9" />
+                            </svg>
+                        </div>
+
                         <h3 class="text-xl font-black text-navy">
                             Hakuna notifications bado.
                         </h3>
 
-                        <p class="text-gray-500 mt-2">
-                            Taarifa zako zitaonekana hapa baada ya kujiunga na masomo, kuuliza maswali au kupata cheti.
+                        <p class="text-gray-500 mt-2 max-w-md mx-auto">
+                            Taarifa zako zitaonekana hapa baada ya kujiunga na masomo, kuuliza maswali, kupokea majibu au kupata cheti.
                         </p>
                     </div>
                 @endforelse
@@ -134,9 +170,11 @@
         </div>
 
         {{-- PAGINATION --}}
-        <div class="mt-8">
-            {{ $notifications->links() }}
-        </div>
+        @if($notifications->hasPages())
+            <div class="mt-8">
+                {{ $notifications->links() }}
+            </div>
+        @endif
 
     </div>
 </section>
