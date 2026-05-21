@@ -1,7 +1,10 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/uzimamil/live_uzimamilele/
+    - export DEPLOYPATH=/home/uzimamil/public_html/new.uzimamilele.or.tz/new/
+
+    - /bin/mkdir -p $DEPLOYPATH
+
     - /bin/cp -R app $DEPLOYPATH
     - /bin/cp -R bootstrap $DEPLOYPATH
     - /bin/cp -R config $DEPLOYPATH
@@ -10,6 +13,9 @@ deployment:
     - /bin/cp -R resources $DEPLOYPATH
     - /bin/cp -R routes $DEPLOYPATH
     - /bin/cp -R storage $DEPLOYPATH
+
     - /bin/cp composer.json $DEPLOYPATH
     - /bin/cp composer.lock $DEPLOYPATH
+    - /bin/cp package.json $DEPLOYPATH
+    - /bin/cp package-lock.json $DEPLOYPATH
     - /bin/cp artisan $DEPLOYPATH
