@@ -29,7 +29,7 @@
 <div class="min-h-screen bg-slate-100 py-8 px-4">
     <div class="max-w-6xl mx-auto mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-[#0E3D4F]">
+            <h1 class="text-2xl md:text-3xl font-bold text-[#0E3D4F]">
                 Certificate of Completion
             </h1>
 
@@ -52,107 +52,109 @@
         </div>
     </div>
 
-    <div class="max-w-6xl mx-auto overflow-x-auto">
-        <div class="certificate-preview mx-auto bg-white relative overflow-hidden shadow-2xl">
-            <div class="top-header">
-                <div class="circle-left"></div>
-                <div class="circle-right"></div>
+    <div class="max-w-6xl mx-auto certificate-preview-wrap">
+        <div class="certificate-scale-box">
+            <div class="certificate-preview bg-white relative overflow-hidden shadow-2xl">
+                <div class="top-header">
+                    <div class="circle-left"></div>
+                    <div class="circle-right"></div>
 
-                <div class="relative z-10">
-                    <div class="logo-wrap">
-                        <img src="{{ $logoUrl }}" class="logo" alt="Uzima Milele Ministry">
+                    <div class="relative z-10">
+                        <div class="logo-wrap">
+                            <img src="{{ $logoUrl }}" class="logo" alt="Uzima Milele Ministry">
+                        </div>
+
+                        <div class="ministry">Uzima Milele Ministry</div>
+                        <div class="website">www.uzimamilele.or.tz</div>
+
+                        <div class="title">Certificate</div>
+                        <div class="subtitle">of Completion</div>
+                    </div>
+                </div>
+
+                <div class="body-section">
+                    <div class="presented">
+                        This certificate is proudly presented to
                     </div>
 
-                    <div class="ministry">Uzima Milele Ministry</div>
-                    <div class="website">www.uzimamilele.or.tz</div>
-
-                    <div class="title">Certificate</div>
-                    <div class="subtitle">of Completion</div>
-                </div>
-            </div>
-
-            <div class="body-section">
-                <div class="presented">
-                    This certificate is proudly presented to
-                </div>
-
-                <div class="student-name">
-                    {{ $certificate->user->name }}
-                </div>
-
-                <div class="gold-line"></div>
-
-                <div class="completion-text">
-                    For successfully completing the Bible lesson program offered by
-                    <strong>Uzima Milele Ministry</strong>.
-                </div>
-
-                <div class="lesson-title">
-                    {{ $certificate->lesson->title }}
-                </div>
-            </div>
-
-            <div class="bottom-section">
-                <div class="signature-block">
-                    <img
-                        src="{{ $signatureUrl }}"
-                        class="signature-img"
-                        alt="Signature"
-                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-                    >
-
-                    <div class="signature-fallback" style="display:none;">
-                        Phillip Bisanda
+                    <div class="student-name">
+                        {{ $certificate->user->name }}
                     </div>
 
-                    <div class="signature-line">
-                        <div class="signature-name">
+                    <div class="gold-line"></div>
+
+                    <div class="completion-text">
+                        For successfully completing the Bible lesson program offered by
+                        <strong>Uzima Milele Ministry</strong>.
+                    </div>
+
+                    <div class="lesson-title">
+                        {{ $certificate->lesson->title }}
+                    </div>
+                </div>
+
+                <div class="bottom-section">
+                    <div class="signature-block">
+                        <img
+                            src="{{ $signatureUrl }}"
+                            class="signature-img"
+                            alt="Signature"
+                            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                        >
+
+                        <div class="signature-fallback" style="display:none;">
                             Phillip Bisanda
                         </div>
 
-                        <div class="signature-title">
-                            Executive Director
+                        <div class="signature-line">
+                            <div class="signature-name">
+                                Phillip Bisanda
+                            </div>
+
+                            <div class="signature-title">
+                                Executive Director
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="seal-block">
+                        <img src="{{ $logoUrl }}" class="seal-img" alt="Uzima Milele Ministry">
+                    </div>
+
+                    <div class="qr-block">
+                        <div class="qr-box">
+                            @if($qrCodeHtml)
+                                {!! $qrCodeHtml !!}
+                            @else
+                                <img
+                                    src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ urlencode($verifyUrl) }}"
+                                    class="qr-img"
+                                    alt="Certificate QR Code"
+                                >
+                            @endif
+                        </div>
+
+                        <div class="qr-title">
+                            Scan to Verify
                         </div>
                     </div>
                 </div>
 
-                <div class="seal-block">
-                    <img src="{{ $logoUrl }}" class="seal-img" alt="Uzima Milele Ministry">
-                </div>
-
-                <div class="qr-block">
-                    <div class="qr-box">
-                        @if($qrCodeHtml)
-                            {!! $qrCodeHtml !!}
-                        @else
-                            <img
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ urlencode($verifyUrl) }}"
-                                class="qr-img"
-                                alt="Certificate QR Code"
-                            >
-                        @endif
+                <div class="meta">
+                    <div>
+                        <div class="meta-label">Certificate No</div>
+                        <div class="meta-value">{{ $certificate->certificate_number }}</div>
                     </div>
 
-                    <div class="qr-title">
-                        Scan to Verify
+                    <div>
+                        <div class="meta-label">Issued Date</div>
+                        <div class="meta-value">{{ $issuedFormatted }}</div>
                     </div>
-                </div>
-            </div>
 
-            <div class="meta">
-                <div>
-                    <div class="meta-label">Certificate No</div>
-                    <div class="meta-value">{{ $certificate->certificate_number }}</div>
-                </div>
-
-                <div>
-                    <div class="meta-label">Issued Date</div>
-                    <div class="meta-value">{{ $issuedFormatted }}</div>
-                </div>
-
-                <div>
-                    <div class="meta-label">Verification</div>
-                    <div class="meta-value valid">Valid Certificate</div>
+                    <div>
+                        <div class="meta-label">Verification</div>
+                        <div class="meta-value valid">Valid Certificate</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -160,6 +162,19 @@
 </div>
 
 <style>
+    .certificate-preview-wrap {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 20px;
+    }
+
+    .certificate-scale-box {
+        width: 1122px;
+        height: 794px;
+        margin: 0 auto;
+    }
+
     .certificate-preview {
         width: 1122px;
         height: 794px;
@@ -301,7 +316,7 @@
         position: absolute;
         left: 90px;
         right: 90px;
-        top: 522px;
+        top: 515px;
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
         align-items: center;
@@ -323,8 +338,8 @@
     }
 
     .signature-img {
-        max-width: 140px;
-        max-height: 50px;
+        max-width: 150px;
+        max-height: 55px;
         object-fit: contain;
         margin-bottom: 5px;
     }
@@ -340,9 +355,9 @@
 
     .signature-line {
         border-top: 1px solid #94A3B8;
-        width: 150px;
+        width: 160px;
         margin: 0 auto;
-        padding-top: 11px;
+        padding-top: 10px;
     }
 
     .signature-name {
@@ -360,32 +375,32 @@
     }
 
     .seal-img {
-        width: 112px;
-        opacity: 0.20;
+        width: 120px;
+        opacity: 0.22;
         margin: 0;
     }
 
     .qr-box {
-        width: 100px;
-        height: 100px;
+        width: 96px;
+        height: 96px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border: 1px solid #E5E7EB;
-        padding: 5px;
+        padding: 4px;
         background: #ffffff;
-        border-radius: 12px;
+        border-radius: 10px;
     }
 
     .qr-box svg {
-        width: 90px;
-        height: 90px;
+        width: 88px;
+        height: 88px;
         display: block;
     }
 
     .qr-img {
-        width: 90px;
-        height: 90px;
+        width: 88px;
+        height: 88px;
         display: block;
     }
 
@@ -440,8 +455,54 @@
     }
 
     @media (max-width: 1200px) {
+        .certificate-scale-box {
+            width: 1122px;
+            height: 794px;
+            margin: 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .certificate-preview-wrap {
+            overflow: hidden;
+        }
+
+        .certificate-scale-box {
+            width: 100%;
+            height: 505px;
+            overflow: hidden;
+        }
+
         .certificate-preview {
-            transform: scale(0.9);
+            transform: scale(0.58);
+            transform-origin: top left;
+        }
+    }
+
+    @media (max-width: 430px) {
+        .certificate-preview-wrap {
+            overflow: hidden;
+        }
+
+        .certificate-scale-box {
+            width: 100%;
+            height: 310px;
+            overflow: hidden;
+        }
+
+        .certificate-preview {
+            transform: scale(0.36);
+            transform-origin: top left;
+        }
+    }
+
+    @media (max-width: 390px) {
+        .certificate-scale-box {
+            height: 290px;
+        }
+
+        .certificate-preview {
+            transform: scale(0.34);
             transform-origin: top left;
         }
     }
