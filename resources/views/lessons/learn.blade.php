@@ -7,6 +7,40 @@
 @php
     use Illuminate\Support\Facades\Storage;
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public Storage URL Resolver
+    |--------------------------------------------------------------------------
+    | Supports:
+    | - lessons/covers/image.webp
+    | - storage/lessons/covers/image.webp
+    | - /storage/lessons/covers/image.webp
+    | - public/lessons/covers/image.webp
+    | - full external URLs
+    |--------------------------------------------------------------------------
+    */
+    $publicUrl = function (?string $path): ?string {
+        if (! $path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, strlen('public/'));
+        }
+
+        return asset('storage/' . $path);
+    };
+
     $modules = $lesson->modules ?? collect();
 
     $allTopics = $allTopics ?? $modules
@@ -63,13 +97,9 @@
 
     $currentModuleIndex = $currentModuleIndex === false ? 0 : $currentModuleIndex;
 
-    $coverUrl = $lesson->cover_image
-        ? Storage::disk('public')->url($lesson->cover_image)
-        : null;
+    $coverUrl = $publicUrl($lesson->cover_image);
 
-    $topicPdfUrl = $currentTopic?->pdf
-        ? Storage::disk('public')->url($currentTopic->pdf)
-        : null;
+    $topicPdfUrl = $publicUrl($currentTopic?->pdf);
 
     $finalQuiz = $finalQuiz ?? $lesson->finalQuiz;
 
@@ -594,6 +624,206 @@
                             </a>
                         @endif
                     </div>
+
+
+                    {{-- LESSON QUESTIONS --}}
+                    @php
+                        $lessonQuestions = \App\Models\LessonQuestion::with(['user', 'lessonTopic'])
+                            ->where('lesson_id', $lesson->id)
+                            ->when($currentTopic, function ($query) use ($currentTopic) {
+                                $query->where(function ($query) use ($currentTopic) {
+                                    $query->whereNull('lesson_topic_id')
+                                        ->orWhere('lesson_topic_id', $currentTopic->id);
+                                });
+                            })
+                            ->where('visibility', '!=', 'hidden')
+                            ->where(function ($query) {
+                                if (auth()->check()) {
+                                    $query->where('user_id', auth()->id())
+                                        ->orWhere(function ($query) {
+                                            $query->where('status', 'answered')
+                                                ->where('visibility', 'public');
+                                        });
+                                } else {
+                                    $query->where('status', 'answered')
+                                        ->where('visibility', 'public');
+                                }
+                            })
+                            ->latest()
+                            ->get();
+                    @endphp
+
+                    <section class="mt-10 rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+
+                        {{-- SECTION HEADER --}}
+                        <div class="px-6 py-6 md:px-8 border-b border-gray-100 bg-gray-50">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <h2 class="text-2xl font-black text-navy">
+                                        Maswali na Majibu
+                                    </h2>
+
+                                    <p class="mt-2 text-sm text-gray-600 leading-relaxed">
+                                        Una swali kuhusu somo hili? Andika hapa kwa ufupi na timu ya mafundisho itakujibu.
+                                    </p>
+                                </div>
+
+                                <span class="w-fit rounded-full bg-primary/10 text-primary px-4 py-2 text-xs font-black">
+                                    {{ $lessonQuestions->count() }} Maswali
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-6 md:p-8">
+
+                            {{-- QUESTION FORM --}}
+                            @auth
+                                <form method="POST"
+                                      action="{{ route('lessons.questions.store', $lesson) }}"
+                                      class="rounded-2xl border border-primary/10 bg-primary/5 p-5 md:p-6">
+                                    @csrf
+
+                                    @if($currentTopic)
+                                        <input type="hidden" name="lesson_topic_id" value="{{ $currentTopic->id }}">
+                                    @endif
+
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                                        <label class="block text-sm font-black text-navy">
+                                            Uliza swali lako
+                                        </label>
+
+                                        <span class="w-fit rounded-full bg-white text-primary border border-primary/10 px-3 py-1 text-xs font-bold">
+                                            Private kwa default
+                                        </span>
+                                    </div>
+
+                                    <textarea name="question"
+                                              rows="4"
+                                              required
+                                              class="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-4 text-sm text-gray-700 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                                              placeholder="Mfano: Kwa nini Biblia inaitwa Neno la Mungu?">{{ old('question') }}</textarea>
+
+                                    @error('question')
+                                        <p class="mt-2 text-xs text-red-600">
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+
+                                    <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                        <p class="text-xs text-gray-500 leading-relaxed">
+                                            Swali lako litaonekana kwako na kwa timu ya mafundisho. Litaonekana kwa wengine tu likiwekwa public.
+                                        </p>
+
+                                        <button type="submit"
+                                                class="inline-flex justify-center rounded-xl bg-primary px-6 py-3 text-sm font-black text-white hover:bg-primaryDark transition">
+                                            Tuma Swali
+                                        </button>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="rounded-2xl border border-primary/10 bg-primary/5 p-5">
+                                    <h3 class="font-black text-navy">
+                                        Ingia ili kuuliza swali
+                                    </h3>
+
+                                    <p class="mt-2 text-sm text-gray-600">
+                                        Tafadhali ingia kwenye akaunti yako ili uweze kuuliza swali.
+                                    </p>
+
+                                    <a href="{{ route('login') }}"
+                                       class="mt-4 inline-flex justify-center rounded-xl bg-primary px-6 py-3 text-sm font-black text-white hover:bg-primaryDark transition">
+                                        Ingia Kuuliza Swali
+                                    </a>
+                                </div>
+                            @endauth
+
+                            {{-- QUESTIONS LIST --}}
+                            <div class="mt-8 space-y-4">
+                                @forelse($lessonQuestions as $lessonQuestion)
+                                    <article class="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+
+                                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                            <div>
+                                                <p class="font-black text-navy">
+                                                    {{ $lessonQuestion->user?->name ?? 'Mwanafunzi' }}
+                                                </p>
+
+                                                <p class="mt-1 text-xs text-gray-500">
+                                                    {{ $lessonQuestion->created_at?->format('d M Y, H:i') }}
+
+                                                    @if($lessonQuestion->lessonTopic ?? null)
+                                                        · {{ $lessonQuestion->lessonTopic->title }}
+                                                    @endif
+                                                </p>
+                                            </div>
+
+                                            <div class="flex flex-wrap gap-2">
+                                                @if($lessonQuestion->visibility === 'public')
+                                                    <span class="rounded-full bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 text-xs font-bold">
+                                                        Public
+                                                    </span>
+                                                @else
+                                                    <span class="rounded-full bg-white text-gray-600 border border-gray-200 px-3 py-1 text-xs font-bold">
+                                                        Private
+                                                    </span>
+                                                @endif
+
+                                                @if($lessonQuestion->status === 'answered' || $lessonQuestion->answer)
+                                                    <span class="rounded-full bg-green-50 text-green-700 border border-green-100 px-3 py-1 text-xs font-bold">
+                                                        Limejibiwa
+                                                    </span>
+                                                @else
+                                                    <span class="rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100 px-3 py-1 text-xs font-bold">
+                                                        Linasubiri
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 rounded-xl bg-white border border-gray-100 p-4">
+                                            <p class="text-xs font-black uppercase tracking-wide text-gray-500">
+                                                Swali
+                                            </p>
+
+                                            <p class="mt-2 text-gray-700 leading-relaxed">
+                                                {{ $lessonQuestion->question }}
+                                            </p>
+                                        </div>
+
+                                        @if($lessonQuestion->answer)
+                                            <div class="mt-4 rounded-xl bg-white border border-primary/10 p-4">
+                                                <p class="text-xs font-black uppercase tracking-wide text-primary">
+                                                    Jibu limetoka kwa Mwalimu
+                                                </p>
+
+                                                <p class="mt-2 text-gray-700 leading-relaxed">
+                                                    {{ $lessonQuestion->answer }}
+                                                </p>
+
+                                                @if($lessonQuestion->answered_at)
+                                                    <p class="mt-3 text-xs text-gray-500">
+                                                        {{ $lessonQuestion->answered_at->format('d M Y, H:i') }}
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                    </article>
+                                @empty
+                                    <div class="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                                        <p class="font-black text-navy">
+                                            Hakuna maswali bado
+                                        </p>
+
+                                        <p class="mt-1 text-sm text-gray-500">
+                                            Kuwa wa kwanza kuuliza swali kuhusu somo hili.
+                                        </p>
+                                    </div>
+                                @endforelse
+                            </div>
+
+                        </div>
+                    </section>
 
                     {{-- PREVIOUS / NEXT --}}
                     <div class="mt-12 pt-6 border-t flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
