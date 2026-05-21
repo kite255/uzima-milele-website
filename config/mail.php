@@ -9,8 +9,7 @@ return [
     |
     | This option controls the default mailer that is used to send all email
     | messages unless another mailer is explicitly specified when sending
-    | the message. All additional mailers can be configured within the
-    | "mailers" array. Examples of each type of mailer are provided.
+    | the message.
     |
     */
 
@@ -20,19 +19,6 @@ return [
     |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure all of the mailers used by your application plus
-    | their respective settings. Several examples have been configured for
-    | you and you are free to add your own as your application requires.
-    |
-    | Laravel supports a variety of mail "transport" drivers that can be used
-    | when delivering an email. You may specify which one you're using for
-    | your mailers below. You may also add additional mailers if needed.
-    |
-    | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
-    |            "postmark", "resend", "log", "array",
-    |            "failover", "roundrobin"
-    |
     */
 
     'mailers' => [
@@ -46,7 +32,10 @@ return [
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
-            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'local_domain' => env(
+                'MAIL_EHLO_DOMAIN',
+                parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)
+            ),
         ],
 
         'ses' => [
@@ -56,9 +45,6 @@ return [
         'postmark' => [
             'transport' => 'postmark',
             // 'message_stream_id' => env('POSTMARK_MESSAGE_STREAM_ID'),
-            // 'client' => [
-            //     'timeout' => 5,
-            // ],
         ],
 
         'resend' => [
@@ -102,15 +88,44 @@ return [
     | Global "From" Address
     |--------------------------------------------------------------------------
     |
-    | You may wish for all emails sent by your application to be sent from
-    | the same address. Here you may specify a name and address that is
-    | used globally for all emails that are sent by your application.
+    | This is the default sender address for all system emails.
     |
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@uzimamilele.or.tz'),
+        'name' => env('MAIL_FROM_NAME', 'Uzima Milele Ministry'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Uzima Milele System Email Addresses
+    |--------------------------------------------------------------------------
+    |
+    | These addresses are used by the system for specific notification flows.
+    |
+    */
+
+    'system_address' => env('SYSTEM_EMAIL', 'no-reply@uzimamilele.or.tz'),
+
+    'support_address' => env('SUPPORT_EMAIL', 'info@uzimamilele.or.tz'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prayer Request Email Addresses
+    |--------------------------------------------------------------------------
+    |
+    | Add one or many emails in .env like this:
+    |
+    | PRAYER_REQUEST_EMAILS=maombi@uzimamilele.or.tz,info@uzimamilele.or.tz
+    |
+    */
+
+    'prayer_addresses' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', env('PRAYER_REQUEST_EMAILS', 'maombi@uzimamilele.or.tz'))
+    ), function ($email) {
+        return filter_var($email, FILTER_VALIDATE_EMAIL);
+    })),
 
 ];
