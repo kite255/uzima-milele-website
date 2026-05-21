@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Certificate</title>
+    <meta charset="UTF-8">
+    <title>Certificate - {{ $certificate->certificate_number }}</title>
 
     <style>
         @page {
@@ -16,21 +16,22 @@
 
         html,
         body {
-            width: 297mm;
-            height: 210mm;
             margin: 0;
             padding: 0;
-            font-family: DejaVu Sans, sans-serif;
+            width: 297mm;
+            height: 210mm;
+            overflow: hidden;
             background: #ffffff;
+            font-family: DejaVu Sans, sans-serif;
             color: #0E3D4F;
         }
 
         .certificate {
+            position: relative;
             width: 297mm;
             height: 210mm;
-            position: relative;
-            background: #ffffff;
             overflow: hidden;
+            background: #ffffff;
         }
 
         .top-header {
@@ -42,39 +43,42 @@
             background: #0083CB;
             color: #ffffff;
             text-align: center;
-            padding-top: 6mm;
             overflow: hidden;
+            padding-top: 6mm;
+        }
+
+        .circle-left,
+        .circle-right {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.14);
         }
 
         .circle-left {
-            position: absolute;
-            left: -25mm;
-            top: -32mm;
             width: 75mm;
             height: 75mm;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.12);
+            left: -24mm;
+            top: -31mm;
         }
 
         .circle-right {
-            position: absolute;
-            right: -28mm;
-            bottom: -35mm;
             width: 82mm;
             height: 82mm;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.12);
+            right: -27mm;
+            bottom: -33mm;
         }
 
         .header-content {
             position: relative;
             z-index: 5;
+            width: 297mm;
+            text-align: center;
         }
 
         .logo-wrap {
-            width: 13mm;
-            height: 13mm;
-            margin: 0 auto 2mm auto;
+            width: 14mm;
+            height: 14mm;
+            margin: 0 auto 2.5mm auto;
             background: #ffffff;
             border-radius: 50%;
             text-align: center;
@@ -82,72 +86,98 @@
         }
 
         .logo {
-            width: 10.5mm;
-            height: 10.5mm;
+            width: 11mm;
+            height: 11mm;
+            border: 0;
         }
 
         .ministry {
-            font-size: 7px;
+            font-size: 8px;
             font-weight: bold;
             letter-spacing: 4px;
             text-transform: uppercase;
         }
 
         .website {
-            font-size: 6px;
-            letter-spacing: 3px;
-            margin-top: 1mm;
-            opacity: 0.95;
+            font-size: 6.5px;
+            letter-spacing: 2.5px;
+            margin-top: 1.2mm;
         }
 
-        .title {
-            margin-top: 6mm;
-            font-size: 34px;
-            line-height: 35px;
+        .title-wrap {
+            width: 112mm;
+            margin: 6.5mm auto 0 auto;
+            padding: 0;
+            text-align: center;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .cert-title-table {
+            width: 112mm;
+            margin: 0 auto;
+            padding: 0;
+            border-collapse: collapse;
+            border-spacing: 0;
+            table-layout: fixed;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .cert-title-table td {
+            width: 10.18mm;
+            padding: 0;
+            margin: 0;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 32px;
+            line-height: 34px;
             font-weight: bold;
-            letter-spacing: 12px;
-            text-transform: uppercase;
+            color: #ffffff;
         }
 
         .subtitle {
-            margin-top: 3mm;
+            margin-top: 4mm;
             font-size: 10px;
-            line-height: 10px;
-            letter-spacing: 8px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-        }
-
-        .body {
-            position: absolute;
-            top: 62mm;
-            left: 0;
-            width: 297mm;
-            height: 148mm;
-            padding: 7mm 24mm 0 24mm;
+            white-space: nowrap;
             text-align: center;
-            overflow: hidden;
         }
 
-        .content {
-            position: relative;
-            z-index: 2;
-            height: 100%;
+        .main-body {
+            position: absolute;
+            top: 72mm;
+            left: 24mm;
+            width: 249mm;
+            text-align: center;
+            padding: 0;
+            margin: 0;
         }
 
         .presented {
-            font-size: 10px;
+            width: 249mm;
+            font-size: 10.5px;
             color: #6B7280;
-            margin-bottom: 2.5mm;
+            margin: 0 auto 2mm auto;
+            text-align: center;
         }
 
         .student-name {
+            width: 249mm;
             font-family: DejaVu Serif, serif;
             font-style: italic;
-            font-size: 38px;
-            line-height: 40px;
+            font-size: 35px;
+            line-height: 37px;
             font-weight: bold;
             color: #0E3D4F;
-            margin-bottom: 2.5mm;
+            margin: 0 auto 2.5mm auto;
+            text-align: center;
         }
 
         .gold-line {
@@ -158,140 +188,174 @@
         }
 
         .completion-text {
-            font-size: 10.5px;
+            width: 249mm;
+            font-size: 11px;
             color: #374151;
-            margin-bottom: 3.5mm;
-            line-height: 1.6;
+            margin: 0 auto 3.5mm auto;
+            line-height: 1.5;
+            text-align: center;
         }
 
         .lesson-title {
-            font-size: 22px;
-            line-height: 26px;
+            width: 220mm;
+            margin: 0 auto;
+            font-size: 21px;
+            line-height: 25px;
             font-weight: bold;
             color: #0083CB;
-            margin-bottom: 0;
+            text-align: center;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Signature / Seal / QR
-        |--------------------------------------------------------------------------
-        | 3-column table keeps the lower section centered in DomPDF.
-        */
-        .bottom-table {
-            width: 140mm;
-            margin: 10mm auto 0 auto;
-            border-collapse: collapse;
+        .auth-row {
+            position: absolute;
+            left: 24mm;
+            top: 136mm;
+            width: 249mm;
+            display: table;
             table-layout: fixed;
         }
 
-        .bottom-table td {
+        .auth-cell {
+            display: table-cell;
             width: 33.333%;
-            vertical-align: bottom;
             text-align: center;
+            vertical-align: middle;
+        }
+
+        .signature-block,
+        .seal-block,
+        .qr-block {
+            width: 82mm;
+            min-height: 31mm;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .signature-img {
+            max-width: 40mm;
+            max-height: 14mm;
+            border: 0;
+            margin-bottom: 1.3mm;
         }
 
         .signature-fallback {
             font-family: DejaVu Serif, serif;
             font-style: italic;
             font-size: 22px;
+            height: 14mm;
+            line-height: 14mm;
             color: #0E3D4F;
-            height: 16mm;
-            line-height: 16mm;
-        }
-
-        .signature-img {
-            max-width: 40mm;
-            max-height: 16mm;
+            margin-bottom: 1.3mm;
         }
 
         .signature-line {
             border-top: 1px solid #94A3B8;
-            width: 42mm;
-            margin: 1mm auto 0 auto;
+            width: 43mm;
+            margin: 0 auto;
             padding-top: 3mm;
         }
 
         .signature-name {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: bold;
-            color: #0E3D4F;
             text-transform: uppercase;
+            color: #0E3D4F;
         }
 
         .signature-title {
-            font-size: 7px;
+            font-size: 6px;
             letter-spacing: 1.2px;
             text-transform: uppercase;
             color: #6B7280;
             margin-top: 1.2mm;
         }
 
-        .seal-img {
-            width: 30mm;
-            opacity: 0.075;
-            margin-bottom: 7mm;
-        }
-
-        .qr-box {
-            display: inline-block;
-            border: 1px solid #E5E7EB;
-            padding: 2mm;
-            background: #ffffff;
-        }
-
-        .qr-img {
-            width: 24mm;
-            height: 24mm;
-        }
-
-        .qr-title {
-            font-size: 7px;
-            font-weight: bold;
-            color: #0E3D4F;
-            margin-top: 2mm;
-            text-transform: uppercase;
-        }
-
-        .verify-url {
-            font-size: 3.6px;
-            color: #9CA3AF;
-            margin-top: 1mm;
-            line-height: 5px;
-            word-break: break-all;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Bottom Details
-        |--------------------------------------------------------------------------
-        */
-        .meta {
-            width: 140mm;
-            margin: 10mm auto 0 auto;
-            border-top: 1px solid #E5E7EB;
-            padding-top: 4mm;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .meta td {
-            width: 33.333%;
-            vertical-align: top;
-            padding: 0 1mm;
-            overflow-wrap: break-word;
-            word-wrap: break-word;
-        }
-
-        .meta td:nth-child(1) {
-            text-align: left;
-        }
-
-        .meta td:nth-child(2) {
+        .seal-cell {
+            vertical-align: middle;
             text-align: center;
         }
 
-        .meta td:nth-child(3) {
+        .seal-img {
+            width: 31mm;
+            opacity: 0.22;
+            margin: 0 auto;
+            border: 0;
+        }
+
+      .qr-block {
+    width: 82mm;
+    margin: -2mm auto 0 auto;
+    text-align: center;
+}
+
+     .qr-box {
+    display: inline-block;
+    width: 26mm;
+    height: 26mm;
+    border: 1px solid #E5E7EB;
+    padding: 1.5mm;
+    background: #ffffff;
+    border-radius: 2.5mm;
+    text-align: center;
+}
+
+     .qr-img {
+    width: 23mm;
+    height: 23mm;
+    display: block;
+    border: 0;
+}
+
+       .qr-svg {
+    width: 23mm;
+    height: 23mm;
+    display: block;
+}
+
+      .qr-svg svg {
+    width: 23mm;
+    height: 23mm;
+    display: block;
+}
+
+   .qr-title {
+    font-size: 7px;
+    font-weight: bold;
+    margin-top: 2.2mm;
+    text-transform: uppercase;
+    color: #0E3D4F;
+}
+
+        .verify-url {
+            display: none !important;
+        }
+
+        .meta {
+            position: absolute;
+            left: 24mm;
+            top: 181mm;
+            width: 249mm;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 4mm;
+            display: table;
+            table-layout: fixed;
+        }
+
+        .meta-cell {
+            display: table-cell;
+            width: 33.333%;
+            vertical-align: top;
+        }
+
+        .meta-left {
+            text-align: left;
+        }
+
+        .meta-center {
+            text-align: center;
+        }
+
+        .meta-right {
             text-align: right;
         }
 
@@ -308,7 +372,6 @@
             font-size: 8px;
             font-weight: bold;
             color: #0E3D4F;
-            white-space: normal;
         }
 
         .valid {
@@ -318,13 +381,11 @@
 </head>
 
 <body>
-
 @php
     $issuedDate = $certificate->issued_at ?? $certificate->created_at;
     $issuedFormatted = \Carbon\Carbon::parse($issuedDate)->format('d M Y');
 
     $verifyUrl = route('certificates.verify', $certificate->certificate_number);
-    $qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($verifyUrl);
 
     $logoPath = public_path('logo.png');
     $signaturePath = public_path('signature.png');
@@ -337,150 +398,137 @@
         ? 'data:image/png;base64,' . base64_encode(file_get_contents($signaturePath))
         : '';
 
-    $hasLogo = $logoSrc !== '';
-    $hasSignature = $signatureSrc !== '';
+    $qrSvg = null;
+
+    if (class_exists(\SimpleSoftwareIO\QrCode\Facades\QrCode::class)) {
+        try {
+            $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+                ->size(150)
+                ->margin(1)
+                ->generate($verifyUrl);
+        } catch (\Throwable $e) {
+            $qrSvg = null;
+        }
+    }
+
+    $fallbackQrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($verifyUrl);
 @endphp
 
 <div class="certificate">
 
-    {{-- HEADER --}}
     <div class="top-header">
         <div class="circle-left"></div>
         <div class="circle-right"></div>
 
         <div class="header-content">
             <div class="logo-wrap">
-                @if($hasLogo)
-                    <img src="{{ $logoSrc }}" class="logo" alt="">
+                @if($logoSrc)
+                    <img src="{{ $logoSrc }}" class="logo" alt="Uzima Milele Ministry">
                 @endif
             </div>
 
-            <div class="ministry">
-                Uzima Milele Ministry
+            <div class="ministry">Uzima Milele Ministry</div>
+            <div class="website">www.uzimamilele.or.tz</div>
+
+            <div class="title-wrap">
+                <table class="cert-title-table">
+                    <tr>
+                        <td>C</td>
+                        <td>E</td>
+                        <td>R</td>
+                        <td>T</td>
+                        <td>I</td>
+                        <td>F</td>
+                        <td>I</td>
+                        <td>C</td>
+                        <td>A</td>
+                        <td>T</td>
+                        <td>E</td>
+                    </tr>
+                </table>
             </div>
 
-            <div class="website">
-                www.uzimamilele.or.tz
-            </div>
+            <div class="subtitle">OF COMPLETION</div>
+        </div>
+    </div>
 
-            <div class="title">
-                Certificate
-            </div>
+    <div class="main-body">
+        <div class="presented">
+            This certificate is proudly presented to
+        </div>
 
-            <div class="subtitle">
-                of Completion
+        <div class="student-name">
+            {{ $certificate->user->name }}
+        </div>
+
+        <div class="gold-line"></div>
+
+        <div class="completion-text">
+            For successfully completing the Bible lesson program offered by
+            <strong>Uzima Milele Ministry</strong>.
+        </div>
+
+        <div class="lesson-title">
+            {{ $certificate->lesson->title }}
+        </div>
+    </div>
+
+    <div class="auth-row">
+        <div class="auth-cell">
+            <div class="signature-block">
+                @if($signatureSrc)
+                    <img src="{{ $signatureSrc }}" class="signature-img" alt="Signature">
+                @else
+                    <div class="signature-fallback">Phillip Bisanda</div>
+                @endif
+
+                <div class="signature-line">
+                    <div class="signature-name">Phillip Bisanda</div>
+                    <div class="signature-title">Executive Director</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-cell seal-cell">
+            <div class="seal-block">
+                @if($logoSrc)
+                    <img src="{{ $logoSrc }}" class="seal-img" alt="Uzima Milele Ministry Seal">
+                @endif
+            </div>
+        </div>
+
+        <div class="auth-cell">
+            <div class="qr-block">
+                <div class="qr-box">
+                    @if($qrSvg)
+                        <div class="qr-svg">{!! $qrSvg !!}</div>
+                    @else
+                        <img src="{{ $fallbackQrSrc }}" class="qr-img" alt="Certificate QR Code">
+                    @endif
+                </div>
+
+                <div class="qr-title">Scan to Verify</div>
             </div>
         </div>
     </div>
 
-    {{-- BODY --}}
-    <div class="body">
-        <div class="content">
+    <div class="meta">
+        <div class="meta-cell meta-left">
+            <div class="meta-label">Certificate No</div>
+            <div class="meta-value">{{ $certificate->certificate_number }}</div>
+        </div>
 
-            <div class="presented">
-                This certificate is proudly presented to
-            </div>
+        <div class="meta-cell meta-center">
+            <div class="meta-label">Issued Date</div>
+            <div class="meta-value">{{ $issuedFormatted }}</div>
+        </div>
 
-            <div class="student-name">
-                {{ $certificate->user->name }}
-            </div>
-
-            <div class="gold-line"></div>
-
-            <div class="completion-text">
-                For successfully completing the Bible lesson program offered by
-                <strong>Uzima Milele Ministry</strong>.
-            </div>
-
-            <div class="lesson-title">
-                {{ $certificate->lesson->title }}
-            </div>
-
-            {{-- SIGNATURE / SEAL / QR --}}
-            <table class="bottom-table">
-                <tr>
-                    {{-- SIGNATURE --}}
-                    <td>
-                        @if($hasSignature)
-                            <img src="{{ $signatureSrc }}" class="signature-img" alt="">
-                        @else
-                            <div class="signature-fallback">Phillip Bisanda</div>
-                        @endif
-
-                        <div class="signature-line">
-                            <div class="signature-name">
-                                Phillip Bisanda
-                            </div>
-
-                            <div class="signature-title">
-                                Executive Director
-                            </div>
-                        </div>
-                    </td>
-
-                    {{-- CENTER SEAL --}}
-                    <td>
-                        @if($hasLogo)
-                            <img src="{{ $logoSrc }}" class="seal-img" alt="">
-                        @endif
-                    </td>
-
-                    {{-- QR CODE --}}
-                    <td>
-                        <div class="qr-box">
-                            <img src="{{ $qrImageUrl }}" class="qr-img" alt="">
-                        </div>
-
-                        <div class="qr-title">
-                            Scan to Verify
-                        </div>
-
-                        <div class="verify-url">
-                            {{ $verifyUrl }}
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
-            {{-- DETAILS --}}
-            <table class="meta">
-                <tr>
-                    <td>
-                        <div class="meta-label">
-                            Certificate No
-                        </div>
-
-                        <div class="meta-value">
-                            {{ $certificate->certificate_number }}
-                        </div>
-                    </td>
-
-                    <td>
-                        <div class="meta-label">
-                            Issued Date
-                        </div>
-
-                        <div class="meta-value">
-                            {{ $issuedFormatted }}
-                        </div>
-                    </td>
-
-                    <td>
-                        <div class="meta-label">
-                            Verification
-                        </div>
-
-                        <div class="meta-value valid">
-                            Valid Certificate
-                        </div>
-                    </td>
-                </tr>
-            </table>
-
+        <div class="meta-cell meta-right">
+            <div class="meta-label">Verification</div>
+            <div class="meta-value valid">Valid Certificate</div>
         </div>
     </div>
 
 </div>
-
 </body>
 </html>

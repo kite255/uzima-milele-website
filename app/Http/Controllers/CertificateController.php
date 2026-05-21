@@ -24,11 +24,6 @@ class CertificateController extends Controller
 
         abort_if(! $lesson->is_published, 404);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Rule 1: Student must be enrolled
-        |--------------------------------------------------------------------------
-        */
         $isEnrolled = $lesson->enrollments()
             ->where('user_id', $user->id)
             ->exists();
@@ -39,11 +34,6 @@ class CertificateController extends Controller
                 ->with('error', 'Tafadhali jiunge na somo hili kwanza kabla ya kutengeneza cheti.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Rule 2: Student must complete all published topics
-        |--------------------------------------------------------------------------
-        */
         $lesson->load([
             'modules' => fn ($query) => $query
                 ->where('is_published', true)
@@ -71,11 +61,6 @@ class CertificateController extends Controller
             return back()->with('error', 'Tafadhali kamilisha mada zote kabla ya kutengeneza cheti.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Rule 3: If final quiz exists and is required, student must pass it
-        |--------------------------------------------------------------------------
-        */
         $finalQuiz = $lesson->finalQuiz()
             ->where('is_published', true)
             ->first();
@@ -91,11 +76,6 @@ class CertificateController extends Controller
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Rule 4: Issue certificate once only
-        |--------------------------------------------------------------------------
-        */
         $certificate = Certificate::firstOrCreate(
             [
                 'user_id' => $user->id,
@@ -139,14 +119,38 @@ class CertificateController extends Controller
 
         abort_if($certificate->user_id !== auth()->id(), 403);
 
-        $pdf = Pdf::loadView('certificates.pdf', compact('certificate'))
+        $pdf = Pdf::loadView('certificates.pdf', [
+                'certificate' => $certificate,
+            ])
             ->setPaper('a4', 'landscape')
             ->setOptions([
                 'isRemoteEnabled' => true,
                 'isHtml5ParserEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+                'dpi' => 96,
             ]);
 
         return $pdf->download($certificate->certificate_number . '.pdf');
+    }
+
+    public function printPreview(string $certificateNumber)
+    {
+        $certificate = Certificate::with(['user', 'lesson'])
+            ->where('certificate_number', $certificateNumber)
+            ->firstOrFail();
+
+        abort_if($certificate->user_id !== auth()->id(), 403);
+
+        return view('certificates.pdf', compact('certificate'));
+    }
+
+    public function verify(string $certificateNumber)
+    {
+        $certificate = Certificate::with(['user', 'lesson'])
+            ->where('certificate_number', $certificateNumber)
+            ->firstOrFail();
+
+        return view('certificates.verify', compact('certificate'));
     }
 
     private function generateCertificateNumber(): string

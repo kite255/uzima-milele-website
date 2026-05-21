@@ -24,6 +24,8 @@
             $qrCodeHtml = null;
         }
     }
+
+    $fallbackQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' . urlencode($verifyUrl);
 @endphp
 
 <div class="min-h-screen bg-slate-100 py-8 px-4">
@@ -53,12 +55,14 @@
     </div>
 
     <div class="max-w-6xl mx-auto overflow-x-auto">
-        <div class="certificate-preview mx-auto bg-white relative overflow-hidden shadow-2xl">
+        <div class="certificate-preview mx-auto bg-white shadow-2xl">
+
+            {{-- Header --}}
             <div class="top-header">
                 <div class="circle-left"></div>
                 <div class="circle-right"></div>
 
-                <div class="relative z-10">
+                <div class="header-content">
                     <div class="logo-wrap">
                         <img src="{{ $logoUrl }}" class="logo" alt="Uzima Milele Ministry">
                     </div>
@@ -71,7 +75,8 @@
                 </div>
             </div>
 
-            <div class="body-section">
+            {{-- Main Body --}}
+            <div class="certificate-body">
                 <div class="presented">
                     This certificate is proudly presented to
                 </div>
@@ -92,7 +97,8 @@
                 </div>
             </div>
 
-            <div class="bottom-section">
+            {{-- Signature / Seal / QR --}}
+            <div class="certificate-auth-row">
                 <div class="signature-block">
                     <img
                         src="{{ $signatureUrl }}"
@@ -106,13 +112,8 @@
                     </div>
 
                     <div class="signature-line">
-                        <div class="signature-name">
-                            Phillip Bisanda
-                        </div>
-
-                        <div class="signature-title">
-                            Executive Director
-                        </div>
+                        <div class="signature-name">Phillip Bisanda</div>
+                        <div class="signature-title">Executive Director</div>
                     </div>
                 </div>
 
@@ -125,36 +126,36 @@
                         @if($qrCodeHtml)
                             {!! $qrCodeHtml !!}
                         @else
-                            <img
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ urlencode($verifyUrl) }}"
-                                class="qr-img"
-                                alt="Certificate QR Code"
-                            >
+                            <img src="{{ $fallbackQrUrl }}" class="qr-img" alt="Certificate QR Code">
                         @endif
                     </div>
 
-                    <div class="qr-title">
-                        Scan to Verify
+                    <div class="qr-title">Scan to Verify</div>
+
+                    <div class="verify-url">
+                        {{ $verifyUrl }}
                     </div>
                 </div>
             </div>
 
-            <div class="meta">
-                <div>
+            {{-- Bottom Meta --}}
+            <div class="certificate-meta">
+                <div class="meta-item text-left">
                     <div class="meta-label">Certificate No</div>
                     <div class="meta-value">{{ $certificate->certificate_number }}</div>
                 </div>
 
-                <div>
+                <div class="meta-item text-center">
                     <div class="meta-label">Issued Date</div>
                     <div class="meta-value">{{ $issuedFormatted }}</div>
                 </div>
 
-                <div>
+                <div class="meta-item text-right">
                     <div class="meta-label">Verification</div>
                     <div class="meta-value valid">Valid Certificate</div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -165,16 +166,24 @@
         height: 794px;
         color: #0E3D4F;
         font-family: Arial, sans-serif;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: 235px 190px 215px 154px;
+        background: #ffffff;
     }
 
     .top-header {
-        height: 235px;
         background: #0083CB;
         color: #ffffff;
         position: relative;
         text-align: center;
-        padding-top: 24px;
         overflow: hidden;
+        padding-top: 24px;
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 5;
     }
 
     .circle-left,
@@ -187,8 +196,8 @@
     .circle-left {
         width: 284px;
         height: 284px;
-        left: -90px;
-        top: -118px;
+        left: -88px;
+        top: -116px;
     }
 
     .circle-right {
@@ -235,7 +244,6 @@
         font-weight: 800;
         letter-spacing: 18px;
         text-transform: uppercase;
-        text-align: center;
     }
 
     .subtitle {
@@ -243,23 +251,17 @@
         font-size: 11px;
         letter-spacing: 10px;
         text-transform: uppercase;
-        text-align: center;
     }
 
-    .body-section {
-        position: absolute;
-        top: 255px;
-        left: 90px;
-        right: 90px;
+    .certificate-body {
         text-align: center;
-        padding: 0;
+        padding: 13px 90px 0;
     }
 
     .presented {
         font-size: 12px;
         color: #6B7280;
         margin-bottom: 9px;
-        text-align: center;
     }
 
     .student-name {
@@ -270,85 +272,75 @@
         font-weight: 700;
         color: #0E3D4F;
         margin-bottom: 9px;
-        text-align: center;
     }
 
     .gold-line {
         width: 144px;
         height: 5px;
         background: #F4B122;
-        margin: 0 auto 17px;
+        margin: 0 auto 16px;
     }
 
     .completion-text {
         font-size: 12px;
         color: #374151;
-        margin-bottom: 14px;
-        text-align: center;
+        margin-bottom: 13px;
     }
 
     .lesson-title {
-        max-width: 760px;
+        max-width: 800px;
         margin: 0 auto;
         font-size: 25px;
         line-height: 31px;
         font-weight: 800;
         color: #0083CB;
-        text-align: center;
     }
 
-    .bottom-section {
-        position: absolute;
-        left: 90px;
-        right: 90px;
-        top: 522px;
+    .certificate-auth-row {
+        padding: 18px 90px 0;
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-        align-items: center;
-        gap: 30px;
-    }
-
-    .bottom-section > div {
-        text-align: center;
+        align-items: end;
+        column-gap: 30px;
     }
 
     .signature-block,
     .seal-block,
     .qr-block {
-        min-height: 118px;
+        height: 165px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-end;
+        text-align: center;
     }
 
     .signature-img {
-        max-width: 140px;
-        max-height: 50px;
+        max-width: 155px;
+        max-height: 62px;
         object-fit: contain;
-        margin-bottom: 5px;
     }
 
     .signature-fallback {
         font-family: Georgia, "Times New Roman", serif;
         font-style: italic;
         font-size: 22px;
-        height: 50px;
-        line-height: 50px;
-        margin-bottom: 5px;
+        height: 62px;
+        line-height: 62px;
     }
 
     .signature-line {
         border-top: 1px solid #94A3B8;
-        width: 150px;
-        margin: 0 auto;
-        padding-top: 11px;
+        width: 310px;
+        margin: 5px auto 0;
+        padding-top: 10px;
     }
 
     .signature-name {
         font-size: 9px;
         font-weight: 800;
         text-transform: uppercase;
+        color: #0E3D4F;
     }
 
     .signature-title {
@@ -360,32 +352,27 @@
     }
 
     .seal-img {
-        width: 112px;
-        opacity: 0.20;
-        margin: 0;
+        width: 105px;
+        opacity: 0.09;
+        margin-bottom: 42px;
     }
 
     .qr-box {
-        width: 100px;
-        height: 100px;
-        display: inline-flex;
+        width: 102px;
+        height: 102px;
+        display: flex;
         align-items: center;
         justify-content: center;
         border: 1px solid #E5E7EB;
-        padding: 5px;
+        padding: 7px;
         background: #ffffff;
         border-radius: 12px;
     }
 
-    .qr-box svg {
-        width: 90px;
-        height: 90px;
-        display: block;
-    }
-
+    .qr-box svg,
     .qr-img {
-        width: 90px;
-        height: 90px;
+        width: 86px;
+        height: 86px;
         display: block;
     }
 
@@ -397,27 +384,22 @@
         color: #0E3D4F;
     }
 
-    .meta {
-        position: absolute;
-        left: 90px;
-        right: 90px;
-        bottom: 45px;
+    .verify-url {
+        width: 210px;
+        margin: 4px auto 0;
+        font-size: 4px;
+        color: #9CA3AF;
+        line-height: 6px;
+        word-break: break-all;
+    }
+
+    .certificate-meta {
+        margin: 0 90px;
         border-top: 1px solid #E5E7EB;
         padding-top: 15px;
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    .meta > div:nth-child(1) {
-        text-align: left;
-    }
-
-    .meta > div:nth-child(2) {
-        text-align: center;
-    }
-
-    .meta > div:nth-child(3) {
-        text-align: right;
+        align-content: start;
     }
 
     .meta-label {
