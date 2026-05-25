@@ -18,7 +18,6 @@ class SocialAuthController extends Controller
         $this->storeRedirectUrl($request);
 
         return Socialite::driver('google')
-            ->stateless()
             ->with([
                 'prompt' => 'select_account',
             ])
@@ -28,6 +27,21 @@ class SocialAuthController extends Controller
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
         try {
+            if ($request->filled('error')) {
+                Log::warning('Google login returned an OAuth error.', [
+                    'error' => $request->query('error'),
+                    'error_description' => $request->query('error_description'),
+                    'query' => $request->query(),
+                    'full_url' => $request->fullUrl(),
+                ]);
+
+                return redirect()
+                    ->route('login')
+                    ->withErrors([
+                        'email' => 'Google login haijakamilika. Tafadhali jaribu tena.',
+                    ]);
+            }
+
             if (! $request->filled('code')) {
                 Log::warning('Google callback reached without authorization code.', [
                     'query' => $request->query(),
@@ -46,9 +60,7 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $socialUser = Socialite::driver('google')
-                ->stateless()
-                ->user();
+            $socialUser = Socialite::driver('google')->user();
 
             $email = $socialUser->getEmail();
 
