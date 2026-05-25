@@ -18,6 +18,7 @@ class SocialAuthController extends Controller
         $this->storeRedirectUrl($request);
 
         return Socialite::driver('google')
+            ->stateless()
             ->with([
                 'prompt' => 'select_account',
             ])
@@ -46,11 +47,7 @@ class SocialAuthController extends Controller
                 Log::warning('Google callback reached without authorization code.', [
                     'query' => $request->query(),
                     'full_url' => $request->fullUrl(),
-                    'google_config' => [
-                        'client_id_exists' => filled(config('services.google.client_id')),
-                        'client_secret_exists' => filled(config('services.google.client_secret')),
-                        'redirect' => config('services.google.redirect'),
-                    ],
+                    'google_config' => $this->googleConfigStatus(),
                 ]);
 
                 return redirect()
@@ -60,9 +57,11 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $socialUser = Socialite::driver('google')->user();
+            $socialUser = Socialite::driver('google')
+                ->stateless()
+                ->user();
 
-            $email = $socialUser->getEmail();
+            $email = strtolower((string) $socialUser->getEmail());
 
             if (! $email) {
                 Log::warning('Google login failed because email was missing.', [
@@ -77,43 +76,27 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $user = User::where('email', strtolower($email))->first();
-
-            if ($user) {
-                $user->update([
-                    'name' => $user->name ?: ($socialUser->getName() ?? $socialUser->getNickname() ?? 'Google User'),
-                    'google_id' => $socialUser->getId(),
-                    'avatar' => $socialUser->getAvatar(),
-                    'email_verified_at' => $user->email_verified_at ?: now(),
-                ]);
-            } else {
-                $user = User::create([
-                    'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'Google User',
-                    'email' => strtolower($email),
-                    'google_id' => $socialUser->getId(),
-                    'avatar' => $socialUser->getAvatar(),
-                    'password' => Hash::make(Str::random(32)),
-                    'role' => 'student',
-                    'email_verified_at' => now(),
-                ]);
-            }
+            $user = $this->findOrCreateSocialUser(
+                provider: 'google',
+                providerId: $socialUser->getId(),
+                name: $socialUser->getName() ?: $socialUser->getNickname() ?: 'Google User',
+                email: $email,
+                avatar: $socialUser->getAvatar(),
+            );
 
             Auth::login($user, true);
+            $request->session()->regenerate();
 
             return $this->redirectAfterSocialLogin($user);
         } catch (\Throwable $e) {
             Log::error('Google login failed.', [
                 'message' => $e->getMessage(),
+                'class' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
                 'query' => $request->query(),
                 'full_url' => $request->fullUrl(),
-                'google_config' => [
-                    'client_id_exists' => filled(config('services.google.client_id')),
-                    'client_secret_exists' => filled(config('services.google.client_secret')),
-                    'redirect' => config('services.google.redirect'),
-                ],
+                'google_config' => $this->googleConfigStatus(),
             ]);
 
             return redirect()
@@ -136,15 +119,26 @@ class SocialAuthController extends Controller
     public function handleFacebookCallback(Request $request): RedirectResponse
     {
         try {
+            if ($request->filled('error')) {
+                Log::warning('Facebook login returned an OAuth error.', [
+                    'error' => $request->query('error'),
+                    'error_description' => $request->query('error_description'),
+                    'query' => $request->query(),
+                    'full_url' => $request->fullUrl(),
+                ]);
+
+                return redirect()
+                    ->route('login')
+                    ->withErrors([
+                        'email' => 'Facebook login haijakamilika. Tafadhali jaribu tena.',
+                    ]);
+            }
+
             if (! $request->filled('code')) {
                 Log::warning('Facebook callback reached without authorization code.', [
                     'query' => $request->query(),
                     'full_url' => $request->fullUrl(),
-                    'facebook_config' => [
-                        'client_id_exists' => filled(config('services.facebook.client_id')),
-                        'client_secret_exists' => filled(config('services.facebook.client_secret')),
-                        'redirect' => config('services.facebook.redirect'),
-                    ],
+                    'facebook_config' => $this->facebookConfigStatus(),
                 ]);
 
                 return redirect()
@@ -158,7 +152,7 @@ class SocialAuthController extends Controller
                 ->stateless()
                 ->user();
 
-            $email = $socialUser->getEmail();
+            $email = strtolower((string) $socialUser->getEmail());
 
             if (! $email) {
                 Log::warning('Facebook login failed because email was missing.', [
@@ -173,43 +167,27 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $user = User::where('email', strtolower($email))->first();
-
-            if ($user) {
-                $user->update([
-                    'name' => $user->name ?: ($socialUser->getName() ?? $socialUser->getNickname() ?? 'Facebook User'),
-                    'facebook_id' => $socialUser->getId(),
-                    'avatar' => $socialUser->getAvatar(),
-                    'email_verified_at' => $user->email_verified_at ?: now(),
-                ]);
-            } else {
-                $user = User::create([
-                    'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'Facebook User',
-                    'email' => strtolower($email),
-                    'facebook_id' => $socialUser->getId(),
-                    'avatar' => $socialUser->getAvatar(),
-                    'password' => Hash::make(Str::random(32)),
-                    'role' => 'student',
-                    'email_verified_at' => now(),
-                ]);
-            }
+            $user = $this->findOrCreateSocialUser(
+                provider: 'facebook',
+                providerId: $socialUser->getId(),
+                name: $socialUser->getName() ?: $socialUser->getNickname() ?: 'Facebook User',
+                email: $email,
+                avatar: $socialUser->getAvatar(),
+            );
 
             Auth::login($user, true);
+            $request->session()->regenerate();
 
             return $this->redirectAfterSocialLogin($user);
         } catch (\Throwable $e) {
             Log::error('Facebook login failed.', [
                 'message' => $e->getMessage(),
+                'class' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
                 'query' => $request->query(),
                 'full_url' => $request->fullUrl(),
-                'facebook_config' => [
-                    'client_id_exists' => filled(config('services.facebook.client_id')),
-                    'client_secret_exists' => filled(config('services.facebook.client_secret')),
-                    'redirect' => config('services.facebook.redirect'),
-                ],
+                'facebook_config' => $this->facebookConfigStatus(),
             ]);
 
             return redirect()
@@ -218,6 +196,39 @@ class SocialAuthController extends Controller
                     'email' => 'Facebook login imeshindikana. Tafadhali jaribu tena.',
                 ]);
         }
+    }
+
+    private function findOrCreateSocialUser(
+        string $provider,
+        string $providerId,
+        string $name,
+        string $email,
+        ?string $avatar = null
+    ): User {
+        $providerColumn = $provider . '_id';
+
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            $user->forceFill([
+                'name' => $user->name ?: $name,
+                $providerColumn => $providerId,
+                'avatar' => $avatar,
+                'email_verified_at' => $user->email_verified_at ?: now(),
+            ])->save();
+
+            return $user;
+        }
+
+        return User::create([
+            'name' => $name,
+            'email' => $email,
+            $providerColumn => $providerId,
+            'avatar' => $avatar,
+            'password' => Hash::make(Str::random(40)),
+            'role' => 'student',
+            'email_verified_at' => now(),
+        ]);
     }
 
     private function storeRedirectUrl(Request $request): void
@@ -260,5 +271,23 @@ class SocialAuthController extends Controller
 
         return Str::startsWith($redirect, url('/')) ||
             Str::startsWith($redirect, '/');
+    }
+
+    private function googleConfigStatus(): array
+    {
+        return [
+            'client_id_exists' => filled(config('services.google.client_id')),
+            'client_secret_exists' => filled(config('services.google.client_secret')),
+            'redirect' => config('services.google.redirect'),
+        ];
+    }
+
+    private function facebookConfigStatus(): array
+    {
+        return [
+            'client_id_exists' => filled(config('services.facebook.client_id')),
+            'client_secret_exists' => filled(config('services.facebook.client_secret')),
+            'redirect' => config('services.facebook.redirect'),
+        ];
     }
 }
