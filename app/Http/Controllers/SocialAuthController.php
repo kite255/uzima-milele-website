@@ -36,10 +36,6 @@ class SocialAuthController extends Controller
                     ],
                 ]);
 
-                if (! $request->filled('error')) {
-                    return redirect()->route('google.login');
-                }
-
                 return redirect()
                     ->route('login')
                     ->withErrors([
@@ -135,10 +131,6 @@ class SocialAuthController extends Controller
                         'redirect' => config('services.facebook.redirect'),
                     ],
                 ]);
-
-                if (! $request->filled('error')) {
-                    return redirect()->route('facebook.login');
-                }
 
                 return redirect()
                     ->route('login')
