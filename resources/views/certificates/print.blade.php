@@ -427,5 +427,5 @@
             transform-origin: top left;
         }
     }
-</style>
+</style> 
 @endsection

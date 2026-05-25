@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -31,6 +33,11 @@ class SocialAuthController extends Controller
             $email = $socialUser->getEmail();
 
             if (! $email) {
+                Log::warning('Google login failed because email was missing.', [
+                    'google_id' => $socialUser->getId(),
+                    'name' => $socialUser->getName(),
+                ]);
+
                 return redirect()
                     ->route('login')
                     ->withErrors([
@@ -38,7 +45,7 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', strtolower($email))->first();
 
             if ($user) {
                 $user->update([
@@ -62,8 +69,19 @@ class SocialAuthController extends Controller
             Auth::login($user, true);
 
             return $this->redirectAfterSocialLogin($user);
-
         } catch (\Throwable $e) {
+            Log::error('Google login failed.', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'google_config' => [
+                    'client_id_exists' => filled(config('services.google.client_id')),
+                    'client_secret_exists' => filled(config('services.google.client_secret')),
+                    'redirect' => config('services.google.redirect'),
+                ],
+            ]);
+
             return redirect()
                 ->route('login')
                 ->withErrors([
@@ -91,6 +109,11 @@ class SocialAuthController extends Controller
             $email = $socialUser->getEmail();
 
             if (! $email) {
+                Log::warning('Facebook login failed because email was missing.', [
+                    'facebook_id' => $socialUser->getId(),
+                    'name' => $socialUser->getName(),
+                ]);
+
                 return redirect()
                     ->route('login')
                     ->withErrors([
@@ -98,7 +121,7 @@ class SocialAuthController extends Controller
                     ]);
             }
 
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', strtolower($email))->first();
 
             if ($user) {
                 $user->update([
@@ -122,8 +145,19 @@ class SocialAuthController extends Controller
             Auth::login($user, true);
 
             return $this->redirectAfterSocialLogin($user);
-
         } catch (\Throwable $e) {
+            Log::error('Facebook login failed.', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'facebook_config' => [
+                    'client_id_exists' => filled(config('services.facebook.client_id')),
+                    'client_secret_exists' => filled(config('services.facebook.client_secret')),
+                    'redirect' => config('services.facebook.redirect'),
+                ],
+            ]);
+
             return redirect()
                 ->route('login')
                 ->withErrors([
