@@ -18,63 +18,58 @@
             --primary: #0083CB;
             --primary-dark: #076994;
             --navy: #0E3D4F;
-            --accent: #F4B122;
+            --muted: #64748b;
             --border: #dbe3ea;
-            --muted: #6b7280;
-            --background: #f4f9fc;
+            --bg: #eef5f8;
         }
 
-        html,
         body {
             margin: 0;
-            width: 100%;
-            min-height: 100%;
+            min-height: 100vh;
             font-family: 'Lato', sans-serif;
-            background: var(--background);
-            overflow-x: hidden;
+            background:
+                radial-gradient(circle at top left, rgba(0, 131, 203, 0.08), transparent 30%),
+                linear-gradient(135deg, #f8fbfd 0%, var(--bg) 100%);
         }
 
         .page {
             min-height: 100vh;
-            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 14px;
+            padding: 24px;
         }
 
         .card {
             width: 100%;
-            max-width: 340px;
-            background: #ffffff;
-            border-radius: 20px;
-            padding: 18px 22px;
-            box-shadow: 0 16px 40px rgba(14, 61, 79, 0.12);
+            max-width: 425px;
+            padding: 28px;
             border-top: 5px solid var(--primary);
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 18px 45px rgba(14, 61, 79, 0.12);
         }
 
         .logo {
             display: block;
-            width: auto;
-            height: 42px;
-            max-width: 140px;
+            height: 48px;
+            margin: 0 auto 10px;
             object-fit: contain;
-            margin: 0 auto 8px;
         }
 
         h1 {
             margin: 0;
-            text-align: center;
             color: var(--navy);
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 900;
+            text-align: center;
         }
 
         .subtitle {
-            margin: 5px 0 14px;
-            text-align: center;
+            margin: 8px 0 22px;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 14px;
+            text-align: center;
         }
 
         .status {
@@ -85,6 +80,13 @@
             color: #047857;
             font-size: 12px;
             font-weight: 700;
+        }
+
+        .error {
+            margin-top: 7px;
+            color: #dc2626;
+            font-size: 12px;
+            font-weight: 800;
         }
 
         .field {
@@ -102,78 +104,65 @@
         input[type="email"],
         input[type="password"] {
             width: 100%;
-            height: 40px;
+            height: 48px;
+            padding: 0 16px;
             border: 1px solid var(--border);
-            border-radius: 11px;
-            padding: 0 13px;
-            font-size: 13px;
+            border-radius: 13px;
+            color: var(--navy);
+            font-size: 15px;
             outline: none;
-            color: #111827;
-            background: #ffffff;
+            transition: 0.2s ease;
         }
 
-        input::placeholder {
-            color: #9ca3af;
-        }
-
-        input:focus {
+        input[type="email"]:focus,
+        input[type="password"]:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(0, 131, 203, 0.12);
         }
 
-        .error {
-            margin-top: 5px;
-            color: #dc2626;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
         .row {
-            margin: 0 0 13px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            margin: 12px 0 18px;
+            gap: 12px;
         }
 
         .remember {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 700;
+            gap: 8px;
             margin: 0;
-            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 900;
         }
 
         .remember input {
-            width: 14px;
-            height: 14px;
-            accent-color: var(--primary);
+            width: 17px;
+            height: 17px;
+            margin: 0;
         }
 
         .forgot {
             color: var(--primary);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 900;
             text-decoration: none;
-            white-space: nowrap;
         }
 
         .forgot:hover {
-            color: var(--primary-dark);
             text-decoration: underline;
         }
 
         .btn {
             width: 100%;
-            height: 40px;
+            height: 48px;
             border: 0;
-            border-radius: 11px;
+            border-radius: 13px;
             background: var(--primary);
             color: white;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 900;
             cursor: pointer;
             transition: 0.2s ease;
@@ -184,11 +173,11 @@
         }
 
         .register-text {
-            margin: 12px 0 0;
-            text-align: center;
+            margin: 14px 0 0;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
+            text-align: center;
         }
 
         .register-text a {
@@ -198,49 +187,46 @@
         }
 
         .register-text a:hover {
-            color: var(--primary-dark);
             text-decoration: underline;
         }
 
         .divider {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin: 13px 0 10px;
-            color: #9ca3af;
-            font-size: 12px;
-            font-weight: 700;
-            text-align: center;
+            gap: 12px;
+            margin: 20px 0 14px;
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 800;
         }
 
         .divider::before,
         .divider::after {
             content: "";
-            height: 1px;
-            background: #e5e7eb;
             flex: 1;
+            height: 1px;
+            background: #e2e8f0;
         }
 
         .socials {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
 
         .social-btn {
-            height: 38px;
-            border: 1px solid var(--border);
-            border-radius: 11px;
-            background: #ffffff;
-            color: var(--navy);
-            display: flex;
+            height: 46px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            text-decoration: none;
-            font-size: 12px;
+            gap: 10px;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            background: #ffffff;
+            color: var(--navy);
+            font-size: 14px;
             font-weight: 900;
+            text-decoration: none;
             transition: 0.2s ease;
         }
 
@@ -250,17 +236,17 @@
         }
 
         .social-btn svg {
-            width: 17px;
-            height: 17px;
+            width: 18px;
+            height: 18px;
             flex-shrink: 0;
         }
 
         .back {
             display: block;
-            margin-top: 12px;
+            margin-top: 18px;
             text-align: center;
             color: var(--navy);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 900;
             text-decoration: none;
         }
@@ -273,12 +259,12 @@
         @media (max-width: 450px) {
             .page {
                 align-items: center;
-                padding: 12px;
+                padding: 14px;
             }
 
             .card {
                 max-width: 100%;
-                padding: 20px;
+                padding: 22px;
                 border-radius: 18px;
             }
 
@@ -287,13 +273,13 @@
             }
 
             h1 {
-                font-size: 22px;
+                font-size: 23px;
             }
 
             .row {
                 align-items: flex-start;
                 flex-direction: column;
-                gap: 7px;
+                gap: 8px;
             }
 
             .socials {
@@ -334,7 +320,7 @@
             input[type="password"],
             .btn,
             .social-btn {
-                height: 36px;
+                height: 38px;
             }
 
             .divider {
@@ -349,6 +335,26 @@
 </head>
 
 <body>
+    @php
+        $redirect = request('redirect');
+
+        $googleLoginUrl = Route::has('google.login')
+            ? ($redirect ? route('google.login', ['redirect' => $redirect]) : route('google.login'))
+            : null;
+
+        $facebookLoginUrl = Route::has('facebook.login')
+            ? ($redirect ? route('facebook.login', ['redirect' => $redirect]) : route('facebook.login'))
+            : null;
+
+        $registerUrl = Route::has('register')
+            ? ($redirect ? route('register', ['redirect' => $redirect]) : route('register'))
+            : null;
+
+        $forgotPasswordUrl = Route::has('password.request')
+            ? ($redirect ? route('password.request', ['redirect' => $redirect]) : route('password.request'))
+            : null;
+    @endphp
+
     <main class="page">
         <section class="card">
             <img src="{{ asset('logo.png') }}" alt="Uzima Milele" class="logo">
@@ -368,7 +374,9 @@
             <form method="POST" action="{{ route('login') }}">
                 @csrf
 
-                <input type="hidden" name="redirect" value="{{ request('redirect') }}">
+                @if ($redirect)
+                    <input type="hidden" name="redirect" value="{{ $redirect }}">
+                @endif
 
                 <div class="field">
                     <label for="email">Email Address</label>
@@ -412,8 +420,8 @@
                         <span>Remember me</span>
                     </label>
 
-                    @if (Route::has('password.request'))
-                        <a href="{{ route('password.request', ['redirect' => request('redirect')]) }}" class="forgot">
+                    @if ($forgotPasswordUrl)
+                        <a href="{{ $forgotPasswordUrl }}" class="forgot">
                             Forgot?
                         </a>
                     @endif
@@ -423,21 +431,21 @@
                     Log In
                 </button>
 
-                @if (Route::has('register'))
+                @if ($registerUrl)
                     <p class="register-text">
                         Don’t have an account?
-                        <a href="{{ route('register', ['redirect' => request('redirect')]) }}">
+                        <a href="{{ $registerUrl }}">
                             Register
                         </a>
                     </p>
                 @endif
 
-                @if (Route::has('google.login') || Route::has('facebook.login'))
+                @if ($googleLoginUrl || $facebookLoginUrl)
                     <div class="divider">or</div>
 
                     <div class="socials">
-                        @if (Route::has('google.login'))
-                            <a href="{{ route('google.login', ['redirect' => request('redirect')]) }}" class="social-btn">
+                        @if ($googleLoginUrl)
+                            <a href="{{ $googleLoginUrl }}" class="social-btn">
                                 <svg viewBox="0 0 48 48" aria-hidden="true">
                                     <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
                                     <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
@@ -448,8 +456,8 @@
                             </a>
                         @endif
 
-                        @if (Route::has('facebook.login'))
-                            <a href="{{ route('facebook.login', ['redirect' => request('redirect')]) }}" class="social-btn">
+                        @if ($facebookLoginUrl)
+                            <a href="{{ $facebookLoginUrl }}" class="social-btn">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.438H7.078v-3.49h3.047V9.413c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97H15.83c-1.49 0-1.955.93-1.955 1.884v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/>
                                 </svg>
