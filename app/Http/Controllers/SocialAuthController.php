@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,9 +22,27 @@ class SocialAuthController extends Controller
             ->redirect();
     }
 
-    public function handleGoogleCallback(): RedirectResponse
+    public function handleGoogleCallback(Request $request): RedirectResponse
     {
         try {
+            if (! $request->filled('code')) {
+                Log::warning('Google callback reached without authorization code.', [
+                    'query' => $request->query(),
+                    'full_url' => $request->fullUrl(),
+                    'google_config' => [
+                        'client_id_exists' => filled(config('services.google.client_id')),
+                        'client_secret_exists' => filled(config('services.google.client_secret')),
+                        'redirect' => config('services.google.redirect'),
+                    ],
+                ]);
+
+                return redirect()
+                    ->route('login')
+                    ->withErrors([
+                        'email' => 'Google login haijakamilika. Tafadhali bonyeza Google tena.',
+                    ]);
+            }
+
             $socialUser = Socialite::driver('google')
                 ->stateless()
                 ->user();
@@ -75,6 +92,8 @@ class SocialAuthController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
+                'query' => $request->query(),
+                'full_url' => $request->fullUrl(),
                 'google_config' => [
                     'client_id_exists' => filled(config('services.google.client_id')),
                     'client_secret_exists' => filled(config('services.google.client_secret')),
@@ -99,9 +118,27 @@ class SocialAuthController extends Controller
             ->redirect();
     }
 
-    public function handleFacebookCallback(): RedirectResponse
+    public function handleFacebookCallback(Request $request): RedirectResponse
     {
         try {
+            if (! $request->filled('code')) {
+                Log::warning('Facebook callback reached without authorization code.', [
+                    'query' => $request->query(),
+                    'full_url' => $request->fullUrl(),
+                    'facebook_config' => [
+                        'client_id_exists' => filled(config('services.facebook.client_id')),
+                        'client_secret_exists' => filled(config('services.facebook.client_secret')),
+                        'redirect' => config('services.facebook.redirect'),
+                    ],
+                ]);
+
+                return redirect()
+                    ->route('login')
+                    ->withErrors([
+                        'email' => 'Facebook login haijakamilika. Tafadhali bonyeza Facebook tena.',
+                    ]);
+            }
+
             $socialUser = Socialite::driver('facebook')
                 ->stateless()
                 ->user();
@@ -151,6 +188,8 @@ class SocialAuthController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
+                'query' => $request->query(),
+                'full_url' => $request->fullUrl(),
                 'facebook_config' => [
                     'client_id_exists' => filled(config('services.facebook.client_id')),
                     'client_secret_exists' => filled(config('services.facebook.client_secret')),
