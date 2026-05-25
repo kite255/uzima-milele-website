@@ -29,10 +29,9 @@ class SocialAuthController extends Controller
     {
         try {
             if ($request->filled('error')) {
-                Log::warning('Google login returned an OAuth error.', [
+                Log::warning('Google login returned OAuth error.', [
                     'error' => $request->query('error'),
                     'error_description' => $request->query('error_description'),
-                    'query' => $request->query(),
                     'full_url' => $request->fullUrl(),
                 ]);
 
@@ -78,7 +77,7 @@ class SocialAuthController extends Controller
 
             $user = $this->findOrCreateSocialUser(
                 provider: 'google',
-                providerId: $socialUser->getId(),
+                providerId: (string) $socialUser->getId(),
                 name: $socialUser->getName() ?: $socialUser->getNickname() ?: 'Google User',
                 email: $email,
                 avatar: $socialUser->getAvatar(),
@@ -86,6 +85,12 @@ class SocialAuthController extends Controller
 
             Auth::login($user, true);
             $request->session()->regenerate();
+
+            Log::info('Google login successful.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]);
 
             return $this->redirectAfterSocialLogin($user);
         } catch (\Throwable $e) {
@@ -120,10 +125,9 @@ class SocialAuthController extends Controller
     {
         try {
             if ($request->filled('error')) {
-                Log::warning('Facebook login returned an OAuth error.', [
+                Log::warning('Facebook login returned OAuth error.', [
                     'error' => $request->query('error'),
                     'error_description' => $request->query('error_description'),
-                    'query' => $request->query(),
                     'full_url' => $request->fullUrl(),
                 ]);
 
@@ -169,7 +173,7 @@ class SocialAuthController extends Controller
 
             $user = $this->findOrCreateSocialUser(
                 provider: 'facebook',
-                providerId: $socialUser->getId(),
+                providerId: (string) $socialUser->getId(),
                 name: $socialUser->getName() ?: $socialUser->getNickname() ?: 'Facebook User',
                 email: $email,
                 avatar: $socialUser->getAvatar(),
@@ -177,6 +181,12 @@ class SocialAuthController extends Controller
 
             Auth::login($user, true);
             $request->session()->regenerate();
+
+            Log::info('Facebook login successful.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]);
 
             return $this->redirectAfterSocialLogin($user);
         } catch (\Throwable $e) {
@@ -205,15 +215,19 @@ class SocialAuthController extends Controller
         string $email,
         ?string $avatar = null
     ): User {
-        $providerColumn = $provider . '_id';
+        $providerColumn = $provider.'_id';
 
-        $user = User::where('email', $email)->first();
+        $user = User::query()
+            ->where($providerColumn, $providerId)
+            ->orWhere('email', $email)
+            ->first();
 
         if ($user) {
             $user->forceFill([
                 'name' => $user->name ?: $name,
+                'email' => $user->email ?: $email,
                 $providerColumn => $providerId,
-                'avatar' => $avatar,
+                'avatar' => $avatar ?: $user->avatar,
                 'email_verified_at' => $user->email_verified_at ?: now(),
             ])->save();
 
@@ -237,7 +251,7 @@ class SocialAuthController extends Controller
             return;
         }
 
-        $redirect = $request->query('redirect');
+        $redirect = (string) $request->query('redirect');
 
         if ($this->isSafeRedirect($redirect)) {
             session(['social_auth_redirect' => $redirect]);
@@ -254,6 +268,10 @@ class SocialAuthController extends Controller
 
         if ($user->role === 'admin') {
             return redirect('/admin');
+        }
+
+        if ($user->role === 'instructor') {
+            return redirect()->route('instructor.dashboard');
         }
 
         return redirect()->route('student.dashboard');

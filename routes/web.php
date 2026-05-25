@@ -16,6 +16,7 @@ use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TestimonialController;
 use App\Http\Controllers\WatotoController;
+use App\Models\Certificate;
 use App\Models\Devotion;
 use Illuminate\Support\Facades\Route;
 
@@ -41,15 +42,23 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 | Social Login
 |--------------------------------------------------------------------------
+| Google flow:
+| 1. /auth/google sends user to Google
+| 2. /auth/google/callback receives Google response
+| 3. SocialAuthController logs user in
+| 4. User is redirected to /dashboard, /admin, or student dashboard
+|--------------------------------------------------------------------------
 */
-Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])
-    ->name('google.login');
+Route::middleware('guest')->group(function () {
+    Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])
+        ->name('google.login');
+
+    Route::get('/auth/facebook', [SocialAuthController::class, 'redirectToFacebook'])
+        ->name('facebook.login');
+});
 
 Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])
     ->name('google.callback');
-
-Route::get('/auth/facebook', [SocialAuthController::class, 'redirectToFacebook'])
-    ->name('facebook.login');
 
 Route::get('/auth/facebook/callback', [SocialAuthController::class, 'handleFacebookCallback'])
     ->name('facebook.callback');
@@ -61,6 +70,10 @@ Route::get('/auth/facebook/callback', [SocialAuthController::class, 'handleFaceb
 */
 Route::get('/dashboard', function () {
     $user = auth()->user();
+
+    if (! $user) {
+        return redirect()->route('google.login');
+    }
 
     if ($user->role === 'admin') {
         return redirect('/admin');
@@ -100,8 +113,6 @@ Route::post('/ushuhuda', [TestimonialController::class, 'store'])
 |--------------------------------------------------------------------------
 | Public Certificate Verification
 |--------------------------------------------------------------------------
-| This route must remain public because QR codes open this page without login.
-|--------------------------------------------------------------------------
 */
 Route::get('/certificates/verify/{certificateNumber}', [CertificateController::class, 'verify'])
     ->name('certificates.verify');
@@ -112,22 +123,12 @@ Route::get('/certificates/verify/{certificateNumber}', [CertificateController::c
 |--------------------------------------------------------------------------
 */
 Route::prefix('lessons')->name('lessons.')->group(function () {
-    /*
-    |--------------------------------------------------------------------------
-    | Public Lesson Pages
-    |--------------------------------------------------------------------------
-    */
     Route::get('/', [LessonController::class, 'index'])
         ->name('index');
 
     Route::get('/{lesson:slug}', [LessonController::class, 'show'])
         ->name('show');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Authenticated Lesson Learning Pages
-    |--------------------------------------------------------------------------
-    */
     Route::middleware(['auth'])->group(function () {
         Route::get('/{lesson:slug}/learn', [LessonController::class, 'learn'])
             ->name('learn');
@@ -144,11 +145,6 @@ Route::prefix('lessons')->name('lessons.')->group(function () {
         Route::patch('/{lesson:slug}/schedule', [LessonController::class, 'resetSchedule'])
             ->name('schedule.reset');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Student Topic Reading Flow
-        |--------------------------------------------------------------------------
-        */
         Route::get('/{lesson:slug}/topics/{topic:slug}', [LessonTopicController::class, 'show'])
             ->name('topics.show');
 
@@ -261,15 +257,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/certificates/{certificateNumber}/download', [CertificateController::class, 'download'])
         ->name('certificates.download');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Certificate Print Preview
-    |--------------------------------------------------------------------------
-    | Use this only for testing the Browsershot print view in browser.
-    |--------------------------------------------------------------------------
-    */
     Route::get('/certificates/{certificateNumber}/print-preview', function (string $certificateNumber) {
-        $certificate = \App\Models\Certificate::with(['user', 'lesson'])
+        $certificate = Certificate::with(['user', 'lesson'])
             ->where('certificate_number', $certificateNumber)
             ->firstOrFail();
 
