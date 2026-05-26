@@ -21,19 +21,4 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-// =========================================================================
-// SULUHISHO LA GOOGLE CALLBACK (SULUHISHO LA NYA/PROXY LOSS)
-// =========================================================================
-// Angalia kama URL ina 'auth/google/callback' na kama seva ilipoteza query parameters njiani
-if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'auth/google/callback') !== false) {
-    $urlParts = explode('?', $_SERVER['REQUEST_URI']);
-    if (isset($urlParts[1]) && !empty($urlParts[1])) {
-        // Hapa tunalazimisha PHP isome vigezo kama 'code' kutoka kwenye REQUEST_URI halisi ya kivinjari
-        $_SERVER['QUERY_STRING'] = $urlParts[1];
-        parse_str($urlParts[1], $_GET);
-    }
-}
-// =========================================================================
-
-// Chakata ombi la mtumiaji sasa likiwa na data zote salama
 $app->handleRequest(Request::capture());
