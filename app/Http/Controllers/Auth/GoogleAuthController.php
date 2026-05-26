@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -14,11 +15,39 @@ class GoogleAuthController extends Controller
 {
     public function redirect()
     {
-        return Socialite::driver('google')->redirect();
+        return Socialite::driver('google')
+            ->scopes(['openid', 'profile', 'email'])
+            ->redirect();
     }
 
-    public function callback()
+    public function callback(Request $request)
     {
+        if ($request->has('error')) {
+            Log::warning('Google login cancelled or denied', [
+                'error' => $request->get('error'),
+                'error_description' => $request->get('error_description'),
+            ]);
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Umeghairi au umekataa kuingia kwa kutumia Google. Tafadhali jaribu tena.',
+                ]);
+        }
+
+        if (! $request->has('code')) {
+            Log::warning('Google login callback missing code', [
+                'query' => $request->query(),
+                'url' => $request->fullUrl(),
+            ]);
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Kuingia kwa kutumia Google hakukukamilika. Tafadhali bonyeza tena kitufe cha Google.',
+                ]);
+        }
+
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
