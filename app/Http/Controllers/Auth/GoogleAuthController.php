@@ -36,12 +36,16 @@ class GoogleAuthController extends Controller
         }
 
         if (! $request->has('code')) {
-            Log::warning('Google login callback missing code - restarting Google login', [
+            Log::warning('Google login callback missing code', [
                 'query' => $request->query(),
                 'url' => $request->fullUrl(),
             ]);
 
-            return redirect()->route('google.login');
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Kuingia kwa kutumia Google hakukukamilika. Tafadhali futa cookies au tumia dirisha jipya, kisha bonyeza tena kitufe cha Google.',
+                ]);
         }
 
         try {
