@@ -31,7 +31,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Social Login
+    | Social Login - Google Only
+    |--------------------------------------------------------------------------
+    | Google login has been recreated cleanly.
+    | Facebook login is disabled for now and will be rebuilt later.
     |--------------------------------------------------------------------------
     */
 
@@ -39,12 +42,6 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URL'),
-    ],
-
-    'facebook' => [
-        'client_id' => env('FACEBOOK_CLIENT_ID'),
-        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect' => env('FACEBOOK_REDIRECT_URL'),
     ],
 
     /*

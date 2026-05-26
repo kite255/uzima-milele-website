@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
 use App\Http\Controllers\InstructorDashboardController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\PrayerRequestController;
 use App\Http\Controllers\PrayerTestimonyController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuizController;
-use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TestimonialController;
 use App\Http\Controllers\WatotoController;
@@ -40,28 +40,17 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Social Login
+| Social Login - Google Only
 |--------------------------------------------------------------------------
-| Google flow:
-| 1. /auth/google sends user to Google
-| 2. /auth/google/callback receives Google response
-| 3. SocialAuthController logs user in
-| 4. User is redirected to /dashboard, /admin, or student dashboard
+| Google login has been recreated using a clean GoogleAuthController.
+| Facebook login remains disabled for now.
 |--------------------------------------------------------------------------
 */
-Route::middleware('guest')->group(function () {
-    Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])
-        ->name('google.login');
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
+    ->name('google.login');
 
-    Route::get('/auth/facebook', [SocialAuthController::class, 'redirectToFacebook'])
-        ->name('facebook.login');
-});
-
-Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
     ->name('google.callback');
-
-Route::get('/auth/facebook/callback', [SocialAuthController::class, 'handleFacebookCallback'])
-    ->name('facebook.callback');
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +61,7 @@ Route::get('/dashboard', function () {
     $user = auth()->user();
 
     if (! $user) {
-        return redirect()->route('google.login');
+        return redirect()->route('login');
     }
 
     if ($user->role === 'admin') {
