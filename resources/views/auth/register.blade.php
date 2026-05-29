@@ -100,10 +100,9 @@
             font-weight: 900;
         }
 
-        .optional {
-            font-weight: 500;
-            color: #64748b;
-            font-size: 11px;
+        .required {
+            color: #dc2626;
+            font-weight: 900;
         }
 
         input[type="text"],
@@ -267,7 +266,9 @@
                 <input type="hidden" name="redirect" value="{{ request('redirect') }}">
 
                 <div class="field">
-                    <label for="name">Jina Kamili</label>
+                    <label for="name">
+                        Jina Kamili <span class="required">*</span>
+                    </label>
 
                     <input
                         id="name"
@@ -286,7 +287,9 @@
                 </div>
 
                 <div class="field">
-                    <label for="email">Barua Pepe</label>
+                    <label for="email">
+                        Barua Pepe <span class="required">*</span>
+                    </label>
 
                     <input
                         id="email"
@@ -305,7 +308,7 @@
 
                 <div class="field">
                     <label for="phone">
-                        Namba ya Simu <span class="optional">(si lazima)</span>
+                        Namba ya Simu <span class="required">*</span>
                     </label>
 
                     <input
@@ -313,6 +316,7 @@
                         type="tel"
                         name="phone"
                         value="{{ old('phone') }}"
+                        required
                         autocomplete="tel"
                         placeholder="0712345678"
                     >
@@ -323,7 +327,9 @@
                 </div>
 
                 <div class="field">
-                    <label for="password">Nenosiri</label>
+                    <label for="password">
+                        Nenosiri <span class="required">*</span>
+                    </label>
 
                     <input
                         id="password"
@@ -340,7 +346,9 @@
                 </div>
 
                 <div class="field">
-                    <label for="password_confirmation">Thibitisha Nenosiri</label>
+                    <label for="password_confirmation">
+                        Thibitisha Nenosiri <span class="required">*</span>
+                    </label>
 
                     <input
                         id="password_confirmation"

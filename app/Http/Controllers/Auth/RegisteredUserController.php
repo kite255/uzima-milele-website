@@ -31,21 +31,17 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'phone' => ['nullable', 'string', 'max:20', 'unique:users,phone'],
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'redirect' => ['nullable', 'string'],
         ]);
 
-        $phone = null;
+        $phone = preg_replace('/[^0-9]/', '', $request->phone);
 
-        if ($request->filled('phone')) {
-            $phone = preg_replace('/[^0-9]/', '', $request->phone);
-
-            if (str_starts_with($phone, '0')) {
-                $phone = '255' . substr($phone, 1);
-            } elseif (strlen($phone) === 9) {
-                $phone = '255' . $phone;
-            }
+        if (str_starts_with($phone, '0')) {
+            $phone = '255' . substr($phone, 1);
+        } elseif (strlen($phone) === 9) {
+            $phone = '255' . $phone;
         }
 
         $user = User::create([
