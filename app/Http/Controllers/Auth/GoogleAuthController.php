@@ -15,17 +15,43 @@ class GoogleAuthController extends Controller
 {
     public function redirect()
     {
-        return Socialite::driver('google')
-            ->scopes(['openid', 'profile', 'email'])
-            ->redirect();
+        try {
+            return Socialite::driver('google')
+                ->stateless()
+                ->scopes(['openid', 'profile', 'email'])
+                ->with([
+                    'prompt' => 'select_account',
+                ])
+                ->redirect();
+        } catch (Throwable $e) {
+            Log::error('Google redirect failed', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Imeshindikana kuanzisha Google login. Tafadhali jaribu tena.',
+                ]);
+        }
     }
 
     public function callback(Request $request)
     {
+        Log::info('Google callback received', [
+            'full_url' => $request->fullUrl(),
+            'query' => $request->query(),
+            'has_code' => $request->has('code'),
+            'has_error' => $request->has('error'),
+        ]);
+
         if ($request->has('error')) {
             Log::warning('Google login cancelled or denied', [
                 'error' => $request->get('error'),
                 'error_description' => $request->get('error_description'),
+                'full_url' => $request->fullUrl(),
             ]);
 
             return redirect()
@@ -35,25 +61,33 @@ class GoogleAuthController extends Controller
                 ]);
         }
 
-        if (! $request->has('code')) {
+        if (! $request->filled('code')) {
             Log::warning('Google login callback missing code', [
                 'query' => $request->query(),
-                'url' => $request->fullUrl(),
+                'full_url' => $request->fullUrl(),
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'query_string' => $_SERVER['QUERY_STRING'] ?? null,
             ]);
 
             return redirect()
                 ->route('login')
                 ->withErrors([
-                    'email' => 'Kuingia kwa kutumia Google hakukukamilika. Tafadhali futa cookies au tumia dirisha jipya, kisha bonyeza tena kitufe cha Google.',
+                    'email' => 'Kuingia kwa kutumia Google hakukamilika. Tafadhali bonyeza tena kitufe cha Google au tumia dirisha jipya.',
                 ]);
         }
 
         try {
-            $googleUser = Socialite::driver('google')->stateless()->user();
+            $googleUser = Socialite::driver('google')
+                ->stateless()
+                ->user();
 
             $email = $googleUser->getEmail();
 
             if (! $email) {
+                Log::warning('Google did not return email', [
+                    'google_id' => $googleUser->getId(),
+                ]);
+
                 return redirect()
                     ->route('login')
                     ->withErrors([
@@ -67,6 +101,7 @@ class GoogleAuthController extends Controller
                 $user->update([
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
+                    'email_verified_at' => $user->email_verified_at ?? now(),
                 ]);
             } else {
                 $user = User::create([
@@ -77,11 +112,14 @@ class GoogleAuthController extends Controller
                     'password' => bcrypt(Str::random(32)),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
+                    'email_verified_at' => now(),
                     'role' => 'student',
                 ]);
             }
 
             Auth::login($user, true);
+
+            $request->session()->regenerate();
 
             return redirect()->intended('/dashboard');
         } catch (Throwable $e) {
@@ -89,6 +127,8 @@ class GoogleAuthController extends Controller
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'full_url' => $request->fullUrl(),
+                'query' => $request->query(),
             ]);
 
             return redirect()
