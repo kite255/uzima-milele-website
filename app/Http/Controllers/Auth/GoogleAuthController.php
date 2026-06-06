@@ -42,25 +42,40 @@ class GoogleAuthController extends Controller
     {
         /*
         |--------------------------------------------------------------------------
-        | Emergency fix for hosting/proxy losing Google OAuth query parameters
+        | Secure fix for hosting/proxy losing Google OAuth query parameters
         |--------------------------------------------------------------------------
-        | Your live server receives:
-        | REQUEST_URI = /auth/google/callback?state=xxx&code=xxx
-        |
-        | But Laravel receives:
-        | query = []
-        | has_code = false
-        |
-        | This restores the Google OAuth query parameters before validation.
+        | Only runs on /auth/google/callback.
+        | Only restores expected OAuth parameters.
+        | Does not log sensitive OAuth code values.
         */
-        if (! $request->filled('code') && isset($_SERVER['REQUEST_URI']) && str_contains($_SERVER['REQUEST_URI'], '?')) {
+        if (
+            $request->is('auth/google/callback') &&
+            ! $request->filled('code') &&
+            isset($_SERVER['REQUEST_URI']) &&
+            str_contains($_SERVER['REQUEST_URI'], '?')
+        ) {
             $queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
 
             if (! empty($queryString)) {
-                parse_str($queryString, $queryParams);
+                parse_str($queryString, $rawQueryParams);
+
+                $allowedKeys = [
+                    'code',
+                    'state',
+                    'scope',
+                    'authuser',
+                    'prompt',
+                    'error',
+                    'error_description',
+                ];
+
+                $queryParams = array_intersect_key(
+                    $rawQueryParams,
+                    array_flip($allowedKeys)
+                );
 
                 if (! empty($queryParams)) {
-                    $_SERVER['QUERY_STRING'] = $queryString;
+                    $_SERVER['QUERY_STRING'] = http_build_query($queryParams);
                     $_GET = array_merge($_GET, $queryParams);
                     $_REQUEST = array_merge($_REQUEST, $queryParams);
 
@@ -70,19 +85,16 @@ class GoogleAuthController extends Controller
         }
 
         Log::info('Google callback received', [
-            'full_url' => $request->fullUrl(),
-            'query' => $request->query(),
             'has_code' => $request->filled('code'),
             'has_error' => $request->has('error'),
-            'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
-            'query_string' => $_SERVER['QUERY_STRING'] ?? null,
+            'callback_path' => $request->path(),
+            'query_keys' => array_keys($request->query()),
         ]);
 
         if ($request->has('error')) {
             Log::warning('Google login cancelled or denied', [
                 'error' => $request->get('error'),
                 'error_description' => $request->get('error_description'),
-                'full_url' => $request->fullUrl(),
             ]);
 
             return redirect()
@@ -94,10 +106,9 @@ class GoogleAuthController extends Controller
 
         if (! $request->filled('code')) {
             Log::warning('Google login callback missing code', [
-                'query' => $request->query(),
-                'full_url' => $request->fullUrl(),
-                'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
-                'query_string' => $_SERVER['QUERY_STRING'] ?? null,
+                'callback_path' => $request->path(),
+                'query_keys' => array_keys($request->query()),
+                'request_uri_has_query' => isset($_SERVER['REQUEST_URI']) && str_contains($_SERVER['REQUEST_URI'], '?'),
             ]);
 
             return redirect()
@@ -116,7 +127,7 @@ class GoogleAuthController extends Controller
 
             if (! $email) {
                 Log::warning('Google did not return email', [
-                    'google_id' => $googleUser->getId(),
+                    'google_id_present' => ! empty($googleUser->getId()),
                 ]);
 
                 return redirect()
@@ -158,10 +169,8 @@ class GoogleAuthController extends Controller
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'full_url' => $request->fullUrl(),
-                'query' => $request->query(),
-                'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
-                'query_string' => $_SERVER['QUERY_STRING'] ?? null,
+                'callback_path' => $request->path(),
+                'query_keys' => array_keys($request->query()),
             ]);
 
             return redirect()
