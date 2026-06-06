@@ -40,11 +40,42 @@ class GoogleAuthController extends Controller
 
     public function callback(Request $request)
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Emergency fix for hosting/proxy losing Google OAuth query parameters
+        |--------------------------------------------------------------------------
+        | Your live server receives:
+        | REQUEST_URI = /auth/google/callback?state=xxx&code=xxx
+        |
+        | But Laravel receives:
+        | query = []
+        | has_code = false
+        |
+        | This restores the Google OAuth query parameters before validation.
+        */
+        if (! $request->filled('code') && isset($_SERVER['REQUEST_URI']) && str_contains($_SERVER['REQUEST_URI'], '?')) {
+            $queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+
+            if (! empty($queryString)) {
+                parse_str($queryString, $queryParams);
+
+                if (! empty($queryParams)) {
+                    $_SERVER['QUERY_STRING'] = $queryString;
+                    $_GET = array_merge($_GET, $queryParams);
+                    $_REQUEST = array_merge($_REQUEST, $queryParams);
+
+                    $request->query->add($queryParams);
+                }
+            }
+        }
+
         Log::info('Google callback received', [
             'full_url' => $request->fullUrl(),
             'query' => $request->query(),
-            'has_code' => $request->has('code'),
+            'has_code' => $request->filled('code'),
             'has_error' => $request->has('error'),
+            'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
+            'query_string' => $_SERVER['QUERY_STRING'] ?? null,
         ]);
 
         if ($request->has('error')) {
@@ -129,6 +160,8 @@ class GoogleAuthController extends Controller
                 'line' => $e->getLine(),
                 'full_url' => $request->fullUrl(),
                 'query' => $request->query(),
+                'request_uri' => $_SERVER['REQUEST_URI'] ?? null,
+                'query_string' => $_SERVER['QUERY_STRING'] ?? null,
             ]);
 
             return redirect()
