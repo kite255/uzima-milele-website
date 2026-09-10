@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LessonQuestion;
 use App\Notifications\LessonQuestionAnsweredNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class InstructorQuestionController extends Controller
@@ -12,81 +13,157 @@ class InstructorQuestionController extends Controller
     {
         $user = auth()->user();
 
-        abort_if(! in_array($user->role, ['admin', 'instructor']), 403);
+        abort_if(
+            ! $user
+            || ! in_array(
+                $user->role,
+                ['admin', 'instructor'],
+                true
+            ),
+            403
+        );
 
-        $questions = LessonQuestion::with(['lesson', 'lessonTopic', 'user', 'answeredBy'])
-            ->when($user->role === 'instructor', function ($query) use ($user) {
-                $query->whereHas('lesson', function ($lessonQuery) use ($user) {
-                    $lessonQuery->where('instructor_id', $user->id);
-                });
-            })
+        $questionsQuery = LessonQuestion::query()
+            ->with([
+                'lesson',
+                'lessonTopic',
+                'user',
+                'answeredBy',
+            ]);
+
+        if ($user->role === 'instructor') {
+            $this->applyInstructorAccessScope(
+                $questionsQuery,
+                $user->id
+            );
+        }
+
+        $questions = $questionsQuery
             ->latest()
             ->paginate(10);
 
-        $pendingCount = LessonQuestion::query()
-            ->when($user->role === 'instructor', function ($query) use ($user) {
-                $query->whereHas('lesson', function ($lessonQuery) use ($user) {
-                    $lessonQuery->where('instructor_id', $user->id);
-                });
-            })
-            ->where('visibility', '!=', LessonQuestion::VISIBILITY_HIDDEN)
-            ->where(function ($query) {
-                $query->whereNull('answer')
-                    ->orWhere('status', LessonQuestion::STATUS_PENDING);
+        $pendingQuery = LessonQuestion::query();
+
+        if ($user->role === 'instructor') {
+            $this->applyInstructorAccessScope(
+                $pendingQuery,
+                $user->id
+            );
+        }
+
+        $pendingCount = $pendingQuery
+            ->where(
+                'visibility',
+                '!=',
+                LessonQuestion::VISIBILITY_HIDDEN
+            )
+            ->where(function (Builder $query) {
+                $query
+                    ->whereNull('answer')
+                    ->orWhere(
+                        'status',
+                        LessonQuestion::STATUS_PENDING
+                    );
             })
             ->count();
 
-        $answeredCount = LessonQuestion::query()
-            ->when($user->role === 'instructor', function ($query) use ($user) {
-                $query->whereHas('lesson', function ($lessonQuery) use ($user) {
-                    $lessonQuery->where('instructor_id', $user->id);
-                });
-            })
-            ->where('visibility', '!=', LessonQuestion::VISIBILITY_HIDDEN)
-            ->where(function ($query) {
-                $query->whereNotNull('answer')
-                    ->orWhere('status', LessonQuestion::STATUS_ANSWERED);
+        $answeredQuery = LessonQuestion::query();
+
+        if ($user->role === 'instructor') {
+            $this->applyInstructorAccessScope(
+                $answeredQuery,
+                $user->id
+            );
+        }
+
+        $answeredCount = $answeredQuery
+            ->where(
+                'visibility',
+                '!=',
+                LessonQuestion::VISIBILITY_HIDDEN
+            )
+            ->where(function (Builder $query) {
+                $query
+                    ->whereNotNull('answer')
+                    ->orWhere(
+                        'status',
+                        LessonQuestion::STATUS_ANSWERED
+                    );
             })
             ->count();
 
-        $publicCount = LessonQuestion::query()
-            ->when($user->role === 'instructor', function ($query) use ($user) {
-                $query->whereHas('lesson', function ($lessonQuery) use ($user) {
-                    $lessonQuery->where('instructor_id', $user->id);
-                });
-            })
-            ->where('visibility', LessonQuestion::VISIBILITY_PUBLIC)
+        $publicQuery = LessonQuestion::query();
+
+        if ($user->role === 'instructor') {
+            $this->applyInstructorAccessScope(
+                $publicQuery,
+                $user->id
+            );
+        }
+
+        $publicCount = $publicQuery
+            ->where(
+                'visibility',
+                LessonQuestion::VISIBILITY_PUBLIC
+            )
             ->count();
 
-        return view('instructor.questions.index', compact(
-            'questions',
-            'pendingCount',
-            'answeredCount',
-            'publicCount'
-        ));
+        return view(
+            'instructor.questions.index',
+            compact(
+                'questions',
+                'pendingCount',
+                'answeredCount',
+                'publicCount'
+            )
+        );
     }
 
     public function show(LessonQuestion $question)
     {
         $this->authorizeInstructorQuestion($question);
 
-        $question->load(['lesson', 'lessonTopic', 'user', 'answeredBy']);
+        $question->load([
+            'lesson',
+            'lessonTopic',
+            'user',
+            'answeredBy',
+        ]);
 
-        return view('instructor.questions.show', compact('question'));
+        return view(
+            'instructor.questions.show',
+            compact('question')
+        );
     }
 
-    public function update(Request $request, LessonQuestion $question)
-    {
+    public function update(
+        Request $request,
+        LessonQuestion $question
+    ) {
         $this->authorizeInstructorQuestion($question);
 
         $validated = $request->validate([
-            'answer' => ['required', 'string', 'min:3', 'max:5000'],
-            'visibility' => ['required', 'string', 'in:private,public,hidden'],
-            'is_published' => ['nullable', 'boolean'],
+            'answer' => [
+                'required',
+                'string',
+                'min:3',
+                'max:5000',
+            ],
+            'visibility' => [
+                'required',
+                'string',
+                'in:private,public,hidden',
+            ],
+            'is_published' => [
+                'nullable',
+                'boolean',
+            ],
         ]);
 
-        $wasUnanswered = blank($question->answer)
-            || $question->status !== LessonQuestion::STATUS_ANSWERED;
+        $wasUnanswered =
+            blank($question->answer)
+            || $question->status
+                !== LessonQuestion::STATUS_ANSWERED;
 
         $question->update([
             'answer' => $validated['answer'],
@@ -94,28 +171,145 @@ class InstructorQuestionController extends Controller
             'visibility' => $validated['visibility'],
             'answered_by' => auth()->id(),
             'answered_at' => now(),
-            'is_published' => $request->boolean('is_published', true),
+            'is_published' =>
+                $request->boolean(
+                    'is_published',
+                    true
+                ),
         ]);
 
-        $question->load(['lesson', 'lessonTopic', 'user']);
+        $question->load([
+            'lesson',
+            'lessonTopic',
+            'user',
+        ]);
 
-        if ($wasUnanswered && $question->user) {
-            $question->user->notify(new LessonQuestionAnsweredNotification($question));
+        if (
+            $wasUnanswered
+            && $question->user
+        ) {
+            $question->user->notify(
+                new LessonQuestionAnsweredNotification(
+                    $question
+                )
+            );
         }
 
         return redirect()
-            ->route('instructor.questions.index')
-            ->with('success', 'Jibu limehifadhiwa kikamilifu.');
+            ->route(
+                'instructor.questions.index'
+            )
+            ->with(
+                'success',
+                'Jibu limehifadhiwa kikamilifu.'
+            );
     }
 
-    private function authorizeInstructorQuestion(LessonQuestion $question): void
-    {
+    private function authorizeInstructorQuestion(
+        LessonQuestion $question
+    ): void {
         $user = auth()->user();
 
-        abort_if(! in_array($user->role, ['admin', 'instructor']), 403);
+        abort_if(
+            ! $user
+            || ! in_array(
+                $user->role,
+                ['admin', 'instructor'],
+                true
+            ),
+            403
+        );
 
-        if ($user->role === 'instructor') {
-            abort_if($question->lesson?->instructor_id !== $user->id, 403);
+        if ($user->role !== 'instructor') {
+            return;
         }
+
+        $allowed = LessonQuestion::query()
+            ->whereKey($question->id);
+
+        $this->applyInstructorAccessScope(
+            $allowed,
+            $user->id
+        );
+
+        abort_if(
+            ! $allowed->exists(),
+            403
+        );
+    }
+
+    private function applyInstructorAccessScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $questionQuery) use ($instructorId) {
+                $questionQuery
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Lead Instructor
+                    |--------------------------------------------------------------------------
+                    */
+                    ->whereHas(
+                        'lesson',
+                        fn (Builder $lessonQuery) =>
+                            $lessonQuery->where(
+                                'lead_instructor_id',
+                                $instructorId
+                            )
+                    )
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Assigned Follow-up Instructor
+                    |--------------------------------------------------------------------------
+                    |
+                    | Match both lesson and student so instructors see only
+                    | questions from students assigned directly to them.
+                    |
+                    */
+                    ->orWhereExists(
+                        function ($enrollmentQuery) use ($instructorId) {
+                            $enrollmentQuery
+                                ->selectRaw('1')
+                                ->from('lesson_enrollments')
+                                ->whereColumn(
+                                    'lesson_enrollments.lesson_id',
+                                    'lesson_questions.lesson_id'
+                                )
+                                ->whereColumn(
+                                    'lesson_enrollments.user_id',
+                                    'lesson_questions.user_id'
+                                )
+                                ->where(
+                                    'lesson_enrollments.follow_up_instructor_id',
+                                    $instructorId
+                                );
+                        }
+                    )
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Legacy Compatibility
+                    |--------------------------------------------------------------------------
+                    */
+                    ->orWhereHas(
+                        'lesson',
+                        function (Builder $lessonQuery) use ($instructorId) {
+                            $lessonQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 }

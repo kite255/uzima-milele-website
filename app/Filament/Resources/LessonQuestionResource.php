@@ -394,17 +394,77 @@ class LessonQuestionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with(['lesson', 'lessonTopic', 'user', 'answeredBy']);
+            ->with([
+                'lesson',
+                'lessonTopic',
+                'user',
+                'answeredBy',
+            ]);
 
         $user = auth()->user();
 
         if ($user && $user->role === 'instructor') {
-            return $query->whereHas('lesson', function (Builder $lessonQuery) use ($user) {
-                $lessonQuery->where('instructor_id', $user->id);
-            });
+            return static::applyInstructorAccessScope(
+                $query,
+                $user->id
+            );
         }
 
         return $query;
+    }
+
+    protected static function applyInstructorAccessScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $questionQuery) use ($instructorId) {
+                $questionQuery
+                    ->whereHas(
+                        'lesson',
+                        fn (Builder $lessonQuery) =>
+                            $lessonQuery->where(
+                                'lead_instructor_id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhereExists(
+                        function ($enrollmentQuery) use ($instructorId) {
+                            $enrollmentQuery
+                                ->selectRaw('1')
+                                ->from('lesson_enrollments')
+                                ->whereColumn(
+                                    'lesson_enrollments.lesson_id',
+                                    'lesson_questions.lesson_id'
+                                )
+                                ->whereColumn(
+                                    'lesson_enrollments.user_id',
+                                    'lesson_questions.user_id'
+                                )
+                                ->where(
+                                    'lesson_enrollments.follow_up_instructor_id',
+                                    $instructorId
+                                );
+                        }
+                    )
+                    ->orWhereHas(
+                        'lesson',
+                        function (Builder $lessonQuery) use ($instructorId) {
+                            $lessonQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 
     protected static function notifyStudentIfQuestionAnswered(LessonQuestion $record): void
