@@ -194,6 +194,48 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Due Follow-ups
+        |--------------------------------------------------------------------------
+        |
+        | A follow-up is considered due when:
+        |
+        | - next_follow_up_at is present
+        | - next_follow_up_at is now or in the past
+        | - the enrollment is visible to the current user
+        |
+        | Because this query starts from the same scoped $studentQuery:
+        |
+        | Follow-up instructor:
+        | - Only sees due students assigned to them.
+        |
+        | Lead instructor:
+        | - Sees due students from lessons they lead.
+        |
+        | Admin:
+        | - Sees due students from dashboard-visible lessons.
+        |
+        */
+        $dueFollowUps = (clone $studentQuery)
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->whereNotNull(
+                'next_follow_up_at'
+            )
+            ->where(
+                'next_follow_up_at',
+                '<=',
+                now()
+            )
+            ->orderBy(
+                'next_follow_up_at'
+            )
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
         | Questions
         |--------------------------------------------------------------------------
         */
@@ -268,6 +310,7 @@ class InstructorDashboardController extends Controller
                 'totalLessons',
                 'totalStudents',
                 'assignedStudents',
+                'dueFollowUps',
                 'pendingQuestions',
                 'answeredQuestions',
                 'certificatesIssued',

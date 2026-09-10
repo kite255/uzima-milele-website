@@ -31,7 +31,6 @@
         <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
                 <p class="text-sm text-gray-500">Masomo Yangu</p>
-
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $totalLessons }}
                 </h2>
@@ -39,7 +38,6 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
                 <p class="text-sm text-gray-500">Wanafunzi</p>
-
                 <h2 class="text-3xl font-black text-primary mt-2">
                     {{ $totalStudents }}
                 </h2>
@@ -47,7 +45,6 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-accent">
                 <p class="text-sm text-gray-500">Maswali Mapya</p>
-
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $pendingQuestions }}
                 </h2>
@@ -55,7 +52,6 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-green-500">
                 <p class="text-sm text-gray-500">Yaliyojibiwa</p>
-
                 <h2 class="text-3xl font-black text-green-600 mt-2">
                     {{ $answeredQuestions }}
                 </h2>
@@ -63,7 +59,6 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-navy">
                 <p class="text-sm text-gray-500">Vyeti</p>
-
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $certificatesIssued }}
                 </h2>
@@ -76,7 +71,7 @@
                 Quick Actions
             </h2>
 
-            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <a
                     href="{{ route('instructor.questions.index') }}"
                     class="rounded-2xl bg-accent/20 text-navy font-black p-5 hover:bg-accent transition"
@@ -89,6 +84,13 @@
                     class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition"
                 >
                     Assigned Students
+                </a>
+
+                <a
+                    href="#due-follow-ups"
+                    class="rounded-2xl bg-red-50 text-red-700 font-black p-5 hover:bg-red-100 transition"
+                >
+                    Due Follow-ups
                 </a>
 
                 <a
@@ -114,6 +116,125 @@
                     </a>
                 @endif
             </div>
+        </div>
+
+        {{-- DUE FOLLOW-UPS --}}
+        <div
+            id="due-follow-ups"
+            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28"
+        >
+            <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-black text-navy">
+                        Due Follow-ups
+                    </h2>
+
+                    <p class="text-sm text-gray-500 mt-1">
+                        Students whose scheduled follow-up time has arrived or passed.
+                    </p>
+                </div>
+
+                <span class="inline-flex w-fit items-center rounded-full bg-red-100 px-4 py-2 text-sm font-black text-red-700">
+                    {{ $dueFollowUps->count() }}
+                    Due
+                </span>
+            </div>
+
+            @if($dueFollowUps->isEmpty())
+                <div class="p-10 text-center">
+                    <p class="font-black text-gray-600">
+                        No follow-ups are due right now.
+                    </p>
+
+                    <p class="mt-1 text-sm text-gray-400">
+                        Scheduled follow-ups will appear here when their date and time are reached.
+                    </p>
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-sm text-gray-600">
+                            <tr>
+                                <th class="px-6 py-4">Student</th>
+                                <th class="px-6 py-4">Lesson</th>
+                                <th class="px-6 py-4">Assigned Instructor</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Due At</th>
+                                <th class="px-6 py-4">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody class="divide-y">
+                            @foreach($dueFollowUps as $dueFollowUp)
+                                @php
+                                    $status = $dueFollowUp->follow_up_status
+                                        ?? \App\Models\LessonEnrollment::FOLLOW_UP_NOT_CONTACTED;
+
+                                    $tone = match ($status) {
+                                        \App\Models\LessonEnrollment::FOLLOW_UP_COMPLETED => 'green',
+                                        \App\Models\LessonEnrollment::FOLLOW_UP_DOING_WELL => 'green',
+                                        \App\Models\LessonEnrollment::FOLLOW_UP_NEEDS_FOLLOW_UP => 'yellow',
+                                        \App\Models\LessonEnrollment::FOLLOW_UP_CONTACTED => 'blue',
+                                        default => 'gray',
+                                    };
+                                @endphp
+
+                                <tr class="hover:bg-gray-50/70">
+                                    <td class="px-6 py-4">
+                                        <p class="font-black text-navy">
+                                            {{ $dueFollowUp->user?->name ?? 'Student' }}
+                                        </p>
+
+                                        @if($dueFollowUp->user?->phone)
+                                            <p class="mt-1 text-xs text-gray-500">
+                                                {{ $dueFollowUp->user->phone }}
+                                            </p>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <p class="font-bold text-gray-800">
+                                            {{ $dueFollowUp->lesson?->title ?? 'Lesson' }}
+                                        </p>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <p class="text-sm text-gray-700">
+                                            {{ $dueFollowUp->followUpInstructor?->name ?? 'Unassigned' }}
+                                        </p>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <x-ui.status-badge
+                                            :label="ucwords(str_replace('_', ' ', $status))"
+                                            :tone="$tone"
+                                        />
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                                            Overdue
+                                        </span>
+
+                                        <p class="mt-2 text-sm font-bold text-gray-700">
+                                            {{ $dueFollowUp->next_follow_up_at?->format('d M Y, H:i') }}
+                                        </p>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        <a
+                                            href="{{ route('instructor.students.show', $dueFollowUp) }}"
+                                            class="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
+                                        >
+                                            View Student
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
 
         {{-- ASSIGNED STUDENTS --}}
