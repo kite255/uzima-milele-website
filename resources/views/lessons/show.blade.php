@@ -555,7 +555,7 @@
                         </span>
                     </p>
 
-    
+
 
                     @if($lesson->min_completion_days || $lesson->max_completion_days)
                         <p class="mt-1 text-sm text-gray-600">
