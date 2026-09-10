@@ -98,18 +98,18 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Student Visibility / Counts
+        | Student Visibility
         |--------------------------------------------------------------------------
         |
         | Lead instructor:
-        | - Counts every student in courses they lead.
+        | - Sees every student enrolled in lessons they lead.
         |
         | Follow-up instructor:
-        | - Counts only enrollments assigned directly to them.
+        | - Sees only students assigned directly to them.
         |
         | Legacy instructor:
-        | - Counts students from old instructor_id lessons only when that
-        |   lesson has not yet been configured with the new structure.
+        | - Sees students from old instructor_id lessons only when those
+        |   lessons have not been configured with the new structure.
         |
         */
         $studentQuery = LessonEnrollment::query();
@@ -155,18 +155,47 @@ class InstructorDashboardController extends Controller
             );
         }
 
-        $totalStudents = $studentQuery
+        /*
+        |--------------------------------------------------------------------------
+        | Student Count
+        |--------------------------------------------------------------------------
+        */
+        $totalStudents = (clone $studentQuery)
             ->distinct()
             ->count('user_id');
 
         /*
         |--------------------------------------------------------------------------
-        | Questions
+        | Students Visible on Dashboard
         |--------------------------------------------------------------------------
         |
-        | These remain lesson-scoped for now. Instructor-specific question
-        | ownership is handled separately by the question-management layer.
+        | The same query used for the student count is reused here.
         |
+        | This guarantees:
+        |
+        | Follow-up instructor:
+        | - Only assigned students.
+        |
+        | Lead instructor:
+        | - All students from lessons they lead.
+        |
+        | Admin:
+        | - All students from dashboard-visible lessons.
+        |
+        */
+        $assignedStudents = (clone $studentQuery)
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->latest('id')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Questions
+        |--------------------------------------------------------------------------
         */
         $pendingQuestions = LessonQuestion::query()
             ->whereIn(
@@ -184,6 +213,11 @@ class InstructorDashboardController extends Controller
             ->whereNotNull('answer')
             ->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Certificates
+        |--------------------------------------------------------------------------
+        */
         $certificatesIssued = Certificate::query()
             ->whereIn(
                 'lesson_id',
@@ -191,6 +225,11 @@ class InstructorDashboardController extends Controller
             )
             ->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Recent Questions
+        |--------------------------------------------------------------------------
+        */
         $recentQuestions = LessonQuestion::query()
             ->with([
                 'lesson',
@@ -208,24 +247,27 @@ class InstructorDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Recent Quiz Results
         |--------------------------------------------------------------------------
-        |
-        | Keep the existing behavior here for this task. Quiz-result access is
-        | updated separately together with QuizResultResource so that its
-        | lesson/module/topic relationship rules stay consistent.
-        |
         */
         $recentQuizResults = QuizResult::query()
-            ->with(['quiz'])
+            ->with([
+                'quiz',
+            ])
             ->latest()
             ->take(8)
             ->get();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard
+        |--------------------------------------------------------------------------
+        */
         return view(
             'instructor.dashboard',
             compact(
                 'lessons',
                 'totalLessons',
                 'totalStudents',
+                'assignedStudents',
                 'pendingQuestions',
                 'answeredQuestions',
                 'certificatesIssued',

@@ -77,6 +77,11 @@
                     Answer Q&A
                 </a>
 
+                <a href="#my-students"
+                   class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition">
+                    Wanafunzi Wangu
+                </a>
+
                 <a href="{{ route('lessons.index') }}"
                    class="rounded-2xl bg-gray-100 text-navy font-black p-5 hover:bg-gray-200 transition">
                     View Public Lessons
@@ -93,6 +98,131 @@
                         Open Admin Panel
                     </a>
                 @endif
+            </div>
+        </div>
+
+        {{-- ASSIGNED STUDENTS --}}
+        <div id="my-students"
+             class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28">
+
+            <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-black text-navy">
+                        Wanafunzi Wangu
+                    </h2>
+
+                    <p class="text-sm text-gray-500 mt-1">
+                        @if(auth()->user()->role === 'admin')
+                            Wanafunzi wanaoonekana kwenye masomo ya dashboard hii.
+                        @else
+                            Lead instructor anaona wanafunzi wote wa somo analoongoza. Follow-up instructor anaona wanafunzi waliopangiwa kwake.
+                        @endif
+                    </p>
+                </div>
+
+                <span class="inline-flex w-fit items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-black text-primary">
+                    {{ $assignedStudents->count() }} Enrollment{{ $assignedStudents->count() === 1 ? '' : 's' }}
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-gray-600 text-sm">
+                        <tr>
+                            <th class="px-6 py-4">Mwanafunzi</th>
+                            <th class="px-6 py-4">Somo</th>
+                            <th class="px-6 py-4">Assignment</th>
+                            <th class="px-6 py-4">Email</th>
+                            <th class="px-6 py-4">Simu</th>
+                            <th class="px-6 py-4">Alijiunga</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="divide-y">
+                        @forelse($assignedStudents as $studentEnrollment)
+                            @php
+                                $student = $studentEnrollment->user;
+                                $studentLesson = $studentEnrollment->lesson;
+
+                                if (
+                                    auth()->user()->role === 'instructor'
+                                    && $studentLesson?->lead_instructor_id === auth()->id()
+                                ) {
+                                    $assignmentLabel = 'Lead Instructor';
+                                } elseif (
+                                    auth()->user()->role === 'instructor'
+                                    && $studentEnrollment->follow_up_instructor_id === auth()->id()
+                                ) {
+                                    $assignmentLabel = 'Follow-up';
+                                } elseif (auth()->user()->role === 'admin') {
+                                    $assignmentLabel = $studentEnrollment->followUpInstructor
+                                        ? 'Follow-up: ' . $studentEnrollment->followUpInstructor->name
+                                        : 'Unassigned';
+                                } else {
+                                    $assignmentLabel = 'Legacy';
+                                }
+                            @endphp
+
+                            <tr class="hover:bg-gray-50/70">
+                                <td class="px-6 py-4">
+                                    <p class="font-black text-navy">
+                                        {{ $student?->name ?? 'Mwanafunzi' }}
+                                    </p>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <p class="font-bold text-gray-800">
+                                        {{ $studentLesson?->title ?? 'Somo' }}
+                                    </p>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                                        {{ $assignmentLabel }}
+                                    </span>
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    @if($student?->email)
+                                        <a href="mailto:{{ $student->email }}"
+                                           class="text-primary font-semibold hover:underline">
+                                            {{ $student->email }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
+
+                                <td class="px-6 py-4">
+                                    @if($student?->phone)
+                                        <a href="tel:{{ $student->phone }}"
+                                           class="text-primary font-semibold hover:underline">
+                                            {{ $student->phone }}
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
+
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    @if($studentEnrollment->enrolled_at)
+                                        {{ $studentEnrollment->enrolled_at->format('d M Y') }}
+                                    @elseif($studentEnrollment->created_at)
+                                        {{ $studentEnrollment->created_at->format('d M Y') }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                                    Hakuna wanafunzi waliopangiwa kwako bado.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
 
