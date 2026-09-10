@@ -9,11 +9,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LessonEnrollment extends Model
 {
+    public const FOLLOW_UP_NOT_CONTACTED = 'not_contacted';
+    public const FOLLOW_UP_CONTACTED = 'contacted';
+    public const FOLLOW_UP_NEEDS_FOLLOW_UP = 'needs_follow_up';
+    public const FOLLOW_UP_DOING_WELL = 'doing_well';
+    public const FOLLOW_UP_COMPLETED = 'completed';
+
     protected $fillable = [
         'user_id',
         'lesson_id',
         'follow_up_instructor_id',
         'instructor_assigned_at',
+        'follow_up_status',
+        'next_follow_up_at',
+        'last_follow_up_at',
         'enrolled_at',
 
         // Coursera-style learning schedule
@@ -27,6 +36,8 @@ class LessonEnrollment extends Model
     protected $casts = [
         'enrolled_at' => 'datetime',
         'instructor_assigned_at' => 'datetime',
+        'next_follow_up_at' => 'datetime',
+        'last_follow_up_at' => 'datetime',
         'target_completion_date' => 'datetime',
         'schedule_started_at' => 'datetime',
         'schedule_updated_at' => 'datetime',
@@ -55,6 +66,14 @@ class LessonEnrollment extends Model
             User::class,
             'follow_up_instructor_id'
         );
+    }
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(
+            StudentFollowUp::class,
+            'lesson_enrollment_id'
+        )->latest();
     }
 
     public function reminderLogs(): HasMany

@@ -112,6 +112,14 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(LessonEnrollment::class);
     }
 
+    public function studentFollowUps(): HasMany
+    {
+        return $this->hasMany(
+            StudentFollowUp::class,
+            'instructor_id'
+        );
+    }
+
     public function enrolledLessons(): BelongsToMany
     {
         return $this->belongsToMany(Lesson::class, 'lesson_enrollments')
@@ -119,6 +127,9 @@ class User extends Authenticatable implements FilamentUser
                 'enrolled_at',
                 'follow_up_instructor_id',
                 'instructor_assigned_at',
+                'follow_up_status',
+                'next_follow_up_at',
+                'last_follow_up_at',
             ])
             ->withTimestamps();
     }
