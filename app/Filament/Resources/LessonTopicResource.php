@@ -43,11 +43,19 @@ class LessonTopicResource extends Resource
                             ->options(function () {
                                 return Module::query()
                                     ->with('lesson')
-                                    ->when(auth()->user()?->role === 'instructor', function (Builder $query) {
-                                        $query->whereHas('lesson', function (Builder $lessonQuery) {
-                                            $lessonQuery->where('instructor_id', auth()->id());
-                                        });
-                                    })
+                                    ->when(
+                                        auth()->user()?->role === 'instructor',
+                                        function (Builder $query) {
+                                            $query->whereHas(
+                                                'lesson',
+                                                fn (Builder $lessonQuery) =>
+                                                    static::applyInstructorLessonScope(
+                                                        $lessonQuery,
+                                                        auth()->id()
+                                                    )
+                                            );
+                                        }
+                                    )
                                     ->orderBy('lesson_id')
                                     ->orderBy('order')
                                     ->get()
@@ -221,15 +229,61 @@ class LessonTopicResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with('module.lesson');
+            ->with([
+                'module.lesson.leadInstructor',
+                'module.lesson.followUpInstructors',
+            ]);
 
         if (auth()->user()?->role === 'instructor') {
-            return $query->whereHas('module.lesson', function (Builder $lessonQuery) {
-                $lessonQuery->where('instructor_id', auth()->id());
-            });
+            return $query->whereHas(
+                'module.lesson',
+                fn (Builder $lessonQuery) =>
+                    static::applyInstructorLessonScope(
+                        $lessonQuery,
+                        auth()->id()
+                    )
+            );
         }
 
         return $query;
+    }
+
+    protected static function applyInstructorLessonScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $lessonQuery) use ($instructorId) {
+                $lessonQuery
+                    ->where(
+                        'lead_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'followUpInstructors',
+                        fn (Builder $followUpQuery) =>
+                            $followUpQuery->where(
+                                'users.id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhere(
+                        function (Builder $legacyQuery) use ($instructorId) {
+                            $legacyQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 
     public static function canDelete($record): bool

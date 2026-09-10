@@ -77,11 +77,19 @@ class QuizResource extends Resource
                             ->options(function () {
                                 return LessonTopic::query()
                                     ->with('module.lesson')
-                                    ->when(auth()->user()?->role === 'instructor', function (Builder $query) {
-                                        $query->whereHas('module.lesson', function (Builder $lessonQuery) {
-                                            $lessonQuery->where('instructor_id', auth()->id());
-                                        });
-                                    })
+                                    ->when(
+                                        auth()->user()?->role === 'instructor',
+                                        function (Builder $query) {
+                                            $query->whereHas(
+                                                'module.lesson',
+                                                fn (Builder $lessonQuery) =>
+                                                    static::applyInstructorLessonScope(
+                                                        $lessonQuery,
+                                                        auth()->id()
+                                                    )
+                                            );
+                                        }
+                                    )
                                     ->orderBy('module_id')
                                     ->orderBy('order')
                                     ->get()
@@ -105,11 +113,19 @@ class QuizResource extends Resource
                             ->options(function () {
                                 return Module::query()
                                     ->with('lesson')
-                                    ->when(auth()->user()?->role === 'instructor', function (Builder $query) {
-                                        $query->whereHas('lesson', function (Builder $lessonQuery) {
-                                            $lessonQuery->where('instructor_id', auth()->id());
-                                        });
-                                    })
+                                    ->when(
+                                        auth()->user()?->role === 'instructor',
+                                        function (Builder $query) {
+                                            $query->whereHas(
+                                                'lesson',
+                                                fn (Builder $lessonQuery) =>
+                                                    static::applyInstructorLessonScope(
+                                                        $lessonQuery,
+                                                        auth()->id()
+                                                    )
+                                            );
+                                        }
+                                    )
                                     ->orderBy('lesson_id')
                                     ->orderBy('order')
                                     ->get()
@@ -131,9 +147,14 @@ class QuizResource extends Resource
                             ->label('Lesson')
                             ->options(function () {
                                 return Lesson::query()
-                                    ->when(auth()->user()?->role === 'instructor', function (Builder $query) {
-                                        $query->where('instructor_id', auth()->id());
-                                    })
+                                    ->when(
+                                        auth()->user()?->role === 'instructor',
+                                        fn (Builder $query) =>
+                                            static::applyInstructorLessonScope(
+                                                $query,
+                                                auth()->id()
+                                            )
+                                    )
                                     ->orderBy('title')
                                     ->pluck('title', 'id')
                                     ->toArray();
@@ -300,24 +321,88 @@ class QuizResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with(['lesson', 'module.lesson', 'topic.module.lesson']);
+            ->with([
+                'lesson.leadInstructor',
+                'lesson.followUpInstructors',
+                'module.lesson.leadInstructor',
+                'module.lesson.followUpInstructors',
+                'topic.module.lesson.leadInstructor',
+                'topic.module.lesson.followUpInstructors',
+            ]);
 
         if (auth()->user()?->role === 'instructor') {
-            return $query->where(function (Builder $query) {
-                $query
-                    ->whereHas('lesson', function (Builder $lessonQuery) {
-                        $lessonQuery->where('instructor_id', auth()->id());
-                    })
-                    ->orWhereHas('module.lesson', function (Builder $lessonQuery) {
-                        $lessonQuery->where('instructor_id', auth()->id());
-                    })
-                    ->orWhereHas('topic.module.lesson', function (Builder $lessonQuery) {
-                        $lessonQuery->where('instructor_id', auth()->id());
-                    });
-            });
+            $instructorId = auth()->id();
+
+            return $query->where(
+                function (Builder $quizQuery) use ($instructorId) {
+                    $quizQuery
+                        ->whereHas(
+                            'lesson',
+                            fn (Builder $lessonQuery) =>
+                                static::applyInstructorLessonScope(
+                                    $lessonQuery,
+                                    $instructorId
+                                )
+                        )
+                        ->orWhereHas(
+                            'module.lesson',
+                            fn (Builder $lessonQuery) =>
+                                static::applyInstructorLessonScope(
+                                    $lessonQuery,
+                                    $instructorId
+                                )
+                        )
+                        ->orWhereHas(
+                            'topic.module.lesson',
+                            fn (Builder $lessonQuery) =>
+                                static::applyInstructorLessonScope(
+                                    $lessonQuery,
+                                    $instructorId
+                                )
+                        );
+                }
+            );
         }
 
         return $query;
+    }
+
+    protected static function applyInstructorLessonScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $lessonQuery) use ($instructorId) {
+                $lessonQuery
+                    ->where(
+                        'lead_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'followUpInstructors',
+                        fn (Builder $followUpQuery) =>
+                            $followUpQuery->where(
+                                'users.id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhere(
+                        function (Builder $legacyQuery) use ($instructorId) {
+                            $legacyQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 
     public static function getRelations(): array
