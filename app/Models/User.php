@@ -65,9 +65,46 @@ class User extends Authenticatable implements FilamentUser
             : null;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Lesson / Instructor Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    // Legacy relationship kept for compatibility with the existing
+    // lessons.instructor_id field.
     public function instructorLessons(): HasMany
     {
         return $this->hasMany(Lesson::class, 'instructor_id');
+    }
+
+    // Lessons where this instructor is the lead/supervising instructor.
+    public function ledLessons(): HasMany
+    {
+        return $this->hasMany(
+            Lesson::class,
+            'lead_instructor_id'
+        );
+    }
+
+    // Lessons where this instructor belongs to the follow-up team.
+    public function followUpLessons(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Lesson::class,
+            'lesson_follow_up_instructor',
+            'instructor_id',
+            'lesson_id'
+        )->withTimestamps();
+    }
+
+    // Student enrollments currently assigned to this instructor.
+    public function assignedLessonEnrollments(): HasMany
+    {
+        return $this->hasMany(
+            LessonEnrollment::class,
+            'follow_up_instructor_id'
+        );
     }
 
     public function lessonEnrollments(): HasMany
@@ -78,7 +115,11 @@ class User extends Authenticatable implements FilamentUser
     public function enrolledLessons(): BelongsToMany
     {
         return $this->belongsToMany(Lesson::class, 'lesson_enrollments')
-            ->withPivot('enrolled_at')
+            ->withPivot([
+                'enrolled_at',
+                'follow_up_instructor_id',
+                'instructor_assigned_at',
+            ])
             ->withTimestamps();
     }
 }

@@ -11,6 +11,8 @@ class LessonEnrollment extends Model
     protected $fillable = [
         'user_id',
         'lesson_id',
+        'follow_up_instructor_id',
+        'instructor_assigned_at',
         'enrolled_at',
 
         // Coursera-style learning schedule
@@ -23,6 +25,7 @@ class LessonEnrollment extends Model
 
     protected $casts = [
         'enrolled_at' => 'datetime',
+        'instructor_assigned_at' => 'datetime',
         'target_completion_date' => 'datetime',
         'schedule_started_at' => 'datetime',
         'schedule_updated_at' => 'datetime',
@@ -43,6 +46,14 @@ class LessonEnrollment extends Model
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);
+    }
+
+    public function followUpInstructor(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'follow_up_instructor_id'
+        );
     }
 
     public function reminderLogs(): HasMany

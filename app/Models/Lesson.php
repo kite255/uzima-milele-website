@@ -18,6 +18,8 @@ class Lesson extends Model
 
     protected $fillable = [
         'instructor_id',
+        'lead_instructor_id',
+        'lead_can_receive_students',
         'prerequisite_lesson_id',
         'title',
         'slug',
@@ -43,6 +45,7 @@ class Lesson extends Model
 
     protected $casts = [
         'is_published' => 'boolean',
+        'lead_can_receive_students' => 'boolean',
 
         'estimated_duration_minutes' => 'integer',
         'min_completion_days' => 'integer',
@@ -61,6 +64,24 @@ class Lesson extends Model
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function leadInstructor(): BelongsTo
+    {
+        return $this->belongsTo(
+            User::class,
+            'lead_instructor_id'
+        );
+    }
+
+    public function followUpInstructors(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'lesson_follow_up_instructor',
+            'lesson_id',
+            'instructor_id'
+        )->withTimestamps();
     }
 
     public function prerequisiteLesson(): BelongsTo
@@ -161,6 +182,8 @@ class Lesson extends Model
         )
             ->withPivot([
                 'enrolled_at',
+                'follow_up_instructor_id',
+                'instructor_assigned_at',
                 'study_pace',
                 'study_hours_per_week',
                 'target_completion_date',
