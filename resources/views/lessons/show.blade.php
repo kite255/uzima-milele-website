@@ -88,6 +88,36 @@
 
     $ministryBio = 'Uzima Milele Ministry hutoa elimu ya Biblia, afya, na jamii kupitia mifumo ya kidijitali kwa lugha ya Kiswahili.';
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Assigned Student Instructor Contact
+    |--------------------------------------------------------------------------
+    |
+    | The public teaching identity remains Uzima Milele Ministry. Only an
+    | authenticated enrolled student can see the contact details of the
+    | follow-up instructor assigned to their own enrollment.
+    |
+    */
+    $studentInstructor = null;
+    $studentInstructorWhatsApp = null;
+
+    if (
+        auth()->check()
+        && auth()->user()->role === 'student'
+        && $enrollment
+    ) {
+        $studentInstructor = $enrollment->followUpInstructor;
+
+        if ($studentInstructor?->phone) {
+            $studentInstructorWhatsApp = preg_replace('/\D+/', '', $studentInstructor->phone);
+
+            if (str_starts_with($studentInstructorWhatsApp, '0')) {
+                $studentInstructorWhatsApp = '255' . substr($studentInstructorWhatsApp, 1);
+            }
+        }
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Cover Image
@@ -833,6 +863,50 @@
                         <p class="mt-4 text-sm text-gray-600 leading-relaxed">
                             {{ $ministryBio }}
                         </p>
+
+
+                        @if($studentInstructor)
+                            <div class="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                                <p class="text-xs font-black uppercase tracking-wide text-primary">
+                                    Mwalimu wako
+                                </p>
+
+                                <h5 class="mt-2 font-black text-navy">
+                                    {{ $studentInstructor->name }}
+                                </h5>
+
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Mwalimu wa ufuatiliaji wa somo hili
+                                </p>
+
+                                <div class="mt-4 space-y-3 text-sm">
+                                    @if($studentInstructor->email)
+                                        <a href="mailto:{{ $studentInstructor->email }}"
+                                           class="flex items-center gap-2 text-gray-700 hover:text-primary transition break-all">
+                                            <span class="font-bold text-navy">Email:</span>
+                                            <span>{{ $studentInstructor->email }}</span>
+                                        </a>
+                                    @endif
+
+                                    @if($studentInstructor->phone)
+                                        <a href="tel:{{ $studentInstructor->phone }}"
+                                           class="flex items-center gap-2 text-gray-700 hover:text-primary transition">
+                                            <span class="font-bold text-navy">Simu:</span>
+                                            <span>{{ $studentInstructor->phone }}</span>
+                                        </a>
+
+                                        @if($studentInstructorWhatsApp)
+                                            <a href="https://wa.me/{{ $studentInstructorWhatsApp }}"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="inline-flex items-center justify-center rounded-xl bg-green-600 px-4 py-2 font-bold text-white hover:opacity-90 transition">
+                                                WhatsApp
+                                            </a>
+                                        @endif
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
