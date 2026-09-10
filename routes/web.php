@@ -204,6 +204,11 @@ Route::middleware(['auth'])->group(function () {
         [InstructorStudentController::class, 'show']
     )->name('instructor.students.show');
 
+    Route::post(
+        '/instructor/students/{enrollment}/follow-ups',
+        [InstructorStudentController::class, 'storeFollowUp']
+    )->name('instructor.students.follow-ups.store');
+
     /*
     |--------------------------------------------------------------------------
     | Instructor Q&A
