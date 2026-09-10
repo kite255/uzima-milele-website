@@ -141,7 +141,10 @@ class ModuleResource extends Resource
                         titleAttribute: 'title',
                         modifyQueryUsing: function (Builder $query) {
                             if (auth()->user()?->role === 'instructor') {
-                                return $query->where('instructor_id', auth()->id());
+                                return static::applyInstructorLessonScope(
+                                    $query,
+                                    auth()->id()
+                                );
                             }
 
                             return $query;

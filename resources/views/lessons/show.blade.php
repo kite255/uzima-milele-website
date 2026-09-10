@@ -77,19 +77,16 @@
 
     /*
     |--------------------------------------------------------------------------
-    | Instructor
+    | Public Teaching Identity
     |--------------------------------------------------------------------------
+    |
+    | Individual instructors are internal. Students and public visitors
+    | always see Uzima Milele Ministry as the teaching identity.
+    |
     */
-    $instructorName = $lesson->instructor?->name;
+    $ministryName = 'Uzima Milele Ministry';
 
-    $ministryName = $lesson->instructor?->ministry_name
-        ?: 'Uzima Milele Ministry';
-
-    $ministryBio = $lesson->instructor?->ministry_bio
-        ?: 'Uzima Milele Ministry hutoa elimu ya Biblia, afya, na jamii kupitia mifumo ya kidijitali kwa lugha ya Kiswahili.';
-
-    $showInstructorName = $instructorName
-        && strtolower(trim($instructorName)) !== strtolower(trim($ministryName));
+    $ministryBio = 'Uzima Milele Ministry hutoa elimu ya Biblia, afya, na jamii kupitia mifumo ya kidijitali kwa lugha ya Kiswahili.';
 
     /*
     |--------------------------------------------------------------------------
@@ -829,19 +826,9 @@
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        @if($showInstructorName)
-                            <h4 class="font-black text-navy text-lg">
-                                {{ $instructorName }}
-                            </h4>
-
-                            <p class="mt-1 text-sm font-bold text-primary">
-                                {{ $ministryName }}
-                            </p>
-                        @else
-                            <h4 class="font-black text-navy text-lg">
-                                {{ $ministryName }}
-                            </h4>
-                        @endif
+                        <h4 class="font-black text-navy text-lg">
+                            {{ $ministryName }}
+                        </h4>
 
                         <p class="mt-4 text-sm text-gray-600 leading-relaxed">
                             {{ $ministryBio }}
