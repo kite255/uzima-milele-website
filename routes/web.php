@@ -5,6 +5,7 @@ use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
+use App\Http\Controllers\InstructorStudentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonQuestionController;
 use App\Http\Controllers\LessonTopicController;
@@ -192,6 +193,16 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'index'])
         ->name('instructor.dashboard');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Instructor Students
+    |--------------------------------------------------------------------------
+    */
+    Route::get(
+        '/instructor/students/{enrollment}',
+        [InstructorStudentController::class, 'show']
+    )->name('instructor.students.show');
 
     /*
     |--------------------------------------------------------------------------

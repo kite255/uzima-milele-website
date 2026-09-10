@@ -31,6 +31,7 @@
         <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
                 <p class="text-sm text-gray-500">Masomo Yangu</p>
+
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $totalLessons }}
                 </h2>
@@ -38,6 +39,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
                 <p class="text-sm text-gray-500">Wanafunzi</p>
+
                 <h2 class="text-3xl font-black text-primary mt-2">
                     {{ $totalStudents }}
                 </h2>
@@ -45,6 +47,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-accent">
                 <p class="text-sm text-gray-500">Maswali Mapya</p>
+
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $pendingQuestions }}
                 </h2>
@@ -52,6 +55,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-green-500">
                 <p class="text-sm text-gray-500">Yaliyojibiwa</p>
+
                 <h2 class="text-3xl font-black text-green-600 mt-2">
                     {{ $answeredQuestions }}
                 </h2>
@@ -59,6 +63,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-navy">
                 <p class="text-sm text-gray-500">Vyeti</p>
+
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $certificatesIssued }}
                 </h2>
@@ -72,29 +77,39 @@
             </h2>
 
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="{{ route('instructor.questions.index') }}"
-                   class="rounded-2xl bg-accent/20 text-navy font-black p-5 hover:bg-accent transition">
+                <a
+                    href="{{ route('instructor.questions.index') }}"
+                    class="rounded-2xl bg-accent/20 text-navy font-black p-5 hover:bg-accent transition"
+                >
                     Answer Q&A
                 </a>
 
-                <a href="#my-students"
-                   class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition">
-                    Wanafunzi Wangu
+                <a
+                    href="#my-students"
+                    class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition"
+                >
+                    Assigned Students
                 </a>
 
-                <a href="{{ route('lessons.index') }}"
-                   class="rounded-2xl bg-gray-100 text-navy font-black p-5 hover:bg-gray-200 transition">
+                <a
+                    href="{{ route('lessons.index') }}"
+                    class="rounded-2xl bg-gray-100 text-navy font-black p-5 hover:bg-gray-200 transition"
+                >
                     View Public Lessons
                 </a>
 
-                <a href="{{ route('instructor.dashboard') }}"
-                   class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition">
+                <a
+                    href="{{ route('instructor.dashboard') }}"
+                    class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition"
+                >
                     Refresh Dashboard
                 </a>
 
                 @if(auth()->user()->role === 'admin')
-                    <a href="{{ url('/admin') }}"
-                       class="rounded-2xl bg-navy text-white font-black p-5 hover:bg-primaryDark transition">
+                    <a
+                        href="{{ url('/admin') }}"
+                        class="rounded-2xl bg-navy text-white font-black p-5 hover:bg-primaryDark transition"
+                    >
                         Open Admin Panel
                     </a>
                 @endif
@@ -102,26 +117,28 @@
         </div>
 
         {{-- ASSIGNED STUDENTS --}}
-        <div id="my-students"
-             class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28">
-
+        <div
+            id="my-students"
+            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28"
+        >
             <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <h2 class="text-2xl font-black text-navy">
-                        Wanafunzi Wangu
+                        Assigned Students
                     </h2>
 
                     <p class="text-sm text-gray-500 mt-1">
                         @if(auth()->user()->role === 'admin')
-                            Wanafunzi wanaoonekana kwenye masomo ya dashboard hii.
+                            Students visible within the lessons on this dashboard.
                         @else
-                            Lead instructor anaona wanafunzi wote wa somo analoongoza. Follow-up instructor anaona wanafunzi waliopangiwa kwake.
+                            Lead instructors see all students in lessons they lead. Follow-up instructors see students assigned to them.
                         @endif
                     </p>
                 </div>
 
                 <span class="inline-flex w-fit items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-black text-primary">
-                    {{ $assignedStudents->count() }} Enrollment{{ $assignedStudents->count() === 1 ? '' : 's' }}
+                    {{ $assignedStudents->count() }}
+                    Enrollment{{ $assignedStudents->count() === 1 ? '' : 's' }}
                 </span>
             </div>
 
@@ -129,12 +146,13 @@
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 text-gray-600 text-sm">
                         <tr>
-                            <th class="px-6 py-4">Mwanafunzi</th>
-                            <th class="px-6 py-4">Somo</th>
+                            <th class="px-6 py-4">Student</th>
+                            <th class="px-6 py-4">Lesson</th>
                             <th class="px-6 py-4">Assignment</th>
                             <th class="px-6 py-4">Email</th>
-                            <th class="px-6 py-4">Simu</th>
-                            <th class="px-6 py-4">Alijiunga</th>
+                            <th class="px-6 py-4">Phone</th>
+                            <th class="px-6 py-4">Enrolled</th>
+                            <th class="px-6 py-4">Action</th>
                         </tr>
                     </thead>
 
@@ -166,13 +184,13 @@
                             <tr class="hover:bg-gray-50/70">
                                 <td class="px-6 py-4">
                                     <p class="font-black text-navy">
-                                        {{ $student?->name ?? 'Mwanafunzi' }}
+                                        {{ $student?->name ?? 'Student' }}
                                     </p>
                                 </td>
 
                                 <td class="px-6 py-4">
                                     <p class="font-bold text-gray-800">
-                                        {{ $studentLesson?->title ?? 'Somo' }}
+                                        {{ $studentLesson?->title ?? 'Lesson' }}
                                     </p>
                                 </td>
 
@@ -184,8 +202,10 @@
 
                                 <td class="px-6 py-4">
                                     @if($student?->email)
-                                        <a href="mailto:{{ $student->email }}"
-                                           class="text-primary font-semibold hover:underline">
+                                        <a
+                                            href="mailto:{{ $student->email }}"
+                                            class="text-primary font-semibold hover:underline"
+                                        >
                                             {{ $student->email }}
                                         </a>
                                     @else
@@ -195,8 +215,10 @@
 
                                 <td class="px-6 py-4">
                                     @if($student?->phone)
-                                        <a href="tel:{{ $student->phone }}"
-                                           class="text-primary font-semibold hover:underline">
+                                        <a
+                                            href="tel:{{ $student->phone }}"
+                                            class="text-primary font-semibold hover:underline"
+                                        >
                                             {{ $student->phone }}
                                         </a>
                                     @else
@@ -213,11 +235,21 @@
                                         —
                                     @endif
                                 </td>
+
+                                <td class="px-6 py-4">
+                                    <a
+                                        href="{{ route('instructor.students.show', $studentEnrollment) }}"
+                                        class="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
+                                    >
+                                        View Student
+                                    </a>
+                                </td>
                             </tr>
+
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                                    Hakuna wanafunzi waliopangiwa kwako bado.
+                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                    No assigned students yet.
                                 </td>
                             </tr>
                         @endforelse
@@ -291,20 +323,25 @@
 
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
-                                        <a href="{{ route('lessons.show', $lesson->slug) }}"
-                                           class="text-primary font-bold hover:underline">
+                                        <a
+                                            href="{{ route('lessons.show', $lesson->slug) }}"
+                                            class="text-primary font-bold hover:underline"
+                                        >
                                             View
                                         </a>
 
                                         @if(auth()->user()->role === 'admin')
-                                            <a href="{{ url('/admin/lessons/' . $lesson->id . '/edit') }}"
-                                               class="text-navy font-bold hover:underline">
+                                            <a
+                                                href="{{ url('/admin/lessons/' . $lesson->id . '/edit') }}"
+                                                class="text-navy font-bold hover:underline"
+                                            >
                                                 Edit
                                             </a>
                                         @endif
                                     </div>
                                 </td>
                             </tr>
+
                         @empty
                             <tr>
                                 <td colspan="7" class="px-6 py-10 text-center text-gray-500">
@@ -324,8 +361,10 @@
                     Maswali ya Hivi Karibuni
                 </h2>
 
-                <a href="{{ route('instructor.questions.index') }}"
-                   class="text-primary font-bold hover:underline">
+                <a
+                    href="{{ route('instructor.questions.index') }}"
+                    class="text-primary font-bold hover:underline"
+                >
                     Answer Questions →
                 </a>
             </div>
@@ -340,7 +379,9 @@
                                 </p>
 
                                 <p class="text-xs text-gray-500 mt-1">
-                                    {{ $question->lesson->title ?? 'Somo' }} • {{ $question->created_at->format('d M Y, H:i') }}
+                                    {{ $question->lesson->title ?? 'Somo' }}
+                                    •
+                                    {{ $question->created_at->format('d M Y, H:i') }}
                                 </p>
 
                                 <p class="mt-3 text-gray-700">
@@ -359,13 +400,16 @@
                                     </span>
                                 @endif
 
-                                <a href="{{ route('instructor.questions.show', $question) }}"
-                                   class="text-primary font-bold hover:underline text-sm">
+                                <a
+                                    href="{{ route('instructor.questions.show', $question) }}"
+                                    class="text-primary font-bold hover:underline text-sm"
+                                >
                                     {{ $question->answer ? 'Hariri Jibu' : 'Jibu Swali' }}
                                 </a>
                             </div>
                         </div>
                     </div>
+
                 @empty
                     <div class="p-10 text-center text-gray-500">
                         Hakuna maswali bado.
