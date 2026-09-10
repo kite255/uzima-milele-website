@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\LessonEnrollmentResource\Pages;
 use App\Models\Certificate;
 use App\Models\LessonEnrollment;
-use App\Models\LessonProgress;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -78,87 +77,203 @@ class LessonEnrollmentResource extends Resource
                     ->sortable()
                     ->limit(40),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Learning Progress
+                |--------------------------------------------------------------------------
+                |
+                | This is topic progress only.
+                | It does NOT automatically mean that the whole lesson
+                | is complete.
+                |
+                */
                 Tables\Columns\TextColumn::make('progress')
-                    ->label('Progress')
+                    ->label('Learning Progress')
                     ->state(function (LessonEnrollment $record): string {
-                        $lesson = $record->lesson;
-
-                        if (! $lesson) {
-                            return '0%';
-                        }
-
-                        $lesson->loadMissing('modules.topics');
-
-                        $topicIds = $lesson->modules
-                            ->flatMap(fn ($module) => $module->topics)
-                            ->pluck('id');
-
-                        $totalTopics = $topicIds->count();
-
-                        if ($totalTopics === 0) {
-                            return '0%';
-                        }
-
-                        $completedTopics = LessonProgress::where('user_id', $record->user_id)
-                            ->where('lesson_id', $record->lesson_id)
-                            ->whereIn('lesson_topic_id', $topicIds)
-                            ->distinct('lesson_topic_id')
-                            ->count('lesson_topic_id');
-
-                        return round(($completedTopics / $totalTopics) * 100) . '%';
+                        return $record->learning_progress_percent . '%';
                     })
                     ->badge()
                     ->color(function (LessonEnrollment $record): string {
-                        $lesson = $record->lesson;
-
-                        if (! $lesson) {
-                            return 'gray';
-                        }
-
-                        $lesson->loadMissing('modules.topics');
-
-                        $topicIds = $lesson->modules
-                            ->flatMap(fn ($module) => $module->topics)
-                            ->pluck('id');
-
-                        $totalTopics = $topicIds->count();
-
-                        if ($totalTopics === 0) {
-                            return 'gray';
-                        }
-
-                        $completedTopics = LessonProgress::where('user_id', $record->user_id)
-                            ->where('lesson_id', $record->lesson_id)
-                            ->whereIn('lesson_topic_id', $topicIds)
-                            ->distinct('lesson_topic_id')
-                            ->count('lesson_topic_id');
-
-                        $progress = round(($completedTopics / $totalTopics) * 100);
+                        $progress = $record->learning_progress_percent;
 
                         return match (true) {
-                            $progress >= 100 => 'success',
+                            $record->is_completed => 'success',
+                            $progress >= 100 => 'warning',
                             $progress >= 50 => 'warning',
                             default => 'gray',
                         };
                     }),
 
-                Tables\Columns\TextColumn::make('certificate_status')
-                    ->label('Certificate')
+                /*
+                |--------------------------------------------------------------------------
+                | Completion Status
+                |--------------------------------------------------------------------------
+                |
+                | This is now the real lesson completion state.
+                |
+                | It can show:
+                | - In Progress
+                | - Module Quiz Pending
+                | - Final Quiz Pending
+                | - Completed
+                |
+                */
+                Tables\Columns\TextColumn::make('completion_status_display')
+                    ->label('Status')
                     ->state(function (LessonEnrollment $record): string {
-                        $hasCertificate = Certificate::where('user_id', $record->user_id)
-                            ->where('lesson_id', $record->lesson_id)
-                            ->exists();
-
-                        return $hasCertificate ? 'Issued' : 'Not Issued';
+                        return match ($record->completion_status) {
+                            'completed' => 'Completed',
+                            'module_quiz_pending' => 'Module Quiz Pending',
+                            'final_quiz_pending' => 'Final Quiz Pending',
+                            'in_progress' => 'In Progress',
+                            'not_started' => 'Not Started',
+                            default => $record->completion_label,
+                        };
                     })
                     ->badge()
                     ->color(function (LessonEnrollment $record): string {
-                        $hasCertificate = Certificate::where('user_id', $record->user_id)
+                        return match ($record->completion_status) {
+                            'completed' => 'success',
+                            'module_quiz_pending' => 'warning',
+                            'final_quiz_pending' => 'warning',
+                            'in_progress' => 'info',
+                            'not_started' => 'gray',
+                            default => 'gray',
+                        };
+                    }),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Modules
+                |--------------------------------------------------------------------------
+                */
+                Tables\Columns\TextColumn::make('modules_progress')
+                    ->label('Modules')
+                    ->state(function (LessonEnrollment $record): string {
+                        return $record->completed_modules
+                            . '/'
+                            . $record->total_modules;
+                    })
+                    ->badge()
+                    ->color(function (LessonEnrollment $record): string {
+                        if ($record->is_completed) {
+                            return 'success';
+                        }
+
+                        if ($record->modules_with_quiz_pending > 0) {
+                            return 'warning';
+                        }
+
+                        return 'gray';
+                    })
+                    ->toggleable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Quiz Pending
+                |--------------------------------------------------------------------------
+                */
+                Tables\Columns\TextColumn::make('quiz_status')
+                    ->label('Quiz Status')
+                    ->state(function (LessonEnrollment $record): string {
+                        if ($record->is_completed) {
+                            return 'Complete';
+                        }
+
+                        if ($record->has_final_quiz_pending) {
+                            return 'Final Quiz Pending';
+                        }
+
+                        if ($record->has_module_quiz_pending) {
+                            $count = $record->modules_with_quiz_pending;
+
+                            return $count === 1
+                                ? '1 Module Quiz Pending'
+                                : "{$count} Module Quizzes Pending";
+                        }
+
+                        return 'No Quiz Pending';
+                    })
+                    ->badge()
+                    ->color(function (LessonEnrollment $record): string {
+                        if ($record->is_completed) {
+                            return 'success';
+                        }
+
+                        if ($record->has_any_quiz_pending) {
+                            return 'warning';
+                        }
+
+                        return 'gray';
+                    })
+                    ->toggleable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Certificate
+                |--------------------------------------------------------------------------
+                */
+                Tables\Columns\TextColumn::make('certificate_status')
+                    ->label('Certificate')
+                    ->state(function (LessonEnrollment $record): string {
+                        $hasCertificate = Certificate::query()
+                            ->where('user_id', $record->user_id)
                             ->where('lesson_id', $record->lesson_id)
                             ->exists();
 
-                        return $hasCertificate ? 'success' : 'gray';
+                        if ($hasCertificate) {
+                            return 'Issued';
+                        }
+
+                        if ($record->is_completed) {
+                            return 'Ready';
+                        }
+
+                        return 'Not Eligible';
+                    })
+                    ->badge()
+                    ->color(function (LessonEnrollment $record): string {
+                        $hasCertificate = Certificate::query()
+                            ->where('user_id', $record->user_id)
+                            ->where('lesson_id', $record->lesson_id)
+                            ->exists();
+
+                        if ($hasCertificate) {
+                            return 'success';
+                        }
+
+                        if ($record->is_completed) {
+                            return 'info';
+                        }
+
+                        return 'gray';
                     }),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Schedule Status
+                |--------------------------------------------------------------------------
+                */
+                Tables\Columns\TextColumn::make('schedule_status_label')
+                    ->label('Schedule')
+                    ->badge()
+                    ->color(
+                        fn (LessonEnrollment $record): string =>
+                            $record->schedule_status_color
+                    )
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('target_completion_date')
+                    ->label('Target Date')
+                    ->date('d M Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('remaining_days_label')
+                    ->label('Time Remaining')
+                    ->placeholder('—')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('enrolled_at')
                     ->label('Enrolled At')
@@ -169,7 +284,9 @@ class LessonEnrollmentResource extends Resource
                     ->label('Created')
                     ->dateTime('d M Y, H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('lesson_id')
@@ -190,13 +307,29 @@ class LessonEnrollmentResource extends Resource
                 Tables\Actions\Action::make('viewStudent')
                     ->label('View Student')
                     ->icon('heroicon-o-user')
-                    ->url(fn (LessonEnrollment $record) => url('/admin/users/' . $record->user_id . '/edit'))
+                    ->url(
+                        fn (LessonEnrollment $record) =>
+                            url(
+                                '/admin/users/'
+                                . $record->user_id
+                                . '/edit'
+                            )
+                    )
                     ->openUrlInNewTab(),
 
                 Tables\Actions\Action::make('viewLesson')
                     ->label('View Lesson')
                     ->icon('heroicon-o-academic-cap')
-                    ->url(fn (LessonEnrollment $record) => route('lessons.show', $record->lesson->slug))
+                    ->url(function (LessonEnrollment $record) {
+                        if (! $record->lesson) {
+                            return null;
+                        }
+
+                        return route(
+                            'lessons.show',
+                            $record->lesson->slug
+                        );
+                    })
                     ->openUrlInNewTab(),
 
                 Tables\Actions\DeleteAction::make(),
@@ -206,20 +339,43 @@ class LessonEnrollmentResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('enrolled_at', 'desc');
+            ->defaultSort(
+                'enrolled_at',
+                'desc'
+            );
     }
 
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with(['user', 'lesson.modules.topics']);
+            ->with([
+                'user',
+
+                /*
+                |--------------------------------------------------------------------------
+                | Lesson completion relationships
+                |--------------------------------------------------------------------------
+                */
+                'lesson.modules.topics',
+                'lesson.modules.quizzes',
+                'lesson.finalQuiz',
+            ]);
 
         $user = auth()->user();
 
-        if ($user && $user->role === 'instructor') {
-            return $query->whereHas('lesson', function (Builder $lessonQuery) use ($user) {
-                $lessonQuery->where('instructor_id', $user->id);
-            });
+        if (
+            $user
+            && $user->role === 'instructor'
+        ) {
+            return $query->whereHas(
+                'lesson',
+                function (Builder $lessonQuery) use ($user) {
+                    $lessonQuery->where(
+                        'instructor_id',
+                        $user->id
+                    );
+                }
+            );
         }
 
         return $query;
@@ -228,9 +384,14 @@ class LessonEnrollmentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLessonEnrollments::route('/'),
-            'create' => Pages\CreateLessonEnrollment::route('/create'),
-            'edit' => Pages\EditLessonEnrollment::route('/{record}/edit'),
+            'index' =>
+                Pages\ListLessonEnrollments::route('/'),
+
+            'create' =>
+                Pages\CreateLessonEnrollment::route('/create'),
+
+            'edit' =>
+                Pages\EditLessonEnrollment::route('/{record}/edit'),
         ];
     }
 }

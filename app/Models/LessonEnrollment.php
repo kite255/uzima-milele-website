@@ -47,8 +47,14 @@ class LessonEnrollment extends Model
 
     public function reminderLogs(): HasMany
     {
-        return $this->hasMany(LessonReminderLog::class, 'user_id', 'user_id')
-            ->where('lesson_id', $this->lesson_id);
+        return $this->hasMany(
+            LessonReminderLog::class,
+            'user_id',
+            'user_id'
+        )->where(
+            'lesson_id',
+            $this->lesson_id
+        );
     }
 
     /*
@@ -115,6 +121,267 @@ class LessonEnrollment extends Model
 
     /*
     |--------------------------------------------------------------------------
+    | Completion Helpers
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | Lesson completion is NOT based only on topic count.
+    |
+    | The Lesson model is now the source of truth:
+    |
+    | 1. All published topics must be completed.
+    | 2. Required module quizzes must be attempted.
+    | 3. Required final quiz must be passed.
+    |
+    */
+
+    public function getIsCompletedAttribute(): bool
+    {
+        if (! $this->lesson || ! $this->user) {
+            return false;
+        }
+
+        return $this->lesson->isCompletedBy(
+            $this->user
+        );
+    }
+
+    public function getCompletionStatusAttribute(): string
+    {
+        if (! $this->lesson || ! $this->user) {
+            return 'not_started';
+        }
+
+        return $this->lesson->completionStatusFor(
+            $this->user
+        );
+    }
+
+    public function getCompletionLabelAttribute(): string
+    {
+        if (! $this->lesson || ! $this->user) {
+            return 'Haijaanza';
+        }
+
+        return $this->lesson->completionLabelFor(
+            $this->user
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Module Progress
+    |--------------------------------------------------------------------------
+    */
+
+    public function getTotalModulesAttribute(): int
+    {
+        if (! $this->lesson) {
+            return 0;
+        }
+
+        return $this->lesson
+            ->modules()
+            ->where('is_published', true)
+            ->count();
+    }
+
+    public function getCompletedModulesAttribute(): int
+    {
+        if (! $this->lesson || ! $this->user) {
+            return 0;
+        }
+
+        return $this->lesson->completedModulesCountFor(
+            $this->user
+        );
+    }
+
+    public function getIncompleteModulesAttribute(): int
+    {
+        if (! $this->lesson || ! $this->user) {
+            return 0;
+        }
+
+        return $this->lesson->incompleteModulesCountFor(
+            $this->user
+        );
+    }
+
+    public function getModulesWithQuizPendingAttribute(): int
+    {
+        if (! $this->lesson || ! $this->user) {
+            return 0;
+        }
+
+        return $this->lesson->modulesWithQuizPendingCountFor(
+            $this->user
+        );
+    }
+
+    public function getModulesProgressPercentAttribute(): int
+    {
+        if ($this->total_modules <= 0) {
+            return 0;
+        }
+
+        return (int) round(
+            ($this->completed_modules / $this->total_modules) * 100
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Topic Learning Progress
+    |--------------------------------------------------------------------------
+    |
+    | This represents CONTENT progress only.
+    |
+    | Example:
+    | A student may have completed 100% of topics but still have a required
+    | module quiz pending. In that case:
+    |
+    | learning_progress_percent = 100
+    | is_completed = false
+    |
+    */
+
+    public function getTotalTopicsAttribute(): int
+    {
+        if (! $this->lesson) {
+            return 0;
+        }
+
+        return LessonTopic::query()
+            ->whereHas(
+                'module',
+                function ($query) {
+                    $query
+                        ->where(
+                            'lesson_id',
+                            $this->lesson_id
+                        )
+                        ->where(
+                            'is_published',
+                            true
+                        );
+                }
+            )
+            ->where(
+                'is_published',
+                true
+            )
+            ->count();
+    }
+
+    public function getCompletedTopicsAttribute(): int
+    {
+        if (
+            ! $this->lesson_id
+            || ! $this->user_id
+        ) {
+            return 0;
+        }
+
+        $publishedTopicIds = LessonTopic::query()
+            ->whereHas(
+                'module',
+                function ($query) {
+                    $query
+                        ->where(
+                            'lesson_id',
+                            $this->lesson_id
+                        )
+                        ->where(
+                            'is_published',
+                            true
+                        );
+                }
+            )
+            ->where(
+                'is_published',
+                true
+            )
+            ->pluck('id');
+
+        if ($publishedTopicIds->isEmpty()) {
+            return 0;
+        }
+
+        return LessonProgress::query()
+            ->where(
+                'user_id',
+                $this->user_id
+            )
+            ->where(
+                'lesson_id',
+                $this->lesson_id
+            )
+            ->whereIn(
+                'lesson_topic_id',
+                $publishedTopicIds
+            )
+            ->distinct()
+            ->count(
+                'lesson_topic_id'
+            );
+    }
+
+    public function getLearningProgressPercentAttribute(): int
+    {
+        if ($this->total_topics <= 0) {
+            return 0;
+        }
+
+        return (int) round(
+            ($this->completed_topics / $this->total_topics) * 100
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backwards-Compatible Progress Attribute
+    |--------------------------------------------------------------------------
+    |
+    | Existing dashboard/admin code may still use:
+    |
+    | $enrollment->progress_percent
+    |
+    | Keep it working, but understand that this is learning/topic progress,
+    | not final lesson completion.
+    |
+    */
+
+    public function getProgressPercentAttribute(): int
+    {
+        return $this->learning_progress_percent;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Quiz Status Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function getHasModuleQuizPendingAttribute(): bool
+    {
+        return $this->modules_with_quiz_pending > 0;
+    }
+
+    public function getHasFinalQuizPendingAttribute(): bool
+    {
+        return $this->completion_status === 'final_quiz_pending';
+    }
+
+    public function getHasAnyQuizPendingAttribute(): bool
+    {
+        return $this->has_module_quiz_pending
+            || $this->has_final_quiz_pending;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Schedule Status
     |--------------------------------------------------------------------------
     */
@@ -128,7 +395,9 @@ class LessonEnrollment extends Model
         return now()
             ->startOfDay()
             ->diffInDays(
-                $this->target_completion_date->copy()->startOfDay(),
+                $this->target_completion_date
+                    ->copy()
+                    ->startOfDay(),
                 false
             );
     }
@@ -139,8 +408,13 @@ class LessonEnrollment extends Model
             return null;
         }
 
+        if ($this->is_completed) {
+            return 'Somo limekamilika';
+        }
+
         if ($this->remaining_days < 0) {
-            return 'Umepita kwa siku ' . abs($this->remaining_days);
+            return 'Umepita kwa siku '
+                . abs($this->remaining_days);
         }
 
         if ($this->remaining_days === 0) {
@@ -151,11 +425,22 @@ class LessonEnrollment extends Model
             return 'Siku 1 imebaki';
         }
 
-        return 'Siku ' . $this->remaining_days . ' zimebaki';
+        return 'Siku '
+            . $this->remaining_days
+            . ' zimebaki';
     }
 
     public function getIsBehindScheduleAttribute(): bool
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Completed Lessons Are Never Behind Schedule
+        |--------------------------------------------------------------------------
+        */
+        if ($this->is_completed) {
+            return false;
+        }
+
         if (! $this->target_completion_date) {
             return false;
         }
@@ -163,12 +448,18 @@ class LessonEnrollment extends Model
         return now()
             ->startOfDay()
             ->greaterThan(
-                $this->target_completion_date->copy()->startOfDay()
+                $this->target_completion_date
+                    ->copy()
+                    ->startOfDay()
             );
     }
 
     public function getIsDueTodayAttribute(): bool
     {
+        if ($this->is_completed) {
+            return false;
+        }
+
         if (! $this->target_completion_date) {
             return false;
         }
@@ -176,12 +467,18 @@ class LessonEnrollment extends Model
         return now()
             ->startOfDay()
             ->equalTo(
-                $this->target_completion_date->copy()->startOfDay()
+                $this->target_completion_date
+                    ->copy()
+                    ->startOfDay()
             );
     }
 
     public function getIsOnTrackAttribute(): bool
     {
+        if ($this->is_completed) {
+            return true;
+        }
+
         return $this->hasSchedule()
             && ! $this->is_behind_schedule
             && ! $this->is_due_today;
@@ -189,6 +486,10 @@ class LessonEnrollment extends Model
 
     public function getScheduleStatusLabelAttribute(): string
     {
+        if ($this->is_completed) {
+            return 'Imekamilika';
+        }
+
         if (! $this->hasSchedule()) {
             return 'Hakuna ratiba';
         }
@@ -206,6 +507,10 @@ class LessonEnrollment extends Model
 
     public function getScheduleStatusDescriptionAttribute(): string
     {
+        if ($this->is_completed) {
+            return 'Hongera! Umekamilisha somo hili.';
+        }
+
         if (! $this->hasSchedule()) {
             return 'Mwanafunzi bado hajapangiwa ratiba ya kujifunza.';
         }
@@ -223,6 +528,10 @@ class LessonEnrollment extends Model
 
     public function getScheduleStatusColorAttribute(): string
     {
+        if ($this->is_completed) {
+            return 'green';
+        }
+
         if (! $this->hasSchedule()) {
             return 'gray';
         }
@@ -240,60 +549,21 @@ class LessonEnrollment extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Progress Helpers
-    |--------------------------------------------------------------------------
-    */
-
-    public function getTotalTopicsAttribute(): int
-    {
-        if (! $this->lesson) {
-            return 0;
-        }
-
-        return $this->lesson
-            ->topics()
-            ->count();
-    }
-
-    public function getCompletedTopicsAttribute(): int
-    {
-        if (! $this->lesson_id || ! $this->user_id) {
-            return 0;
-        }
-
-        return LessonProgress::query()
-            ->where('user_id', $this->user_id)
-            ->where('lesson_id', $this->lesson_id)
-            ->distinct('lesson_topic_id')
-            ->count('lesson_topic_id');
-    }
-
-    public function getProgressPercentAttribute(): int
-    {
-        if ($this->total_topics <= 0) {
-            return 0;
-        }
-
-        return (int) round(($this->completed_topics / $this->total_topics) * 100);
-    }
-
-    public function getIsCompletedAttribute(): bool
-    {
-        return $this->total_topics > 0
-            && $this->completed_topics >= $this->total_topics;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Helpers
     |--------------------------------------------------------------------------
     */
 
     public function hasSchedule(): bool
     {
-        return filled($this->study_pace)
-            && filled($this->study_hours_per_week)
-            && filled($this->target_completion_date);
+        return filled(
+            $this->study_pace
+        )
+            && filled(
+                $this->study_hours_per_week
+            )
+            && filled(
+                $this->target_completion_date
+            );
     }
 
     public function canResetSchedule(): bool
@@ -302,23 +572,33 @@ class LessonEnrollment extends Model
             return false;
         }
 
-        return (bool) $this->lesson->allow_schedule_reset;
+        return (bool) $this->lesson
+            ->allow_schedule_reset;
     }
 
-    public function resetSchedule(string $pace, ?int $customHours = null): void
-    {
+    public function resetSchedule(
+        string $pace,
+        ?int $customHours = null
+    ): void {
         if (! $this->lesson) {
             return;
         }
 
-        $pace = $this->normalizePace($pace);
-
-        $hoursPerWeek = $this->lesson->getPaceHours($pace, $customHours);
-
-        $targetCompletionDate = $this->lesson->calculateTargetCompletionDate(
-            $pace,
-            $customHours
+        $pace = $this->normalizePace(
+            $pace
         );
+
+        $hoursPerWeek = $this->lesson
+            ->getPaceHours(
+                $pace,
+                $customHours
+            );
+
+        $targetCompletionDate = $this->lesson
+            ->calculateTargetCompletionDate(
+                $pace,
+                $customHours
+            );
 
         $this->forceFill([
             'study_pace' => $pace,
@@ -329,30 +609,47 @@ class LessonEnrollment extends Model
         ])->save();
     }
 
-    public function normalizePace(?string $pace): string
-    {
-        return in_array($pace, [
-            Lesson::PACE_RELAXED,
-            Lesson::PACE_REGULAR,
-            Lesson::PACE_INTENSIVE,
-            Lesson::PACE_CUSTOM,
-        ], true)
+    public function normalizePace(
+        ?string $pace
+    ): string {
+        return in_array(
+            $pace,
+            [
+                Lesson::PACE_RELAXED,
+                Lesson::PACE_REGULAR,
+                Lesson::PACE_INTENSIVE,
+                Lesson::PACE_CUSTOM,
+            ],
+            true
+        )
             ? $pace
             : Lesson::PACE_REGULAR;
     }
 
-    public static function createForLesson(User $user, Lesson $lesson, string $pace, ?int $customHours = null): self
-    {
-        $pace = in_array($pace, [
-            Lesson::PACE_RELAXED,
-            Lesson::PACE_REGULAR,
-            Lesson::PACE_INTENSIVE,
-            Lesson::PACE_CUSTOM,
-        ], true)
+    public static function createForLesson(
+        User $user,
+        Lesson $lesson,
+        string $pace,
+        ?int $customHours = null
+    ): self {
+        $pace = in_array(
+            $pace,
+            [
+                Lesson::PACE_RELAXED,
+                Lesson::PACE_REGULAR,
+                Lesson::PACE_INTENSIVE,
+                Lesson::PACE_CUSTOM,
+            ],
+            true
+        )
             ? $pace
             : Lesson::PACE_REGULAR;
 
-        $hoursPerWeek = $lesson->getPaceHours($pace, $customHours);
+        $hoursPerWeek = $lesson
+            ->getPaceHours(
+                $pace,
+                $customHours
+            );
 
         return self::query()->firstOrCreate(
             [
@@ -363,7 +660,11 @@ class LessonEnrollment extends Model
                 'enrolled_at' => now(),
                 'study_pace' => $pace,
                 'study_hours_per_week' => $hoursPerWeek,
-                'target_completion_date' => $lesson->calculateTargetCompletionDate($pace, $customHours),
+                'target_completion_date' => $lesson
+                    ->calculateTargetCompletionDate(
+                        $pace,
+                        $customHours
+                    ),
                 'schedule_started_at' => now(),
                 'schedule_updated_at' => now(),
             ]
