@@ -168,20 +168,6 @@ class InstructorDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Students Visible on Dashboard
         |--------------------------------------------------------------------------
-        |
-        | The same query used for the student count is reused here.
-        |
-        | This guarantees:
-        |
-        | Follow-up instructor:
-        | - Only assigned students.
-        |
-        | Lead instructor:
-        | - All students from lessons they lead.
-        |
-        | Admin:
-        | - All students from dashboard-visible lessons.
-        |
         */
         $assignedStudents = (clone $studentQuery)
             ->with([
@@ -196,24 +182,6 @@ class InstructorDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Due Follow-ups
         |--------------------------------------------------------------------------
-        |
-        | A follow-up is considered due when:
-        |
-        | - next_follow_up_at is present
-        | - next_follow_up_at is now or in the past
-        | - the enrollment is visible to the current user
-        |
-        | Because this query starts from the same scoped $studentQuery:
-        |
-        | Follow-up instructor:
-        | - Only sees due students assigned to them.
-        |
-        | Lead instructor:
-        | - Sees due students from lessons they lead.
-        |
-        | Admin:
-        | - Sees due students from dashboard-visible lessons.
-        |
         */
         $dueFollowUps = (clone $studentQuery)
             ->with([
@@ -233,6 +201,123 @@ class InstructorDashboardController extends Controller
                 'next_follow_up_at'
             )
             ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lead Instructor Team Supervision
+        |--------------------------------------------------------------------------
+        |
+        | Only instructors who are lead instructors receive supervision data.
+        |
+        | Follow-up instructors:
+        | - Cannot see the supervision section.
+        | - Cannot see another follow-up instructor's workload.
+        |
+        | Lead instructors:
+        | - See follow-up instructors attached to lessons they lead.
+        | - See student counts for each instructor.
+        | - See due follow-up counts for each instructor.
+        | - See students who have not yet been assigned.
+        |
+        */
+        $canViewTeamSupervision = false;
+
+        $teamSupervision = collect();
+
+        $unassignedStudents = collect();
+
+        if ($user->role === 'instructor') {
+            $ledLessons = Lesson::query()
+                ->with([
+                    'followUpInstructors',
+                ])
+                ->where(
+                    'lead_instructor_id',
+                    $user->id
+                )
+                ->orderBy('title')
+                ->get();
+
+            $canViewTeamSupervision = $ledLessons->isNotEmpty();
+
+            if ($canViewTeamSupervision) {
+                $ledLessonIds = $ledLessons
+                    ->pluck('id');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Follow-up Instructor Workload
+                |--------------------------------------------------------------------------
+                */
+                $teamSupervision = $ledLessons
+                    ->flatMap(
+                        function (Lesson $lesson) {
+                            return $lesson->followUpInstructors
+                                ->map(
+                                    function ($instructor) use ($lesson) {
+                                        $studentCount = LessonEnrollment::query()
+                                            ->where(
+                                                'lesson_id',
+                                                $lesson->id
+                                            )
+                                            ->where(
+                                                'follow_up_instructor_id',
+                                                $instructor->id
+                                            )
+                                            ->count();
+
+                                        $dueFollowUpCount = LessonEnrollment::query()
+                                            ->where(
+                                                'lesson_id',
+                                                $lesson->id
+                                            )
+                                            ->where(
+                                                'follow_up_instructor_id',
+                                                $instructor->id
+                                            )
+                                            ->whereNotNull(
+                                                'next_follow_up_at'
+                                            )
+                                            ->where(
+                                                'next_follow_up_at',
+                                                '<=',
+                                                now()
+                                            )
+                                            ->count();
+
+                                        return [
+                                            'lesson' => $lesson,
+                                            'instructor' => $instructor,
+                                            'student_count' => $studentCount,
+                                            'due_follow_up_count' => $dueFollowUpCount,
+                                        ];
+                                    }
+                                );
+                        }
+                    )
+                    ->values();
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unassigned Students
+                |--------------------------------------------------------------------------
+                */
+                $unassignedStudents = LessonEnrollment::query()
+                    ->with([
+                        'user',
+                        'lesson',
+                    ])
+                    ->whereIn(
+                        'lesson_id',
+                        $ledLessonIds
+                    )
+                    ->whereNull(
+                        'follow_up_instructor_id'
+                    )
+                    ->latest('id')
+                    ->get();
+            }
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -311,6 +396,9 @@ class InstructorDashboardController extends Controller
                 'totalStudents',
                 'assignedStudents',
                 'dueFollowUps',
+                'canViewTeamSupervision',
+                'teamSupervision',
+                'unassignedStudents',
                 'pendingQuestions',
                 'answeredQuestions',
                 'certificatesIssued',

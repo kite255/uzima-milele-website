@@ -4,539 +4,744 @@
 
 @section('content')
 
-<section class="bg-gray-50 min-h-screen py-12">
-    <div class="max-w-7xl mx-auto px-4">
+<section class="min-h-screen bg-gray-50 py-12">
+    <div class="mx-auto max-w-7xl px-4">
 
-        {{-- HEADER --}}
-        <div class="relative overflow-hidden mb-10 bg-gradient-to-r from-navy via-primaryDark to-primary rounded-3xl p-8 md:p-10 text-white shadow-lg">
-            <div class="relative z-10">
-                <p class="text-white/80 text-sm font-bold mb-2">
-                    Instructor Dashboard
-                </p>
-
-                <h1 class="text-3xl md:text-4xl font-black">
-                    Karibu, {{ auth()->user()->name }}
-                </h1>
-
-                <p class="text-white/85 mt-3 max-w-2xl">
-                    Fuatilia masomo yako, wanafunzi, maswali ya Q&A, na vyeti vilivyotolewa.
-                </p>
-            </div>
-
-            <div class="absolute -right-10 -bottom-10 w-56 h-56 rounded-full bg-white/10"></div>
-            <div class="absolute right-32 top-8 w-24 h-24 rounded-full bg-white/10"></div>
-        </div>
+        {{-- HERO --}}
+        <x-ui.page-hero
+            eyebrow="Instructor Dashboard"
+            :title="'Karibu, ' . auth()->user()->name"
+            description="Manage your lessons, students, follow-ups, questions and learning activities."
+        />
 
         {{-- STATS --}}
-        <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
-                <p class="text-sm text-gray-500">Masomo Yangu</p>
-                <h2 class="text-3xl font-black text-navy mt-2">
-                    {{ $totalLessons }}
-                </h2>
-            </div>
+        <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
 
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
-                <p class="text-sm text-gray-500">Wanafunzi</p>
-                <h2 class="text-3xl font-black text-primary mt-2">
-                    {{ $totalStudents }}
-                </h2>
-            </div>
+            <x-ui.stat-card
+                label="My Lessons"
+                :value="$totalLessons"
+            />
 
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-accent">
-                <p class="text-sm text-gray-500">Maswali Mapya</p>
-                <h2 class="text-3xl font-black text-navy mt-2">
-                    {{ $pendingQuestions }}
-                </h2>
-            </div>
+            <x-ui.stat-card
+                label="Students"
+                :value="$totalStudents"
+                accent="navy"
+            />
 
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-green-500">
-                <p class="text-sm text-gray-500">Yaliyojibiwa</p>
-                <h2 class="text-3xl font-black text-green-600 mt-2">
-                    {{ $answeredQuestions }}
-                </h2>
-            </div>
+            <x-ui.stat-card
+                label="Pending Questions"
+                :value="$pendingQuestions"
+                accent="accent"
+            />
 
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-navy">
-                <p class="text-sm text-gray-500">Vyeti</p>
-                <h2 class="text-3xl font-black text-navy mt-2">
-                    {{ $certificatesIssued }}
-                </h2>
-            </div>
+            <x-ui.stat-card
+                label="Answered"
+                :value="$answeredQuestions"
+                accent="green"
+            />
+
+            <x-ui.stat-card
+                label="Certificates"
+                :value="$certificatesIssued"
+                accent="navy"
+            />
+
         </div>
 
         {{-- QUICK ACTIONS --}}
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-10">
-            <h2 class="text-2xl font-black text-navy mb-5">
-                Quick Actions
-            </h2>
+        <div class="mt-10">
+            <x-ui.section-card title="Quick Actions">
 
-            <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <a
-                    href="{{ route('instructor.questions.index') }}"
-                    class="rounded-2xl bg-accent/20 text-navy font-black p-5 hover:bg-accent transition"
-                >
-                    Answer Q&A
-                </a>
+                <div class="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-5">
 
-                <a
-                    href="#my-students"
-                    class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition"
-                >
-                    Assigned Students
-                </a>
-
-                <a
-                    href="#due-follow-ups"
-                    class="rounded-2xl bg-red-50 text-red-700 font-black p-5 hover:bg-red-100 transition"
-                >
-                    Due Follow-ups
-                </a>
-
-                <a
-                    href="{{ route('lessons.index') }}"
-                    class="rounded-2xl bg-gray-100 text-navy font-black p-5 hover:bg-gray-200 transition"
-                >
-                    View Public Lessons
-                </a>
-
-                <a
-                    href="{{ route('instructor.dashboard') }}"
-                    class="rounded-2xl bg-primary/10 text-primary font-black p-5 hover:bg-primary hover:text-white transition"
-                >
-                    Refresh Dashboard
-                </a>
-
-                @if(auth()->user()->role === 'admin')
                     <a
-                        href="{{ url('/admin') }}"
-                        class="rounded-2xl bg-navy text-white font-black p-5 hover:bg-primaryDark transition"
+                        href="{{ route('instructor.questions.index') }}"
+                        class="rounded-2xl bg-accent/20 p-5 font-black text-navy transition hover:bg-accent"
                     >
-                        Open Admin Panel
+                        Answer Q&A
                     </a>
-                @endif
-            </div>
+
+                    <a
+                        href="#assigned-students"
+                        class="rounded-2xl bg-primary/10 p-5 font-black text-primary transition hover:bg-primary hover:text-white"
+                    >
+                        Assigned Students
+                    </a>
+
+                    <a
+                        href="#due-follow-ups"
+                        class="rounded-2xl bg-red-50 p-5 font-black text-red-700 transition hover:bg-red-100"
+                    >
+                        Due Follow-ups
+                    </a>
+
+                    @if($canViewTeamSupervision)
+                        <a
+                            href="#team-supervision"
+                            class="rounded-2xl bg-navy/10 p-5 font-black text-navy transition hover:bg-navy hover:text-white"
+                        >
+                            Team Supervision
+                        </a>
+                    @endif
+
+                    <a
+                        href="{{ route('lessons.index') }}"
+                        class="rounded-2xl bg-gray-100 p-5 font-black text-navy transition hover:bg-gray-200"
+                    >
+                        View Lessons
+                    </a>
+
+                </div>
+
+            </x-ui.section-card>
         </div>
 
         {{-- DUE FOLLOW-UPS --}}
         <div
             id="due-follow-ups"
-            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28"
+            class="mt-10 scroll-mt-28"
         >
-            <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h2 class="text-2xl font-black text-navy">
-                        Due Follow-ups
-                    </h2>
+            <x-ui.section-card
+                title="Due Follow-ups"
+                description="Students whose scheduled follow-up time has arrived or passed."
+            >
 
-                    <p class="text-sm text-gray-500 mt-1">
-                        Students whose scheduled follow-up time has arrived or passed.
-                    </p>
-                </div>
+                @if($dueFollowUps->isEmpty())
 
-                <span class="inline-flex w-fit items-center rounded-full bg-red-100 px-4 py-2 text-sm font-black text-red-700">
-                    {{ $dueFollowUps->count() }}
-                    Due
-                </span>
+                    <div class="p-10 text-center">
+                        <p class="font-black text-gray-600">
+                            No follow-ups are due right now.
+                        </p>
+
+                        <p class="mt-1 text-sm text-gray-400">
+                            Scheduled follow-ups will appear here when their date and time are reached.
+                        </p>
+                    </div>
+
+                @else
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+
+                            <thead class="bg-gray-50 text-sm text-gray-600">
+                                <tr>
+                                    <th class="px-6 py-4">Student</th>
+                                    <th class="px-6 py-4">Lesson</th>
+                                    <th class="px-6 py-4">Assigned Instructor</th>
+                                    <th class="px-6 py-4">Status</th>
+                                    <th class="px-6 py-4">Due At</th>
+                                    <th class="px-6 py-4">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-gray-100">
+
+                                @foreach($dueFollowUps as $dueFollowUp)
+
+                                    @php
+                                        $status = $dueFollowUp->follow_up_status
+                                            ?? \App\Models\LessonEnrollment::FOLLOW_UP_NOT_CONTACTED;
+
+                                        $tone = match ($status) {
+                                            \App\Models\LessonEnrollment::FOLLOW_UP_COMPLETED => 'green',
+                                            \App\Models\LessonEnrollment::FOLLOW_UP_DOING_WELL => 'green',
+                                            \App\Models\LessonEnrollment::FOLLOW_UP_NEEDS_FOLLOW_UP => 'yellow',
+                                            \App\Models\LessonEnrollment::FOLLOW_UP_CONTACTED => 'blue',
+                                            default => 'gray',
+                                        };
+                                    @endphp
+
+                                    <tr class="hover:bg-gray-50">
+
+                                        <td class="px-6 py-4">
+                                            <p class="font-black text-navy">
+                                                {{ $dueFollowUp->user?->name ?? 'Student' }}
+                                            </p>
+
+                                            @if($dueFollowUp->user?->phone)
+                                                <p class="mt-1 text-xs text-gray-500">
+                                                    {{ $dueFollowUp->user->phone }}
+                                                </p>
+                                            @endif
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <p class="font-bold text-gray-800">
+                                                {{ $dueFollowUp->lesson?->title ?? 'Lesson' }}
+                                            </p>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <p class="text-sm text-gray-700">
+                                                {{ $dueFollowUp->followUpInstructor?->name ?? 'Unassigned' }}
+                                            </p>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <x-ui.status-badge
+                                                :label="ucwords(str_replace('_', ' ', $status))"
+                                                :tone="$tone"
+                                            />
+                                        </td>
+
+                                        <td class="px-6 py-4">
+
+                                            <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                                                Overdue
+                                            </span>
+
+                                            <p class="mt-2 text-sm font-bold text-gray-700">
+                                                {{ $dueFollowUp->next_follow_up_at?->format('d M Y, H:i') }}
+                                            </p>
+
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <a
+                                                href="{{ route('instructor.students.show', $dueFollowUp) }}"
+                                                class="inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
+                                            >
+                                                View Student
+                                            </a>
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                @endif
+
+            </x-ui.section-card>
+        </div>
+
+        {{-- TEAM SUPERVISION --}}
+        @if($canViewTeamSupervision)
+
+            <div
+                id="team-supervision"
+                class="mt-10 scroll-mt-28"
+            >
+                <x-ui.section-card
+                    title="Team Supervision"
+                    description="Monitor follow-up instructors and students in the lessons you lead."
+                >
+
+                    {{-- FOLLOW-UP INSTRUCTORS --}}
+                    @if($teamSupervision->isEmpty())
+
+                        <div class="p-10 text-center">
+                            <p class="font-black text-gray-600">
+                                No follow-up instructors are configured yet.
+                            </p>
+
+                            <p class="mt-1 text-sm text-gray-400">
+                                Add follow-up instructors to the lesson to begin team supervision.
+                            </p>
+                        </div>
+
+                    @else
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+
+                                <thead class="bg-gray-50 text-sm text-gray-600">
+                                    <tr>
+                                        <th class="px-6 py-4">Follow-up Instructor</th>
+                                        <th class="px-6 py-4">Lesson</th>
+                                        <th class="px-6 py-4">Students</th>
+                                        <th class="px-6 py-4">Due Follow-ups</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-gray-100">
+
+                                    @foreach($teamSupervision as $teamMember)
+
+                                        <tr class="hover:bg-gray-50">
+
+                                            <td class="px-6 py-4">
+                                                <p class="font-black text-navy">
+                                                    {{ $teamMember['instructor']->name }}
+                                                </p>
+
+                                                <p class="mt-1 text-xs text-gray-500">
+                                                    {{ $teamMember['instructor']->email }}
+                                                </p>
+
+                                                @if($teamMember['instructor']->phone)
+                                                    <p class="mt-1 text-xs text-gray-500">
+                                                        {{ $teamMember['instructor']->phone }}
+                                                    </p>
+                                                @endif
+                                            </td>
+
+                                            <td class="px-6 py-4">
+                                                <p class="font-bold text-gray-800">
+                                                    {{ $teamMember['lesson']->title }}
+                                                </p>
+                                            </td>
+
+                                            <td class="px-6 py-4">
+                                                <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-black text-primary">
+                                                    {{ $teamMember['student_count'] }}
+                                                    {{ $teamMember['student_count'] === 1 ? 'Student' : 'Students' }}
+                                                </span>
+                                            </td>
+
+                                            <td class="px-6 py-4">
+
+                                                @if($teamMember['due_follow_up_count'] > 0)
+
+                                                    <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-black text-red-700">
+                                                        {{ $teamMember['due_follow_up_count'] }}
+                                                        Due
+                                                    </span>
+
+                                                @else
+
+                                                    <span class="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-black text-green-700">
+                                                        Up to date
+                                                    </span>
+
+                                                @endif
+
+                                            </td>
+
+                                        </tr>
+
+                                    @endforeach
+
+                                </tbody>
+                            </table>
+                        </div>
+
+                    @endif
+
+                    {{-- UNASSIGNED STUDENTS --}}
+                    <div class="border-t border-gray-100">
+
+                        <div class="flex flex-col gap-3 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+
+                            <div>
+                                <h3 class="text-xl font-black text-navy">
+                                    Unassigned Students
+                                </h3>
+
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Students in lessons you lead who do not yet have a follow-up instructor.
+                                </p>
+                            </div>
+
+                            <span class="inline-flex w-fit rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700">
+                                {{ $unassignedStudents->count() }}
+                                Unassigned
+                            </span>
+
+                        </div>
+
+                        @if($unassignedStudents->isEmpty())
+
+                            <div class="p-8 text-center">
+                                <p class="font-black text-green-700">
+                                    All students are assigned.
+                                </p>
+
+                                <p class="mt-1 text-sm text-gray-400">
+                                    There are currently no students waiting for a follow-up instructor.
+                                </p>
+                            </div>
+
+                        @else
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+
+                                    <thead class="bg-gray-50 text-sm text-gray-600">
+                                        <tr>
+                                            <th class="px-6 py-4">Student</th>
+                                            <th class="px-6 py-4">Lesson</th>
+                                            <th class="px-6 py-4">Email</th>
+                                            <th class="px-6 py-4">Phone</th>
+                                            <th class="px-6 py-4">Enrolled</th>
+                                            <th class="px-6 py-4">Action</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody class="divide-y divide-gray-100">
+
+                                        @foreach($unassignedStudents as $unassignedEnrollment)
+
+                                            <tr class="hover:bg-gray-50">
+
+                                                <td class="px-6 py-4">
+                                                    <p class="font-black text-navy">
+                                                        {{ $unassignedEnrollment->user?->name ?? 'Student' }}
+                                                    </p>
+                                                </td>
+
+                                                <td class="px-6 py-4">
+                                                    <p class="font-bold text-gray-800">
+                                                        {{ $unassignedEnrollment->lesson?->title ?? 'Lesson' }}
+                                                    </p>
+                                                </td>
+
+                                                <td class="px-6 py-4">
+                                                    {{ $unassignedEnrollment->user?->email ?? '—' }}
+                                                </td>
+
+                                                <td class="px-6 py-4">
+                                                    {{ $unassignedEnrollment->user?->phone ?? '—' }}
+                                                </td>
+
+                                                <td class="px-6 py-4 text-sm text-gray-600">
+                                                    {{ $unassignedEnrollment->enrolled_at?->format('d M Y') ?? '—' }}
+                                                </td>
+
+                                                <td class="px-6 py-4">
+                                                    <a
+                                                        href="{{ route('instructor.students.show', $unassignedEnrollment) }}"
+                                                        class="inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
+                                                    >
+                                                        View Student
+                                                    </a>
+                                                </td>
+
+                                            </tr>
+
+                                        @endforeach
+
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        @endif
+
+                    </div>
+
+                </x-ui.section-card>
             </div>
 
-            @if($dueFollowUps->isEmpty())
-                <div class="p-10 text-center">
-                    <p class="font-black text-gray-600">
-                        No follow-ups are due right now.
-                    </p>
+        @endif
 
-                    <p class="mt-1 text-sm text-gray-400">
-                        Scheduled follow-ups will appear here when their date and time are reached.
-                    </p>
-                </div>
-            @else
+        {{-- ASSIGNED STUDENTS --}}
+        <div
+            id="assigned-students"
+            class="mt-10 scroll-mt-28"
+        >
+            <x-ui.section-card
+                title="Assigned Students"
+                description="Students currently visible to you based on your instructor role."
+            >
+
+                @if($assignedStudents->isEmpty())
+
+                    <div class="p-10 text-center">
+                        <p class="font-black text-gray-600">
+                            No assigned students yet.
+                        </p>
+                    </div>
+
+                @else
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+
+                            <thead class="bg-gray-50 text-sm text-gray-600">
+                                <tr>
+                                    <th class="px-6 py-4">Student</th>
+                                    <th class="px-6 py-4">Lesson</th>
+                                    <th class="px-6 py-4">Assignment</th>
+                                    <th class="px-6 py-4">Email</th>
+                                    <th class="px-6 py-4">Phone</th>
+                                    <th class="px-6 py-4">Enrolled</th>
+                                    <th class="px-6 py-4">Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-gray-100">
+
+                                @foreach($assignedStudents as $studentEnrollment)
+
+                                    @php
+                                        $student = $studentEnrollment->user;
+                                        $studentLesson = $studentEnrollment->lesson;
+
+                                        if (
+                                            auth()->user()->role === 'instructor'
+                                            && $studentLesson?->lead_instructor_id === auth()->id()
+                                        ) {
+                                            $assignmentLabel = 'Lead Instructor';
+                                        } elseif (
+                                            auth()->user()->role === 'instructor'
+                                            && $studentEnrollment->follow_up_instructor_id === auth()->id()
+                                        ) {
+                                            $assignmentLabel = 'Follow-up';
+                                        } elseif (
+                                            auth()->user()->role === 'admin'
+                                        ) {
+                                            $assignmentLabel = $studentEnrollment->followUpInstructor
+                                                ? 'Follow-up: ' . $studentEnrollment->followUpInstructor->name
+                                                : 'Unassigned';
+                                        } else {
+                                            $assignmentLabel = 'Legacy';
+                                        }
+                                    @endphp
+
+                                    <tr class="hover:bg-gray-50">
+
+                                        <td class="px-6 py-4">
+                                            <p class="font-black text-navy">
+                                                {{ $student?->name ?? 'Student' }}
+                                            </p>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <p class="font-bold text-gray-800">
+                                                {{ $studentLesson?->title ?? 'Lesson' }}
+                                            </p>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                                                {{ $assignmentLabel }}
+                                            </span>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            @if($student?->email)
+                                                <a
+                                                    href="mailto:{{ $student->email }}"
+                                                    class="font-semibold text-primary hover:underline"
+                                                >
+                                                    {{ $student->email }}
+                                                </a>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            @if($student?->phone)
+                                                <a
+                                                    href="tel:{{ $student->phone }}"
+                                                    class="font-semibold text-primary hover:underline"
+                                                >
+                                                    {{ $student->phone }}
+                                                </a>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
+
+                                        <td class="px-6 py-4 text-sm text-gray-600">
+                                            {{ $studentEnrollment->enrolled_at?->format('d M Y') ?? '—' }}
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <a
+                                                href="{{ route('instructor.students.show', $studentEnrollment) }}"
+                                                class="inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
+                                            >
+                                                View Student
+                                            </a>
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+
+                            </tbody>
+                        </table>
+                    </div>
+
+                @endif
+
+            </x-ui.section-card>
+        </div>
+
+        {{-- MY LESSONS --}}
+        <div class="mt-10">
+
+            <x-ui.section-card
+                title="My Lessons"
+                description="Lessons available through your instructor responsibilities."
+            >
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
+
                         <thead class="bg-gray-50 text-sm text-gray-600">
                             <tr>
-                                <th class="px-6 py-4">Student</th>
                                 <th class="px-6 py-4">Lesson</th>
-                                <th class="px-6 py-4">Assigned Instructor</th>
+                                <th class="px-6 py-4">Modules</th>
+                                <th class="px-6 py-4">Topics</th>
+                                <th class="px-6 py-4">Students</th>
+                                <th class="px-6 py-4">Questions</th>
                                 <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4">Due At</th>
                                 <th class="px-6 py-4">Action</th>
                             </tr>
                         </thead>
 
-                        <tbody class="divide-y">
-                            @foreach($dueFollowUps as $dueFollowUp)
-                                @php
-                                    $status = $dueFollowUp->follow_up_status
-                                        ?? \App\Models\LessonEnrollment::FOLLOW_UP_NOT_CONTACTED;
+                        <tbody class="divide-y divide-gray-100">
 
-                                    $tone = match ($status) {
-                                        \App\Models\LessonEnrollment::FOLLOW_UP_COMPLETED => 'green',
-                                        \App\Models\LessonEnrollment::FOLLOW_UP_DOING_WELL => 'green',
-                                        \App\Models\LessonEnrollment::FOLLOW_UP_NEEDS_FOLLOW_UP => 'yellow',
-                                        \App\Models\LessonEnrollment::FOLLOW_UP_CONTACTED => 'blue',
-                                        default => 'gray',
-                                    };
-                                @endphp
+                            @forelse($lessons as $lesson)
 
-                                <tr class="hover:bg-gray-50/70">
+                                <tr class="hover:bg-gray-50">
+
                                     <td class="px-6 py-4">
                                         <p class="font-black text-navy">
-                                            {{ $dueFollowUp->user?->name ?? 'Student' }}
+                                            {{ $lesson->title }}
                                         </p>
 
-                                        @if($dueFollowUp->user?->phone)
-                                            <p class="mt-1 text-xs text-gray-500">
-                                                {{ $dueFollowUp->user->phone }}
-                                            </p>
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            {{ $lesson->category ?? 'No category' }}
+                                        </p>
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        {{ $lesson->modules_count }}
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        {{ $lesson->topics_count }}
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        {{ $lesson->enrollments_count }}
+                                    </td>
+
+                                    <td class="px-6 py-4">
+                                        {{ $lesson->questions_count }}
+                                    </td>
+
+                                    <td class="px-6 py-4">
+
+                                        @if($lesson->is_published)
+
+                                            <x-ui.status-badge
+                                                label="Published"
+                                                tone="green"
+                                            />
+
+                                        @else
+
+                                            <x-ui.status-badge
+                                                label="Draft"
+                                                tone="gray"
+                                            />
+
                                         @endif
+
                                     </td>
 
                                     <td class="px-6 py-4">
-                                        <p class="font-bold text-gray-800">
-                                            {{ $dueFollowUp->lesson?->title ?? 'Lesson' }}
-                                        </p>
-                                    </td>
-
-                                    <td class="px-6 py-4">
-                                        <p class="text-sm text-gray-700">
-                                            {{ $dueFollowUp->followUpInstructor?->name ?? 'Unassigned' }}
-                                        </p>
-                                    </td>
-
-                                    <td class="px-6 py-4">
-                                        <x-ui.status-badge
-                                            :label="ucwords(str_replace('_', ' ', $status))"
-                                            :tone="$tone"
-                                        />
-                                    </td>
-
-                                    <td class="px-6 py-4">
-                                        <span class="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
-                                            Overdue
-                                        </span>
-
-                                        <p class="mt-2 text-sm font-bold text-gray-700">
-                                            {{ $dueFollowUp->next_follow_up_at?->format('d M Y, H:i') }}
-                                        </p>
-                                    </td>
-
-                                    <td class="px-6 py-4">
-                                        <a
-                                            href="{{ route('instructor.students.show', $dueFollowUp) }}"
-                                            class="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
-                                        >
-                                            View Student
-                                        </a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
-
-        {{-- ASSIGNED STUDENTS --}}
-        <div
-            id="my-students"
-            class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10 scroll-mt-28"
-        >
-            <div class="p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h2 class="text-2xl font-black text-navy">
-                        Assigned Students
-                    </h2>
-
-                    <p class="text-sm text-gray-500 mt-1">
-                        @if(auth()->user()->role === 'admin')
-                            Students visible within the lessons on this dashboard.
-                        @else
-                            Lead instructors see all students in lessons they lead. Follow-up instructors see students assigned to them.
-                        @endif
-                    </p>
-                </div>
-
-                <span class="inline-flex w-fit items-center rounded-full bg-primary/10 px-4 py-2 text-sm font-black text-primary">
-                    {{ $assignedStudents->count() }}
-                    Enrollment{{ $assignedStudents->count() === 1 ? '' : 's' }}
-                </span>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-gray-600 text-sm">
-                        <tr>
-                            <th class="px-6 py-4">Student</th>
-                            <th class="px-6 py-4">Lesson</th>
-                            <th class="px-6 py-4">Assignment</th>
-                            <th class="px-6 py-4">Email</th>
-                            <th class="px-6 py-4">Phone</th>
-                            <th class="px-6 py-4">Enrolled</th>
-                            <th class="px-6 py-4">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y">
-                        @forelse($assignedStudents as $studentEnrollment)
-                            @php
-                                $student = $studentEnrollment->user;
-                                $studentLesson = $studentEnrollment->lesson;
-
-                                if (
-                                    auth()->user()->role === 'instructor'
-                                    && $studentLesson?->lead_instructor_id === auth()->id()
-                                ) {
-                                    $assignmentLabel = 'Lead Instructor';
-                                } elseif (
-                                    auth()->user()->role === 'instructor'
-                                    && $studentEnrollment->follow_up_instructor_id === auth()->id()
-                                ) {
-                                    $assignmentLabel = 'Follow-up';
-                                } elseif (auth()->user()->role === 'admin') {
-                                    $assignmentLabel = $studentEnrollment->followUpInstructor
-                                        ? 'Follow-up: ' . $studentEnrollment->followUpInstructor->name
-                                        : 'Unassigned';
-                                } else {
-                                    $assignmentLabel = 'Legacy';
-                                }
-                            @endphp
-
-                            <tr class="hover:bg-gray-50/70">
-                                <td class="px-6 py-4">
-                                    <p class="font-black text-navy">
-                                        {{ $student?->name ?? 'Student' }}
-                                    </p>
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    <p class="font-bold text-gray-800">
-                                        {{ $studentLesson?->title ?? 'Lesson' }}
-                                    </p>
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                                        {{ $assignmentLabel }}
-                                    </span>
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    @if($student?->email)
-                                        <a
-                                            href="mailto:{{ $student->email }}"
-                                            class="text-primary font-semibold hover:underline"
-                                        >
-                                            {{ $student->email }}
-                                        </a>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    @if($student?->phone)
-                                        <a
-                                            href="tel:{{ $student->phone }}"
-                                            class="text-primary font-semibold hover:underline"
-                                        >
-                                            {{ $student->phone }}
-                                        </a>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4 text-sm text-gray-600">
-                                    @if($studentEnrollment->enrolled_at)
-                                        {{ $studentEnrollment->enrolled_at->format('d M Y') }}
-                                    @elseif($studentEnrollment->created_at)
-                                        {{ $studentEnrollment->created_at->format('d M Y') }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    <a
-                                        href="{{ route('instructor.students.show', $studentEnrollment) }}"
-                                        class="inline-flex items-center rounded-xl bg-primary px-4 py-2 text-sm font-black text-white transition hover:bg-primaryDark"
-                                    >
-                                        View Student
-                                    </a>
-                                </td>
-                            </tr>
-
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                    No assigned students yet.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {{-- LESSONS TABLE --}}
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
-            <div class="p-6 border-b">
-                <h2 class="text-2xl font-black text-navy">
-                    Masomo Yangu
-                </h2>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-gray-600 text-sm">
-                        <tr>
-                            <th class="px-6 py-4">Somo</th>
-                            <th class="px-6 py-4">Modules</th>
-                            <th class="px-6 py-4">Topics</th>
-                            <th class="px-6 py-4">Students</th>
-                            <th class="px-6 py-4">Questions</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y">
-                        @forelse($lessons as $lesson)
-                            <tr>
-                                <td class="px-6 py-4">
-                                    <p class="font-black text-navy">
-                                        {{ $lesson->title }}
-                                    </p>
-
-                                    <p class="text-xs text-gray-500">
-                                        {{ $lesson->category ?? 'No category' }}
-                                    </p>
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    {{ $lesson->modules_count }}
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    {{ $lesson->topics_count }}
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    {{ $lesson->enrollments_count }}
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    {{ $lesson->questions_count }}
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    @if($lesson->is_published)
-                                        <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                                            Published
-                                        </span>
-                                    @else
-                                        <span class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">
-                                            Draft
-                                        </span>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
                                         <a
                                             href="{{ route('lessons.show', $lesson->slug) }}"
-                                            class="text-primary font-bold hover:underline"
+                                            class="font-bold text-primary hover:underline"
                                         >
                                             View
                                         </a>
+                                    </td>
 
-                                        @if(auth()->user()->role === 'admin')
-                                            <a
-                                                href="{{ url('/admin/lessons/' . $lesson->id . '/edit') }}"
-                                                class="text-navy font-bold hover:underline"
-                                            >
-                                                Edit
-                                            </a>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
+                                </tr>
 
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                    Huna masomo yoyote bado.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                            @empty
+
+                                <tr>
+                                    <td
+                                        colspan="7"
+                                        class="px-6 py-10 text-center text-gray-500"
+                                    >
+                                        No lessons available.
+                                    </td>
+                                </tr>
+
+                            @endforelse
+
+                        </tbody>
+                    </table>
+                </div>
+
+            </x-ui.section-card>
         </div>
 
         {{-- RECENT QUESTIONS --}}
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b flex items-center justify-between">
-                <h2 class="text-2xl font-black text-navy">
-                    Maswali ya Hivi Karibuni
-                </h2>
+        <div class="mt-10">
 
-                <a
-                    href="{{ route('instructor.questions.index') }}"
-                    class="text-primary font-bold hover:underline"
-                >
-                    Answer Questions →
-                </a>
-            </div>
+            <x-ui.section-card
+                title="Recent Questions"
+                description="Recent questions from students in your lessons."
+            >
 
-            <div class="divide-y">
                 @forelse($recentQuestions as $question)
-                    <div class="p-6">
-                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+                    <div class="border-b border-gray-100 p-6 last:border-b-0">
+
+                        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+
                             <div>
+
                                 <p class="font-black text-navy">
-                                    {{ $question->user->name ?? 'Mwanafunzi' }}
+                                    {{ $question->user?->name ?? 'Student' }}
                                 </p>
 
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ $question->lesson->title ?? 'Somo' }}
-                                    •
-                                    {{ $question->created_at->format('d M Y, H:i') }}
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {{ $question->lesson?->title ?? 'Lesson' }}
+                                    ·
+                                    {{ $question->created_at?->format('d M Y, H:i') }}
                                 </p>
 
                                 <p class="mt-3 text-gray-700">
                                     {{ $question->question }}
                                 </p>
+
                             </div>
 
-                            <div class="shrink-0 flex flex-col gap-2 items-start md:items-end">
+                            <div class="flex shrink-0 flex-col items-start gap-2 md:items-end">
+
                                 @if($question->answer)
-                                    <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                                        Answered
-                                    </span>
+
+                                    <x-ui.status-badge
+                                        label="Answered"
+                                        tone="green"
+                                    />
+
                                 @else
-                                    <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold">
-                                        Pending
-                                    </span>
+
+                                    <x-ui.status-badge
+                                        label="Pending"
+                                        tone="yellow"
+                                    />
+
                                 @endif
 
                                 <a
                                     href="{{ route('instructor.questions.show', $question) }}"
-                                    class="text-primary font-bold hover:underline text-sm"
+                                    class="text-sm font-bold text-primary hover:underline"
                                 >
-                                    {{ $question->answer ? 'Hariri Jibu' : 'Jibu Swali' }}
+                                    {{ $question->answer ? 'Edit Answer' : 'Answer Question' }}
                                 </a>
+
                             </div>
+
                         </div>
+
                     </div>
 
                 @empty
+
                     <div class="p-10 text-center text-gray-500">
-                        Hakuna maswali bado.
+                        No questions yet.
                     </div>
+
                 @endforelse
-            </div>
+
+            </x-ui.section-card>
+
         </div>
 
     </div>
