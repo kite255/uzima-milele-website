@@ -9,7 +9,10 @@
 
     <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap"
+        rel="stylesheet"
+    >
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -34,6 +37,7 @@
                     fontFamily: {
                         lato: ['Lato', 'sans-serif'],
                     },
+
                     colors: {
                         primary: '#0083CB',
                         primaryDark: '#076994',
@@ -54,29 +58,87 @@
             : 0;
     @endphp
 
+    {{-- MAIN NAVIGATION --}}
     @includeIf('partials.navbar', [
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
+    {{-- PAGE CONTENT --}}
     <main class="min-h-screen">
         @yield('content')
     </main>
 
+    {{-- FOOTER --}}
     @includeIf('partials.footer', [
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
-    {{-- Alpine Collapse plugin for smooth dropdown/accordion --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    {{-- GLOBAL DASHBOARD SHORTCUT --}}
+    @auth
+        <a
+            href="{{ route('dashboard') }}"
+            title="Open Dashboard"
+            aria-label="Open Dashboard"
+            class="fixed bottom-5 left-5 z-50
+                   inline-flex items-center gap-2
+                   rounded-2xl
+                   bg-gradient-to-r from-navy to-primary
+                   px-4 py-3
+                   text-sm font-black text-white
+                   shadow-lg shadow-gray-900/20
+                   transition
+                   hover:-translate-y-0.5
+                   hover:shadow-xl
+                   focus:outline-none
+                   focus:ring-4
+                   focus:ring-primary/30"
+        >
+            {{-- DASHBOARD ICON --}}
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-5 w-5"
+                aria-hidden="true"
+            >
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
+
+            <span class="hidden sm:inline">
+                Dashboard
+            </span>
+        </a>
+    @endauth
+
+    {{-- Alpine Collapse plugin for smooth dropdown / accordion --}}
+    <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"
+    ></script>
 
     {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
 
+    {{-- Elfsight AI Chatbot | Mtumishi Bot --}}
+    <script
+        src="https://elfsightcdn.com/platform.js"
+        async
+    ></script>
 
-    <!-- Elfsight AI Chatbot | Mtumishi Bot -->
-    <script src="https://elfsightcdn.com/platform.js" async></script>
-    <div class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872" data-elfsight-app-lazy></div>
-
+    <div
+        class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872"
+        data-elfsight-app-lazy
+    ></div>
 
 </body>
 </html>
