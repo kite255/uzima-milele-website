@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\FollowUpInstructorAssignmentService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -662,7 +663,7 @@ class LessonEnrollment extends Model
                 $customHours
             );
 
-        return self::query()->firstOrCreate(
+        $enrollment = self::query()->firstOrCreate(
             [
                 'user_id' => $user->id,
                 'lesson_id' => $lesson->id,
@@ -680,5 +681,24 @@ class LessonEnrollment extends Model
                 'schedule_updated_at' => now(),
             ]
         );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Follow-up Instructor Assignment
+        |--------------------------------------------------------------------------
+        |
+        | Assign only when this enrollment has just been created.
+        | Existing enrollments keep their current instructor assignment.
+        */
+        if (
+            $enrollment->wasRecentlyCreated
+            && ! $enrollment->follow_up_instructor_id
+        ) {
+            app(
+                FollowUpInstructorAssignmentService::class
+            )->assign($enrollment);
+        }
+
+        return $enrollment->fresh();
     }
 }
