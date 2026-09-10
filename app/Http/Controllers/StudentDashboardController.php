@@ -78,7 +78,7 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Mada na maendeleo ya somo
+                | Mada zote za somo
                 |--------------------------------------------------------------------------
                 */
                 $allTopics = $lesson->modules
@@ -89,6 +89,11 @@ class StudentDashboardController extends Controller
 
                 $totalTopics = $allTopics->count();
 
+                /*
+                |--------------------------------------------------------------------------
+                | Mada zilizokamilika
+                |--------------------------------------------------------------------------
+                */
                 $completedTopicIds = LessonProgress::query()
                     ->where('user_id', $user->id)
                     ->where('lesson_id', $lesson->id)
@@ -112,18 +117,75 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Mada inayofuata
+                | Hali ya kila module
                 |--------------------------------------------------------------------------
+                |
+                | Student can continue to another module even when a previous
+                | module has not been completed.
+                |
+                | Module completion itself is determined by Module::isCompletedBy():
+                |
+                | - All published topics completed
+                | - Required module quiz attempted
+                |
                 */
-                $lesson->next_topic = $allTopics
-                    ->first(fn ($topic) => ! in_array($topic->id, $completedTopicIds, true));
+                $completedModules = 0;
+                $incompleteModules = 0;
+                $modulesWithQuizPending = 0;
+
+                foreach ($lesson->modules as $module) {
+                    $module->progress = $module->progressPercentageFor($user);
+                    $module->completion_status = $module->completionStatusFor($user);
+                    $module->completion_label = $module->completionLabelFor($user);
+                    $module->is_completed = $module->isCompletedBy($user);
+
+                    $module->required_quiz = $module->requiredPublishedQuiz();
+                    $module->required_quiz_attempted = $module->hasRequiredQuizAttemptBy($user);
+
+                    if ($module->is_completed) {
+                        $completedModules++;
+                    } else {
+                        $incompleteModules++;
+                    }
+
+                    if ($module->completion_status === 'quiz_pending') {
+                        $modulesWithQuizPending++;
+                    }
+                }
+
+                $totalModules = $lesson->modules->count();
+
+                $lesson->total_modules_count = $totalModules;
+                $lesson->completed_modules_count = $completedModules;
+                $lesson->incomplete_modules_count = $incompleteModules;
+                $lesson->modules_with_quiz_pending = $modulesWithQuizPending;
 
                 /*
                 |--------------------------------------------------------------------------
-                | Kukamilika kwa mada zote
+                | Module completion
                 |--------------------------------------------------------------------------
+                |
+                | The lesson's modules are considered complete only when every
+                | published module is complete.
                 */
-                $topicsCompleted = $totalTopics > 0 && $completedTopics >= $totalTopics;
+                $allModulesCompleted = $totalModules > 0
+                    && $completedModules >= $totalModules;
+
+                $lesson->all_modules_completed = $allModulesCompleted;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Mada inayofuata
+                |--------------------------------------------------------------------------
+                |
+                | Topic navigation is not blocked by module completion.
+                */
+                $lesson->next_topic = $allTopics
+                    ->first(fn ($topic) => ! in_array(
+                        $topic->id,
+                        $completedTopicIds,
+                        true
+                    ));
 
                 /*
                 |--------------------------------------------------------------------------
@@ -156,16 +218,33 @@ class StudentDashboardController extends Controller
                 $lesson->final_quiz_required = $finalQuizRequired;
                 $lesson->final_quiz_passed = $finalQuizPassed;
 
-                $lesson->can_generate_certificate = $topicsCompleted
-                    && $finalQuizPassed
-                    && ! $certificate;
+                /*
+                |--------------------------------------------------------------------------
+                | Lesson completion
+                |--------------------------------------------------------------------------
+                |
+                | Whole lesson completion:
+                |
+                | - Every published module completed
+                | - Final quiz passed if required
+                |
+                */
+                $lesson->is_completed = $allModulesCompleted
+                    && $finalQuizPassed;
 
-                $lesson->is_completed = $topicsCompleted && $finalQuizPassed;
+                $lesson->can_generate_certificate = $lesson->is_completed
+                    && ! $certificate;
 
                 /*
                 |--------------------------------------------------------------------------
-                | Mfumo wa kufungua somo baada ya somo la awali kukamilika
+                | Prerequisite lesson lock
                 |--------------------------------------------------------------------------
+                |
+                | This remains lesson-level prerequisite logic.
+                |
+                | IMPORTANT:
+                | It does NOT lock movement from one module to another inside
+                | the same lesson.
                 */
                 $lesson->can_start = method_exists($lesson, 'canBeStartedBy')
                     ? $lesson->canBeStartedBy($user)
@@ -179,12 +258,13 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Maandishi ya hali ya somo kwa dashboard
+                | Dashboard status
                 |--------------------------------------------------------------------------
                 */
                 if ($lesson->is_locked) {
                     $lesson->status_label = 'Limefungwa';
                     $lesson->status_color = 'yellow';
+
                     $lesson->status_message = $lesson->prerequisite_title
                         ? 'Kamilisha kwanza somo la awali: ' . $lesson->prerequisite_title
                         : 'Kamilisha somo la awali ili kufungua somo hili.';
@@ -192,6 +272,13 @@ class StudentDashboardController extends Controller
                     $lesson->status_label = 'Limekamilika';
                     $lesson->status_color = 'green';
                     $lesson->status_message = 'Hongera, umekamilisha somo hili.';
+                } elseif ($modulesWithQuizPending > 0) {
+                    $lesson->status_label = 'Quiz Inasubiri';
+                    $lesson->status_color = 'yellow';
+
+                    $lesson->status_message = $modulesWithQuizPending === 1
+                        ? 'Kuna module 1 ambayo mada zake zimekamilika lakini quiz bado haijafanywa.'
+                        : 'Kuna modules ' . $modulesWithQuizPending . ' ambazo quiz zake bado hazijafanywa.';
                 } elseif ($lesson->progress > 0) {
                     $lesson->status_label = 'Unaendelea';
                     $lesson->status_color = 'blue';
@@ -204,7 +291,7 @@ class StudentDashboardController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
-                | Maandishi ya hatua inayofuata
+                | Hatua inayofuata
                 |--------------------------------------------------------------------------
                 */
                 if ($lesson->is_locked) {
@@ -213,12 +300,18 @@ class StudentDashboardController extends Controller
                     $lesson->next_action_label = $lesson->progress > 0
                         ? 'Endelea Kujifunza'
                         : 'Anza Kujifunza';
+                } elseif ($modulesWithQuizPending > 0) {
+                    $lesson->next_action_label = 'Fanya Quiz ya Module';
+                } elseif (
+                    $finalQuizRequired
+                    && ! $finalQuizPassed
+                    && $finalQuiz
+                ) {
+                    $lesson->next_action_label = 'Fanya Jaribio la Mwisho';
                 } elseif ($lesson->is_completed && $certificate) {
                     $lesson->next_action_label = 'Tazama Cheti';
                 } elseif ($lesson->can_generate_certificate) {
                     $lesson->next_action_label = 'Tengeneza Cheti';
-                } elseif ($finalQuizRequired && ! $finalQuizPassed && $finalQuiz) {
-                    $lesson->next_action_label = 'Fanya Jaribio la Mwisho';
                 } else {
                     $lesson->next_action_label = 'Tazama Somo';
                 }
@@ -237,6 +330,17 @@ class StudentDashboardController extends Controller
             ->filter(fn ($lesson) => $lesson->is_completed)
             ->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Overall learning progress
+        |--------------------------------------------------------------------------
+        |
+        | This remains topic-based progress.
+        |
+        | Therefore a lesson may display 100% learning progress while its
+        | status is "Quiz Inasubiri". That is intentional.
+        |
+        */
         $overallProgress = $totalLessons > 0
             ? (int) round($lessons->avg('progress'))
             : 0;

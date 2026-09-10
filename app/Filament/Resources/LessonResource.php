@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\LessonResource\Pages;
 use App\Filament\Resources\LessonResource\RelationManagers\ModulesRelationManager;
 use App\Models\Lesson;
-use App\Models\LessonProgress;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification as AdminNotification;
@@ -67,7 +66,11 @@ class LessonResource extends Resource
                             ->relationship(
                                 name: 'instructor',
                                 titleAttribute: 'name',
-                                modifyQueryUsing: fn (Builder $query) => $query->whereIn('role', ['admin', 'instructor'])
+                                modifyQueryUsing: fn (Builder $query) =>
+                                    $query->whereIn(
+                                        'role',
+                                        ['admin', 'instructor']
+                                    )
                             )
                             ->searchable()
                             ->preload()
@@ -79,7 +82,15 @@ class LessonResource extends Resource
                             ->options(function (?Lesson $record): array {
                                 return Lesson::query()
                                     ->where('is_published', true)
-                                    ->when($record, fn (Builder $query) => $query->where('id', '!=', $record->id))
+                                    ->when(
+                                        $record,
+                                        fn (Builder $query) =>
+                                            $query->where(
+                                                'id',
+                                                '!=',
+                                                $record->id
+                                            )
+                                    )
                                     ->orderBy('title')
                                     ->pluck('title', 'id')
                                     ->toArray();
@@ -172,7 +183,9 @@ class LessonResource extends Resource
                     ->columns(2),
 
                 Forms\Components\Section::make('Course Timeline & Schedule Settings')
-                    ->description('The course owner/admin sets the allocated course time. Students choose their study pace, and the system calculates the target completion date.')
+                    ->description(
+                        'The course owner/admin sets the allocated course time. Students choose their study pace, and the system calculates the target completion date.'
+                    )
                     ->schema([
 
                         Forms\Components\TextInput::make('estimated_duration_minutes')
@@ -189,7 +202,9 @@ class LessonResource extends Resource
                         Forms\Components\Placeholder::make('duration_preview')
                             ->label('Duration Preview')
                             ->content(function (Forms\Get $get): string {
-                                $minutesTotal = (int) ($get('estimated_duration_minutes') ?: 180);
+                                $minutesTotal = (int) (
+                                    $get('estimated_duration_minutes') ?: 180
+                                );
 
                                 $hours = intdiv($minutesTotal, 60);
                                 $minutes = $minutesTotal % 60;
@@ -224,13 +239,26 @@ class LessonResource extends Resource
                             ->minValue(1)
                             ->placeholder('Example: 3')
                             ->rules([
-                                fn (Forms\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    $maxDays = (int) $get('max_completion_days');
+                                fn (Forms\Get $get) =>
+                                    function (
+                                        string $attribute,
+                                        $value,
+                                        \Closure $fail
+                                    ) use ($get) {
+                                        $maxDays = (int) $get(
+                                            'max_completion_days'
+                                        );
 
-                                    if ($value && $maxDays && (int) $value > $maxDays) {
-                                        $fail('Minimum completion days cannot be greater than maximum completion days.');
-                                    }
-                                },
+                                        if (
+                                            $value
+                                            && $maxDays
+                                            && (int) $value > $maxDays
+                                        ) {
+                                            $fail(
+                                                'Minimum completion days cannot be greater than maximum completion days.'
+                                            );
+                                        }
+                                    },
                             ])
                             ->helperText('Optional. Prevents unrealistic short completion time.'),
 
@@ -240,13 +268,26 @@ class LessonResource extends Resource
                             ->minValue(1)
                             ->placeholder('Example: 30')
                             ->rules([
-                                fn (Forms\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    $minDays = (int) $get('min_completion_days');
+                                fn (Forms\Get $get) =>
+                                    function (
+                                        string $attribute,
+                                        $value,
+                                        \Closure $fail
+                                    ) use ($get) {
+                                        $minDays = (int) $get(
+                                            'min_completion_days'
+                                        );
 
-                                    if ($value && $minDays && (int) $value < $minDays) {
-                                        $fail('Maximum completion days cannot be less than minimum completion days.');
-                                    }
-                                },
+                                        if (
+                                            $value
+                                            && $minDays
+                                            && (int) $value < $minDays
+                                        ) {
+                                            $fail(
+                                                'Maximum completion days cannot be less than minimum completion days.'
+                                            );
+                                        }
+                                    },
                             ])
                             ->helperText('Optional. Maximum recommended days to complete this course.'),
 
@@ -272,8 +313,14 @@ class LessonResource extends Resource
                         Forms\Components\Placeholder::make('schedule_example')
                             ->label('Example')
                             ->content(function (Forms\Get $get): string {
-                                $minutesTotal = (int) ($get('estimated_duration_minutes') ?: 120);
-                                $estimatedHours = max(1, (int) ceil($minutesTotal / 60));
+                                $minutesTotal = (int) (
+                                    $get('estimated_duration_minutes') ?: 120
+                                );
+
+                                $estimatedHours = max(
+                                    1,
+                                    (int) ceil($minutesTotal / 60)
+                                );
 
                                 if ($estimatedHours <= 3) {
                                     return 'For a short lesson like 2 hours: Taratibu ≈ 2 weeks, Kawaida ≈ 1 week, Haraka ≈ 3 days.';
@@ -354,20 +401,30 @@ class LessonResource extends Resource
                 Tables\Columns\TextColumn::make('estimated_duration_label')
                     ->label('Owner Time')
                     ->placeholder('—')
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('estimated_duration_minutes', $direction);
-                    })
+                    ->sortable(
+                        query: function (
+                            Builder $query,
+                            string $direction
+                        ): Builder {
+                            return $query->orderBy(
+                                'estimated_duration_minutes',
+                                $direction
+                            );
+                        }
+                    )
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('recommended_study_pace')
                     ->label('Recommended Pace')
-                    ->formatStateUsing(fn ($state) => match ($state) {
-                        Lesson::PACE_RELAXED => 'Taratibu',
-                        Lesson::PACE_REGULAR => 'Kawaida',
-                        Lesson::PACE_INTENSIVE => 'Haraka',
-                        Lesson::PACE_CUSTOM => 'Ratiba Maalum',
-                        default => '—',
-                    })
+                    ->formatStateUsing(
+                        fn ($state) => match ($state) {
+                            Lesson::PACE_RELAXED => 'Taratibu',
+                            Lesson::PACE_REGULAR => 'Kawaida',
+                            Lesson::PACE_INTENSIVE => 'Haraka',
+                            Lesson::PACE_CUSTOM => 'Ratiba Maalum',
+                            default => '—',
+                        }
+                    )
                     ->badge()
                     ->toggleable(),
 
@@ -380,13 +437,17 @@ class LessonResource extends Resource
                     ->label('Min Days')
                     ->placeholder('—')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
 
                 Tables\Columns\TextColumn::make('max_completion_days')
                     ->label('Max Days')
                     ->placeholder('—')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
 
                 Tables\Columns\TextColumn::make('course_deadline')
                     ->label('Deadline')
@@ -431,14 +492,21 @@ class LessonResource extends Resource
                     ->relationship(
                         name: 'instructor',
                         titleAttribute: 'name',
-                        modifyQueryUsing: fn (Builder $query) => $query->whereIn('role', ['admin', 'instructor'])
+                        modifyQueryUsing: fn (Builder $query) =>
+                            $query->whereIn(
+                                'role',
+                                ['admin', 'instructor']
+                            )
                     )
                     ->searchable()
                     ->preload(),
 
                 Tables\Filters\SelectFilter::make('prerequisite_lesson_id')
                     ->label('Required Previous Lesson')
-                    ->relationship('prerequisiteLesson', 'title')
+                    ->relationship(
+                        'prerequisiteLesson',
+                        'title'
+                    )
                     ->searchable()
                     ->preload(),
 
@@ -479,60 +547,103 @@ class LessonResource extends Resource
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('gray')
-                    ->url(fn (Lesson $record): string => route('lessons.show', $record->slug))
+                    ->url(
+                        fn (Lesson $record): string =>
+                            route(
+                                'lessons.show',
+                                $record->slug
+                            )
+                    )
                     ->openUrlInNewTab(),
 
                 Tables\Actions\Action::make('sendReminder')
                     ->label('Send Reminder')
                     ->icon('heroicon-o-bell-alert')
                     ->color('warning')
-                    ->modalHeading('Send Lesson Reminder')
-                    ->modalDescription('This reminder checks students who enrolled but have not completed all topics.')
+                    ->modalHeading('Check Pending Students')
+                    ->modalDescription(
+                        'This checks enrolled students who have not fully completed the lesson requirements.'
+                    )
                     ->requiresConfirmation()
                     ->action(function (Lesson $record): void {
-                        $totalTopics = $record->modules()
-                            ->where('is_published', true)
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Check published learning content
+                        |--------------------------------------------------------------------------
+                        */
+                        $publishedTopicsCount = $record
+                            ->modules()
+                            ->where(
+                                'is_published',
+                                true
+                            )
                             ->withCount([
-                                'topics' => fn (Builder $query) => $query->where('is_published', true),
+                                'topics' =>
+                                    fn (Builder $query) =>
+                                        $query->where(
+                                            'is_published',
+                                            true
+                                        ),
                             ])
                             ->get()
                             ->sum('topics_count');
 
-                        if ($totalTopics <= 0) {
+                        if ($publishedTopicsCount <= 0) {
                             AdminNotification::make()
                                 ->title('No published topics found')
-                                ->body('This lesson has no published topics to track.')
+                                ->body(
+                                    'This lesson has no published topics to track.'
+                                )
                                 ->warning()
                                 ->send();
 
                             return;
                         }
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Centralized completion check
+                        |--------------------------------------------------------------------------
+                        |
+                        | Do NOT use completed topic count as whole lesson
+                        | completion.
+                        |
+                        | Lesson::isCompletedBy() includes:
+                        |
+                        | - all published module topics
+                        | - required module quiz attempts
+                        | - required final quiz pass
+                        |
+                        */
                         $pendingStudents = 0;
 
-                        $enrollments = $record->enrollments()
+                        $enrollments = $record
+                            ->enrollments()
                             ->with('user')
                             ->get();
 
                         foreach ($enrollments as $enrollment) {
-                            if (! $enrollment->user) {
+                            $user = $enrollment->user;
+
+                            if (! $user) {
                                 continue;
                             }
 
-                            $completedTopics = LessonProgress::query()
-                                ->where('user_id', $enrollment->user_id)
-                                ->where('lesson_id', $record->id)
-                                ->distinct('lesson_topic_id')
-                                ->count('lesson_topic_id');
-
-                            if ($completedTopics < $totalTopics) {
+                            if (
+                                ! $record->isCompletedBy(
+                                    $user
+                                )
+                            ) {
                                 $pendingStudents++;
                             }
                         }
 
                         AdminNotification::make()
                             ->title('Reminder check completed')
-                            ->body("Pending students: {$pendingStudents}. You can connect email/SMS sending later.")
+                            ->body(
+                                "Pending students: {$pendingStudents}. "
+                                . 'You can connect email/SMS sending later.'
+                            )
                             ->success()
                             ->send();
                     }),
@@ -548,7 +659,10 @@ class LessonResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort(
+                'created_at',
+                'desc'
+            );
     }
 
     public static function getEloquentQuery(): Builder
@@ -556,8 +670,13 @@ class LessonResource extends Resource
         $query = parent::getEloquentQuery()
             ->with('prerequisiteLesson');
 
-        if (auth()->user()?->role === 'instructor') {
-            return $query->where('instructor_id', auth()->id());
+        if (
+            auth()->user()?->role === 'instructor'
+        ) {
+            return $query->where(
+                'instructor_id',
+                auth()->id()
+            );
         }
 
         return $query;
