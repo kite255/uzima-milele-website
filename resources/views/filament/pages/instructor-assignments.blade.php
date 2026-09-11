@@ -1,280 +1,654 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
+
+    <style>
+        .ia-page {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .ia-summary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+            gap: 16px;
+        }
+
+        .ia-summary-card,
+        .ia-assignment-card,
+        .ia-empty-card {
+            border: 1px solid #E5E7EB;
+            border-radius: 14px;
+            background: #FFFFFF;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .ia-summary-card {
+            padding: 22px 24px;
+        }
+
+        .ia-summary-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .ia-icon-box {
+            width: 44px;
+            height: 44px;
+            flex: 0 0 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #EFF8FF;
+            color: #0083CB;
+        }
+
+        .ia-icon-box svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .ia-summary-text {
+            min-width: 0;
+        }
+
+        .ia-summary-title {
+            margin: 0;
+            color: #111827;
+            font-size: 18px;
+            line-height: 1.35;
+            font-weight: 800;
+        }
+
+        .ia-summary-description {
+            margin: 5px 0 0;
+            color: #64748B;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .ia-stat {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .ia-stat-label {
+            margin: 0;
+            color: #64748B;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .ia-stat-value {
+            margin: 4px 0 0;
+            color: #111827;
+            font-size: 30px;
+            line-height: 1;
+            font-weight: 800;
+        }
+
+        .ia-assignments {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .ia-assignment-card {
+            padding: 22px 24px;
+        }
+
+        .ia-assignment-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 140px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .ia-instructor {
+            min-width: 0;
+        }
+
+        .ia-name-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ia-instructor-name {
+            margin: 0;
+            color: #111827;
+            font-size: 18px;
+            line-height: 1.35;
+            font-weight: 800;
+            word-break: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .ia-role {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: #EFF8FF;
+            color: #076994;
+            font-size: 11px;
+            line-height: 1.2;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .ia-lesson-title {
+            margin: 8px 0 0;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .ia-contact-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 20px;
+            margin-top: 14px;
+        }
+
+        .ia-contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #0083CB;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            overflow-wrap: anywhere;
+        }
+
+        .ia-contact-link:hover {
+            text-decoration: underline;
+        }
+
+        .ia-contact-link svg {
+            width: 17px;
+            height: 17px;
+            flex: 0 0 17px;
+        }
+
+        .ia-student-count {
+            min-width: 140px;
+            padding: 14px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            background: #F8FAFC;
+            text-align: center;
+        }
+
+        .ia-student-count-number {
+            color: #0083CB;
+            font-size: 28px;
+            line-height: 1;
+            font-weight: 900;
+        }
+
+        .ia-student-count-label {
+            margin-top: 5px;
+            color: #64748B;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .ia-students-section {
+            margin-top: 20px;
+        }
+
+        .ia-students-heading {
+            margin: 0 0 10px;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .ia-table-wrap {
+            overflow-x: auto;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+        }
+
+        .ia-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #FFFFFF;
+        }
+
+        .ia-table thead {
+            background: #F8FAFC;
+        }
+
+        .ia-table th {
+            padding: 12px 16px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 800;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .ia-table td {
+            padding: 13px 16px;
+            color: #334155;
+            font-size: 13px;
+            border-bottom: 1px solid #E2E8F0;
+            vertical-align: middle;
+        }
+
+        .ia-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .ia-table tbody tr:hover {
+            background: #F8FAFC;
+        }
+
+        .ia-student-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        .ia-avatar {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #F1F5F9;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .ia-student-full-name {
+            color: #111827;
+            font-weight: 700;
+        }
+
+        .ia-table-link {
+            color: #0083CB;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .ia-table-link:hover {
+            text-decoration: underline;
+        }
+
+        .ia-muted {
+            color: #94A3B8;
+        }
+
+        .ia-no-students {
+            margin-top: 20px;
+            padding: 26px 18px;
+            border: 1px dashed #CBD5E1;
+            border-radius: 12px;
+            background: #F8FAFC;
+            text-align: center;
+        }
+
+        .ia-no-students-icon {
+            width: 42px;
+            height: 42px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #F1F5F9;
+            color: #64748B;
+        }
+
+        .ia-no-students-icon svg {
+            width: 21px;
+            height: 21px;
+        }
+
+        .ia-no-students-text {
+            margin: 10px 0 0;
+            color: #64748B;
+            font-size: 13px;
+            line-height: 1.5;
+            font-weight: 600;
+        }
+
+        .ia-empty-card {
+            padding: 36px 24px;
+            text-align: center;
+        }
+
+        .ia-empty-icon {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: #EFF8FF;
+            color: #0083CB;
+        }
+
+        .ia-empty-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .ia-empty-title {
+            margin: 16px 0 0;
+            color: #111827;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .ia-empty-text {
+            max-width: 540px;
+            margin: 8px auto 0;
+            color: #64748B;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 900px) {
+            .ia-summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ia-assignment-header {
+                grid-template-columns: 1fr;
+            }
+
+            .ia-student-count {
+                width: 100%;
+                min-width: 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                text-align: left;
+            }
+
+            .ia-student-count-label {
+                margin-top: 0;
+                order: -1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .ia-summary-card,
+            .ia-assignment-card {
+                padding: 18px;
+            }
+
+            .ia-summary-content {
+                gap: 12px;
+            }
+
+            .ia-summary-title,
+            .ia-instructor-name {
+                font-size: 16px;
+            }
+
+            .ia-contact-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .ia-table th,
+            .ia-table td {
+                padding: 11px 13px;
+            }
+        }
+    </style>
+
+    <div class="ia-page">
 
         {{-- SUMMARY --}}
-        <div class="grid gap-4 lg:grid-cols-3">
+        <div class="ia-summary-grid">
 
-            <div class="lg:col-span-2">
-                <x-filament::section>
-                    <div class="flex items-start gap-4">
+            <div class="ia-summary-card">
+                <div class="ia-summary-content">
 
-                        <div
-                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
-                        >
-                            <x-heroicon-o-user-group class="h-6 w-6" />
-                        </div>
-
-                        <div class="min-w-0">
-                            <h2
-                                class="text-lg font-bold text-gray-950 dark:text-white"
-                            >
-                                Instructor Assignments
-                            </h2>
-
-                            <p
-                                class="mt-1 text-sm leading-6 text-gray-500 dark:text-gray-400"
-                            >
-                                View each lesson instructor and the students
-                                currently assigned to them.
-                            </p>
-                        </div>
-
-                    </div>
-                </x-filament::section>
-            </div>
-
-            <x-filament::section>
-                <div class="flex items-center justify-between gap-4">
-
-                    <div>
-                        <p
-                            class="text-sm font-medium text-gray-500 dark:text-gray-400"
-                        >
-                            Total Assignments
-                        </p>
-
-                        <p
-                            class="mt-1 text-3xl font-bold tracking-tight text-gray-950 dark:text-white"
-                        >
-                            {{ $rows->count() }}
-                        </p>
+                    <div class="ia-icon-box">
+                        <x-heroicon-o-user-group />
                     </div>
 
-                    <div
-                        class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
-                    >
-                        <x-heroicon-o-academic-cap class="h-6 w-6" />
+                    <div class="ia-summary-text">
+
+                        <h2 class="ia-summary-title">
+                            Instructor Assignments
+                        </h2>
+
+                        <p class="ia-summary-description">
+                            View each lesson instructor and the students
+                            currently assigned to them.
+                        </p>
+
                     </div>
 
                 </div>
-            </x-filament::section>
+            </div>
+
+            <div class="ia-summary-card">
+
+                <div class="ia-stat">
+
+                    <div>
+
+                        <p class="ia-stat-label">
+                            Total Assignments
+                        </p>
+
+                        <p class="ia-stat-value">
+                            {{ $rows->count() }}
+                        </p>
+
+                    </div>
+
+                    <div class="ia-icon-box">
+                        <x-heroicon-o-academic-cap />
+                    </div>
+
+                </div>
+
+            </div>
 
         </div>
 
         {{-- ASSIGNMENTS --}}
-        <div class="space-y-5">
+        <div class="ia-assignments">
 
             @forelse($rows as $row)
 
-                <x-filament::section>
+                <div class="ia-assignment-card">
 
-                    {{-- INSTRUCTOR DETAILS --}}
-                    <div
-                        class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
-                    >
+                    <div class="ia-assignment-header">
 
-                        <div class="min-w-0">
+                        {{-- INSTRUCTOR INFORMATION --}}
+                        <div class="ia-instructor">
 
-                            <div class="flex flex-wrap items-center gap-2">
+                            <div class="ia-name-row">
 
-                                <h2
-                                    class="text-lg font-bold text-gray-950 dark:text-white"
-                                >
+                                <h2 class="ia-instructor-name">
                                     {{ $row['instructor_name'] }}
                                 </h2>
 
-                                <x-filament::badge color="info">
+                                <span class="ia-role">
                                     {{ $row['assignment_role'] }}
-                                </x-filament::badge>
+                                </span>
 
                             </div>
 
-                            <p
-                                class="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200"
-                            >
+                            <p class="ia-lesson-title">
                                 {{ $row['lesson_title'] }}
                             </p>
 
-                            <div
-                                class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"
-                            >
+                            @if(
+                                $row['instructor_email']
+                                || $row['instructor_phone']
+                            )
 
-                                @if($row['instructor_email'])
-                                    <a
-                                        href="mailto:{{ $row['instructor_email'] }}"
-                                        class="inline-flex items-center gap-1.5 text-primary-600 hover:underline dark:text-primary-400"
-                                    >
-                                        <x-heroicon-o-envelope class="h-4 w-4" />
+                                <div class="ia-contact-row">
 
-                                        <span>
-                                            {{ $row['instructor_email'] }}
-                                        </span>
-                                    </a>
-                                @endif
+                                    @if($row['instructor_email'])
 
-                                @if($row['instructor_phone'])
-                                    <a
-                                        href="tel:{{ $row['instructor_phone'] }}"
-                                        class="inline-flex items-center gap-1.5 text-primary-600 hover:underline dark:text-primary-400"
-                                    >
-                                        <x-heroicon-o-phone class="h-4 w-4" />
+                                        <a
+                                            href="mailto:{{ $row['instructor_email'] }}"
+                                            class="ia-contact-link"
+                                        >
+                                            <x-heroicon-o-envelope />
 
-                                        <span>
-                                            {{ $row['instructor_phone'] }}
-                                        </span>
-                                    </a>
-                                @endif
+                                            <span>
+                                                {{ $row['instructor_email'] }}
+                                            </span>
+                                        </a>
 
-                            </div>
+                                    @endif
+
+                                    @if($row['instructor_phone'])
+
+                                        <a
+                                            href="tel:{{ $row['instructor_phone'] }}"
+                                            class="ia-contact-link"
+                                        >
+                                            <x-heroicon-o-phone />
+
+                                            <span>
+                                                {{ $row['instructor_phone'] }}
+                                            </span>
+                                        </a>
+
+                                    @endif
+
+                                </div>
+
+                            @endif
 
                         </div>
 
                         {{-- STUDENT COUNT --}}
-                        <div
-                            class="w-full shrink-0 rounded-xl border border-gray-200 bg-gray-50 px-5 py-3 lg:w-auto lg:min-w-[130px] dark:border-white/10 dark:bg-white/5"
-                        >
-                            <div
-                                class="flex items-center justify-between gap-5 lg:block lg:text-center"
-                            >
+                        <div class="ia-student-count">
 
-                                <span
-                                    class="text-sm font-medium text-gray-500 lg:hidden dark:text-gray-400"
-                                >
-                                    Assigned Students
-                                </span>
-
-                                <div>
-                                    <div
-                                        class="text-2xl font-bold text-primary-600 dark:text-primary-400"
-                                    >
-                                        {{ $row['student_count'] }}
-                                    </div>
-
-                                    <div
-                                        class="mt-0.5 hidden text-xs font-medium text-gray-500 lg:block dark:text-gray-400"
-                                    >
-                                        {{ $row['student_count'] === 1 ? 'Student' : 'Students' }}
-                                    </div>
-                                </div>
-
+                            <div class="ia-student-count-number">
+                                {{ $row['student_count'] }}
                             </div>
+
+                            <div class="ia-student-count-label">
+                                {{ $row['student_count'] === 1
+                                    ? 'Student'
+                                    : 'Students'
+                                }}
+                            </div>
+
                         </div>
 
                     </div>
 
-                    {{-- STUDENT LIST --}}
+                    {{-- STUDENTS --}}
                     @if($row['students']->isNotEmpty())
 
-                        <div
-                            class="mt-5 overflow-hidden rounded-xl border border-gray-200 dark:border-white/10"
-                        >
+                        <div class="ia-students-section">
 
-                            <div class="overflow-x-auto">
+                            <h3 class="ia-students-heading">
+                                Assigned Students
+                            </h3>
 
-                                <table class="w-full table-auto text-left">
+                            <div class="ia-table-wrap">
 
-                                    <thead
-                                        class="bg-gray-50 dark:bg-white/5"
-                                    >
+                                <table class="ia-table">
+
+                                    <thead>
                                         <tr>
-
-                                            <th
-                                                class="whitespace-nowrap px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200"
-                                            >
-                                                Student
-                                            </th>
-
-                                            <th
-                                                class="whitespace-nowrap px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200"
-                                            >
-                                                Email
-                                            </th>
-
-                                            <th
-                                                class="whitespace-nowrap px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200"
-                                            >
-                                                Phone
-                                            </th>
-
+                                            <th>Student</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
                                         </tr>
                                     </thead>
 
-                                    <tbody
-                                        class="divide-y divide-gray-200 bg-white dark:divide-white/10 dark:bg-gray-900"
-                                    >
+                                    <tbody>
 
                                         @foreach($row['students'] as $student)
 
-                                            <tr
-                                                class="transition hover:bg-gray-50 dark:hover:bg-white/5"
-                                            >
+                                            <tr>
 
-                                                <td
-                                                    class="whitespace-nowrap px-5 py-4"
-                                                >
-                                                    <div
-                                                        class="flex items-center gap-3"
-                                                    >
+                                                <td>
 
-                                                        <div
-                                                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-600 dark:bg-white/10 dark:text-gray-300"
-                                                        >
-                                                            {{ strtoupper(substr($student['name'], 0, 1)) }}
+                                                    <div class="ia-student-name">
+
+                                                        <div class="ia-avatar">
+                                                            {{ strtoupper(
+                                                                substr(
+                                                                    $student['name'],
+                                                                    0,
+                                                                    1
+                                                                )
+                                                            ) }}
                                                         </div>
 
                                                         <span
-                                                            class="font-semibold text-gray-950 dark:text-white"
+                                                            class="ia-student-full-name"
                                                         >
                                                             {{ $student['name'] }}
                                                         </span>
 
                                                     </div>
+
                                                 </td>
 
-                                                <td
-                                                    class="whitespace-nowrap px-5 py-4 text-sm"
-                                                >
+                                                <td>
+
                                                     @if($student['email'])
 
                                                         <a
                                                             href="mailto:{{ $student['email'] }}"
-                                                            class="text-primary-600 hover:underline dark:text-primary-400"
+                                                            class="ia-table-link"
                                                         >
                                                             {{ $student['email'] }}
                                                         </a>
 
                                                     @else
 
-                                                        <span
-                                                            class="text-gray-400 dark:text-gray-500"
-                                                        >
+                                                        <span class="ia-muted">
                                                             —
                                                         </span>
 
                                                     @endif
+
                                                 </td>
 
-                                                <td
-                                                    class="whitespace-nowrap px-5 py-4 text-sm"
-                                                >
+                                                <td>
+
                                                     @if($student['phone'])
 
                                                         <a
                                                             href="tel:{{ $student['phone'] }}"
-                                                            class="text-primary-600 hover:underline dark:text-primary-400"
+                                                            class="ia-table-link"
                                                         >
                                                             {{ $student['phone'] }}
                                                         </a>
 
                                                     @else
 
-                                                        <span
-                                                            class="text-gray-400 dark:text-gray-500"
-                                                        >
+                                                        <span class="ia-muted">
                                                             —
                                                         </span>
 
                                                     @endif
+
                                                 </td>
 
                                             </tr>
@@ -291,19 +665,13 @@
 
                     @else
 
-                        <div
-                            class="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-6 text-center dark:border-white/10 dark:bg-white/5"
-                        >
+                        <div class="ia-no-students">
 
-                            <div
-                                class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400"
-                            >
-                                <x-heroicon-o-users class="h-5 w-5" />
+                            <div class="ia-no-students-icon">
+                                <x-heroicon-o-users />
                             </div>
 
-                            <p
-                                class="mt-3 text-sm font-medium text-gray-600 dark:text-gray-400"
-                            >
+                            <p class="ia-no-students-text">
                                 No students are currently assigned to this
                                 instructor for this lesson.
                             </p>
@@ -312,40 +680,31 @@
 
                     @endif
 
-                </x-filament::section>
+                </div>
 
             @empty
 
-                <x-filament::section>
+                <div class="ia-empty-card">
 
-                    <div class="py-8 text-center">
-
-                        <div
-                            class="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-400"
-                        >
-                            <x-heroicon-o-user-group class="h-7 w-7" />
-                        </div>
-
-                        <h2
-                            class="mt-4 text-lg font-bold text-gray-950 dark:text-white"
-                        >
-                            No instructor assignments yet
-                        </h2>
-
-                        <p
-                            class="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-500 dark:text-gray-400"
-                        >
-                            Configure lead and follow-up instructors on a lesson
-                            to see their assignments here.
-                        </p>
-
+                    <div class="ia-empty-icon">
+                        <x-heroicon-o-user-group />
                     </div>
 
-                </x-filament::section>
+                    <h2 class="ia-empty-title">
+                        No instructor assignments yet
+                    </h2>
+
+                    <p class="ia-empty-text">
+                        Configure lead and follow-up instructors on a lesson
+                        to see their assignments here.
+                    </p>
+
+                </div>
 
             @endforelse
 
         </div>
 
     </div>
+
 </x-filament-panels::page>
