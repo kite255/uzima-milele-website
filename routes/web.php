@@ -41,14 +41,18 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Social Login - Google Only
+| Google Login
 |--------------------------------------------------------------------------
 */
-Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
-    ->name('google.login');
+Route::get(
+    '/auth/google',
+    [GoogleAuthController::class, 'redirect']
+)->name('google.login');
 
-Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
-    ->name('google.callback');
+Route::get(
+    '/auth/google/callback',
+    [GoogleAuthController::class, 'callback']
+)->name('google.callback');
 
 /*
 |--------------------------------------------------------------------------
@@ -127,6 +131,7 @@ Route::get(
 Route::prefix('lessons')
     ->name('lessons.')
     ->group(function () {
+
         Route::get(
             '/',
             [LessonController::class, 'index']
@@ -139,6 +144,7 @@ Route::prefix('lessons')
 
         Route::middleware('auth')
             ->group(function () {
+
                 Route::get(
                     '/{lesson:slug}/learn',
                     [LessonController::class, 'learn']
@@ -184,6 +190,7 @@ Route::prefix('lessons')
 Route::prefix('children')
     ->name('children.')
     ->group(function () {
+
         Route::get(
             '/',
             [WatotoController::class, 'index']
@@ -208,6 +215,7 @@ Route::prefix('children')
 Route::prefix('devotions')
     ->name('devotions.')
     ->group(function () {
+
         Route::get(
             '/',
             [DevotionController::class, 'index']
@@ -221,7 +229,7 @@ Route::prefix('devotions')
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated User Routes
+| Authenticated Routes
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')
@@ -251,6 +259,10 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         | Lead Instructor Team Students
         |--------------------------------------------------------------------------
+        |
+        | Lead instructor can open a follow-up instructor and see the students
+        | assigned to that instructor for the selected lesson.
+        |
         */
         Route::get(
             '/instructor/team/{lesson}/{instructor}/students',
@@ -259,7 +271,7 @@ Route::middleware('auth')
 
         /*
         |--------------------------------------------------------------------------
-        | Instructor Students
+        | Instructor Student Detail
         |--------------------------------------------------------------------------
         */
         Route::get(
@@ -274,7 +286,7 @@ Route::middleware('auth')
 
         /*
         |--------------------------------------------------------------------------
-        | Instructor Q&A
+        | Instructor Questions
         |--------------------------------------------------------------------------
         */
         Route::get(
@@ -350,6 +362,7 @@ Route::middleware('auth')
         Route::get(
             '/certificates/{certificateNumber}/print-preview',
             function (string $certificateNumber) {
+
                 $certificate = Certificate::with([
                     'user',
                     'lesson',
