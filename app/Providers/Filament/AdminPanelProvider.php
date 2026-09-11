@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
 use App\Filament\Widgets\DashboardStats;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -10,6 +11,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -26,7 +28,18 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(Login::class)
+
+            /*
+            |--------------------------------------------------------------------------
+            | Global Appearance
+            |--------------------------------------------------------------------------
+            |
+            | Keep the admin panel in light mode to avoid white text being applied
+            | to light custom backgrounds.
+            |
+            */
+            ->darkMode(false)
 
             /*
             |--------------------------------------------------------------------------
@@ -36,34 +49,19 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Uzima Milele')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
-            ->colors([
-                'primary' => [
-                    50 => 'eff9ff',
-                    100 => 'def2ff',
-                    200 => 'b6e8ff',
-                    300 => '75d7ff',
-                    400 => '2cc3ff',
-                    500 => '0083CB',
-                    600 => '076994',
-                    700 => '0E3D4F',
-                    800 => '0E3D4F',
-                    900 => '082b38',
-                    950 => '041923',
-                ],
 
-                'warning' => [
-                    50 => 'fff8e6',
-                    100 => 'ffefc2',
-                    200 => 'ffe08a',
-                    300 => 'ffd052',
-                    400 => 'F4B122',
-                    500 => 'd99100',
-                    600 => 'ad7000',
-                    700 => '805100',
-                    800 => '5c3900',
-                    900 => '332000',
-                    950 => '1f1300',
-                ],
+            /*
+            |--------------------------------------------------------------------------
+            | Filament Colours
+            |--------------------------------------------------------------------------
+            |
+            | Let Filament generate valid colour shades instead of manually passing
+            | hexadecimal strings as shade values.
+            |
+            */
+            ->colors([
+                'primary' => Color::hex('#0083CB'),
+                'warning' => Color::hex('#F4B122'),
             ])
 
             /*
