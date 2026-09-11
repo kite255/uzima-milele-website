@@ -61,21 +61,51 @@ class LessonResource extends Resource
                             )
                             ->helperText('Example public URL: /lessons/nguvu-ya-maombi-katika-maisha-ya-mkristo'),
 
-                        Forms\Components\Select::make('instructor_id')
-                            ->label('Instructor')
+                        Forms\Components\Select::make('lead_instructor_id')
+                            ->label('Lead Instructor')
                             ->relationship(
-                                name: 'instructor',
+                                name: 'leadInstructor',
                                 titleAttribute: 'name',
                                 modifyQueryUsing: fn (Builder $query) =>
-                                    $query->whereIn(
+                                    $query->where(
                                         'role',
-                                        ['admin', 'instructor']
+                                        'instructor'
                                     )
                             )
                             ->searchable()
                             ->preload()
-                            ->placeholder('Uzima Milele Ministry')
-                            ->helperText('Select instructor or leave empty to show Uzima Milele Ministry.'),
+                            ->nullable()
+                            ->placeholder('Select lead instructor')
+                            ->helperText(
+                                'The lead instructor supervises the follow-up team for this course.'
+                            ),
+
+                        Forms\Components\Toggle::make('lead_can_receive_students')
+                            ->label('Lead Instructor Can Receive Students')
+                            ->default(false)
+                            ->onColor('success')
+                            ->helperText(
+                                'When enabled, the lead instructor is included in automatic student assignment.'
+                            ),
+
+                        Forms\Components\Select::make('followUpInstructors')
+                            ->label('Follow-up Instructors')
+                            ->relationship(
+                                name: 'followUpInstructors',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn (Builder $query) =>
+                                    $query->where(
+                                        'role',
+                                        'instructor'
+                                    )
+                            )
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->helperText(
+                                'Select all instructors who may receive and follow up students in this course.'
+                            )
+                            ->columnSpanFull(),
 
                         Forms\Components\Select::make('prerequisite_lesson_id')
                             ->label('Required Previous Lesson')
@@ -380,9 +410,9 @@ class LessonResource extends Resource
                     ->searchable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('instructor.name')
-                    ->label('Instructor')
-                    ->placeholder('Uzima Milele Ministry')
+                Tables\Columns\TextColumn::make('leadInstructor.name')
+                    ->label('Lead Instructor')
+                    ->placeholder('Not assigned')
                     ->searchable()
                     ->sortable(),
 
@@ -487,15 +517,15 @@ class LessonResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_published')
                     ->label('Published'),
 
-                Tables\Filters\SelectFilter::make('instructor_id')
-                    ->label('Instructor')
+                Tables\Filters\SelectFilter::make('lead_instructor_id')
+                    ->label('Lead Instructor')
                     ->relationship(
-                        name: 'instructor',
+                        name: 'leadInstructor',
                         titleAttribute: 'name',
                         modifyQueryUsing: fn (Builder $query) =>
-                            $query->whereIn(
+                            $query->where(
                                 'role',
-                                ['admin', 'instructor']
+                                'instructor'
                             )
                     )
                     ->searchable()
@@ -668,14 +698,37 @@ class LessonResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with('prerequisiteLesson');
+            ->with([
+                'prerequisiteLesson',
+                'leadInstructor',
+                'followUpInstructors',
+            ]);
 
         if (
             auth()->user()?->role === 'instructor'
         ) {
+            $instructorId = auth()->id();
+
             return $query->where(
-                'instructor_id',
-                auth()->id()
+                function (Builder $query) use ($instructorId) {
+                    $query
+                        ->where(
+                            'lead_instructor_id',
+                            $instructorId
+                        )
+                        ->orWhereHas(
+                            'followUpInstructors',
+                            fn (Builder $query) =>
+                                $query->where(
+                                    'users.id',
+                                    $instructorId
+                                )
+                        )
+                        ->orWhere(
+                            'instructor_id',
+                            $instructorId
+                        );
+                }
             );
         }
 

@@ -25,22 +25,59 @@ class DashboardStats extends BaseWidget
         $quizResultsQuery = QuizResult::query();
 
         if ($user?->role === 'instructor') {
-            $lessonsQuery->where('instructor_id', $user->id);
+            static::applyInstructorLessonScope(
+                $lessonsQuery,
+                $user->id
+            );
 
-            $enrollmentsQuery->whereHas('lesson', function (Builder $query) use ($user) {
-                $query->where('instructor_id', $user->id);
-            });
+            static::applyInstructorEnrollmentScope(
+                $enrollmentsQuery,
+                $user->id
+            );
 
-            $certificatesQuery->whereHas('lesson', function (Builder $query) use ($user) {
-                $query->where('instructor_id', $user->id);
-            });
+            $certificatesQuery->whereHas(
+                'lesson',
+                fn (Builder $lessonQuery) =>
+                    static::applyInstructorLessonScope(
+                        $lessonQuery,
+                        $user->id
+                    )
+            );
 
-            $quizResultsQuery->whereHas('quiz', function (Builder $quizQuery) use ($user) {
-                $quizQuery
-                    ->whereHas('lesson', fn (Builder $lessonQuery) => $lessonQuery->where('instructor_id', $user->id))
-                    ->orWhereHas('module.lesson', fn (Builder $lessonQuery) => $lessonQuery->where('instructor_id', $user->id))
-                    ->orWhereHas('topic.module.lesson', fn (Builder $lessonQuery) => $lessonQuery->where('instructor_id', $user->id));
-            });
+            $quizResultsQuery->whereHas(
+                'quiz',
+                function (Builder $quizQuery) use ($user) {
+                    $quizQuery->where(
+                        function (Builder $query) use ($user) {
+                            $query
+                                ->whereHas(
+                                    'lesson',
+                                    fn (Builder $lessonQuery) =>
+                                        static::applyInstructorLessonScope(
+                                            $lessonQuery,
+                                            $user->id
+                                        )
+                                )
+                                ->orWhereHas(
+                                    'module.lesson',
+                                    fn (Builder $lessonQuery) =>
+                                        static::applyInstructorLessonScope(
+                                            $lessonQuery,
+                                            $user->id
+                                        )
+                                )
+                                ->orWhereHas(
+                                    'topic.module.lesson',
+                                    fn (Builder $lessonQuery) =>
+                                        static::applyInstructorLessonScope(
+                                            $lessonQuery,
+                                            $user->id
+                                        )
+                                );
+                        }
+                    );
+                }
+            );
         }
 
         $totalLessons = $lessonsQuery->count();
@@ -49,34 +86,154 @@ class DashboardStats extends BaseWidget
         $totalQuizResults = $quizResultsQuery->count();
 
         $totalStudents = $user?->role === 'admin'
-            ? User::where('role', 'student')->count()
-            : (clone $enrollmentsQuery)->distinct('user_id')->count('user_id');
+            ? User::query()
+                ->where('role', 'student')
+                ->count()
+            : (clone $enrollmentsQuery)
+                ->distinct()
+                ->count('user_id');
 
         return [
-            Stat::make('Lessons', $totalLessons)
-                ->description($user?->role === 'instructor' ? 'Assigned lessons' : 'Total lessons')
-                ->descriptionIcon('heroicon-m-academic-cap')
+            Stat::make(
+                'Lessons',
+                $totalLessons
+            )
+                ->description(
+                    $user?->role === 'instructor'
+                        ? 'Assigned lessons'
+                        : 'Total lessons'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-academic-cap'
+                )
                 ->color('primary'),
 
-            Stat::make('Students', $totalStudents)
-                ->description($user?->role === 'instructor' ? 'Your enrolled students' : 'Registered students')
-                ->descriptionIcon('heroicon-m-users')
+            Stat::make(
+                'Students',
+                $totalStudents
+            )
+                ->description(
+                    $user?->role === 'instructor'
+                        ? 'Your enrolled students'
+                        : 'Registered students'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-users'
+                )
                 ->color('success'),
 
-            Stat::make('Enrollments', $totalEnrollments)
-                ->description('Lesson enrollments')
-                ->descriptionIcon('heroicon-m-book-open')
+            Stat::make(
+                'Enrollments',
+                $totalEnrollments
+            )
+                ->description(
+                    'Lesson enrollments'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-book-open'
+                )
                 ->color('warning'),
 
-            Stat::make('Certificates', $totalCertificates)
-                ->description('Issued certificates')
-                ->descriptionIcon('heroicon-m-document-check')
+            Stat::make(
+                'Certificates',
+                $totalCertificates
+            )
+                ->description(
+                    'Issued certificates'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-document-check'
+                )
                 ->color('success'),
 
-            Stat::make('Quiz Results', $totalQuizResults)
-                ->description('Submitted quiz attempts')
-                ->descriptionIcon('heroicon-m-question-mark-circle')
+            Stat::make(
+                'Quiz Results',
+                $totalQuizResults
+            )
+                ->description(
+                    'Submitted quiz attempts'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-question-mark-circle'
+                )
                 ->color('info'),
         ];
+    }
+
+    protected static function applyInstructorLessonScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $lessonQuery) use ($instructorId) {
+                $lessonQuery
+                    ->where(
+                        'lead_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'followUpInstructors',
+                        fn (Builder $followUpQuery) =>
+                            $followUpQuery->where(
+                                'users.id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhere(
+                        function (Builder $legacyQuery) use ($instructorId) {
+                            $legacyQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
+    }
+
+    protected static function applyInstructorEnrollmentScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $enrollmentQuery) use ($instructorId) {
+                $enrollmentQuery
+                    ->where(
+                        'follow_up_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'lesson',
+                        fn (Builder $lessonQuery) =>
+                            $lessonQuery->where(
+                                'lead_instructor_id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhereHas(
+                        'lesson',
+                        function (Builder $lessonQuery) use ($instructorId) {
+                            $lessonQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 }

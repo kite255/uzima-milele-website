@@ -28,17 +28,47 @@ class QuestionsRelationManager extends RelationManager
 
     protected static function canManageOwnerQuiz(Model $quiz): bool
     {
-        if (auth()->user()?->role === 'admin') {
+        $user = auth()->user();
+
+        if ($user?->role === 'admin') {
             return true;
         }
 
-        if (auth()->user()?->role === 'instructor') {
-            return $quiz->lesson?->instructor_id === auth()->id()
-                || $quiz->module?->lesson?->instructor_id === auth()->id()
-                || $quiz->topic?->module?->lesson?->instructor_id === auth()->id();
+        if ($user?->role !== 'instructor') {
+            return false;
         }
 
-        return false;
+        $quiz->loadMissing([
+            'lesson.leadInstructor',
+            'lesson.followUpInstructors',
+            'module.lesson.leadInstructor',
+            'module.lesson.followUpInstructors',
+            'topic.module.lesson.leadInstructor',
+            'topic.module.lesson.followUpInstructors',
+        ]);
+
+        $lesson = $quiz->lesson
+            ?? $quiz->module?->lesson
+            ?? $quiz->topic?->module?->lesson;
+
+        if (! $lesson) {
+            return false;
+        }
+
+        if ($lesson->lead_instructor_id === $user->id) {
+            return true;
+        }
+
+        if (
+            $lesson->followUpInstructors
+                ->contains('id', $user->id)
+        ) {
+            return true;
+        }
+
+        return $lesson->instructor_id === $user->id
+            && is_null($lesson->lead_instructor_id)
+            && $lesson->followUpInstructors->isEmpty();
     }
 
     protected function canManageCurrentQuiz(): bool

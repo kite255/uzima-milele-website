@@ -6,14 +6,25 @@
 
 @php
     use App\Models\Lesson;
+    use App\Models\User;
     use Carbon\Carbon;
     use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
 
     $authUser = auth()->user();
 
-    $dashboardProgress = min(100, max(0, (int) ($progressPercent ?? $overallProgress ?? 0)));
-    $certificateCount = isset($certificates) ? $certificates->count() : 0;
+    $dashboardProgress = min(
+        100,
+        max(
+            0,
+            (int) ($progressPercent ?? $overallProgress ?? 0)
+        )
+    );
+
+    $certificateCount = isset($certificates)
+        ? $certificates->count()
+        : 0;
+
     $attemptsCount = $quizAttempts ?? $totalAttempts ?? 0;
 
     $paceLabels = [
@@ -22,6 +33,35 @@
         Lesson::PACE_INTENSIVE => 'Haraka',
         Lesson::PACE_CUSTOM => 'Ratiba Maalum',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Follow-up Instructors
+    |--------------------------------------------------------------------------
+    |
+    | Collect the follow-up instructor IDs from this student's lesson
+    | enrollments and load the instructors once.
+    |
+    */
+
+    $followUpInstructorIds = collect($lessons ?? [])
+        ->map(
+            fn ($lesson) =>
+                $lesson->pivot?->follow_up_instructor_id
+        )
+        ->filter()
+        ->map(
+            fn ($id) => (int) $id
+        )
+        ->unique()
+        ->values();
+
+    $followUpInstructors = $followUpInstructorIds->isNotEmpty()
+        ? User::query()
+            ->whereIn('id', $followUpInstructorIds)
+            ->get()
+            ->keyBy('id')
+        : collect();
 @endphp
 
 <section class="bg-gray-50 min-h-screen py-12">
@@ -29,7 +69,9 @@
 
         {{-- WELCOME --}}
         <div class="relative overflow-hidden mb-10 bg-gradient-to-r from-navy via-primaryDark to-primary rounded-3xl p-8 md:p-10 text-white shadow-lg">
+
             <div class="relative z-10">
+
                 <p class="text-white/80 text-sm font-bold mb-2">
                     Dashibodi ya Mwanafunzi
                 </p>
@@ -39,143 +81,282 @@
                 </h1>
 
                 <p class="text-white/85 mt-3 max-w-2xl">
-                    Endelea kujifunza kwa mpangilio. Masomo yanayofuata yatafunguka baada ya kukamilisha somo lililotangulia.
+                    Endelea kujifunza kwa mpangilio. Masomo yanayofuata
+                    yatafunguka baada ya kukamilisha somo lililotangulia.
                 </p>
+
             </div>
 
             <div class="absolute -right-10 -bottom-10 w-56 h-56 rounded-full bg-white/10"></div>
+
             <div class="absolute right-32 top-8 w-24 h-24 rounded-full bg-white/10"></div>
+
         </div>
 
         {{-- ALERTS --}}
         @if(session('success'))
+
             <div class="mb-6 rounded-2xl bg-green-50 border border-green-200 text-green-700 px-6 py-4 font-bold">
                 {{ session('success') }}
             </div>
+
         @endif
 
         @if(session('info'))
+
             <div class="mb-6 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 px-6 py-4 font-bold">
                 {{ session('info') }}
             </div>
+
         @endif
 
         @if(session('error'))
+
             <div class="mb-6 rounded-2xl bg-red-50 border border-red-200 text-red-700 px-6 py-4 font-bold">
                 {{ session('error') }}
             </div>
+
         @endif
 
         {{-- STATS --}}
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
-                <p class="text-sm text-gray-500">Masomo Yaliyokamilika</p>
+
+                <p class="text-sm text-gray-500">
+                    Masomo Yaliyokamilika
+                </p>
+
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $completedLessons ?? 0 }}/{{ $totalLessons ?? 0 }}
                 </h2>
+
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-primary">
-                <p class="text-sm text-gray-500">Maendeleo ya Jumla</p>
+
+                <p class="text-sm text-gray-500">
+                    Maendeleo ya Jumla
+                </p>
+
                 <h2 class="text-3xl font-black text-primary mt-2">
                     {{ $dashboardProgress }}%
                 </h2>
+
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-accent">
-                <p class="text-sm text-gray-500">Majaribio Yaliyofanyika</p>
+
+                <p class="text-sm text-gray-500">
+                    Majaribio Yaliyofanyika
+                </p>
+
                 <h2 class="text-3xl font-black text-navy mt-2">
                     {{ $attemptsCount }}
                 </h2>
+
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 border-t-4 border-green-500">
-                <p class="text-sm text-gray-500">Vyeti</p>
+
+                <p class="text-sm text-gray-500">
+                    Vyeti
+                </p>
+
                 <h2 class="text-3xl font-black text-green-600 mt-2">
                     {{ $certificateCount }}
                 </h2>
+
             </div>
+
         </div>
 
         {{-- OVERALL PROGRESS --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-10">
+
             <div class="flex justify-between mb-3">
-                <span class="font-bold text-navy">Maendeleo ya Jumla</span>
+
+                <span class="font-bold text-navy">
+                    Maendeleo ya Jumla
+                </span>
+
                 <span class="font-bold text-primary">
                     {{ $dashboardProgress }}%
                 </span>
+
             </div>
 
             <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div class="bg-primary h-4 rounded-full transition-all duration-500"
-                     style="width: {{ $dashboardProgress }}%">
-                </div>
+
+                <div
+                    class="bg-primary h-4 rounded-full transition-all duration-500"
+                    style="width: {{ $dashboardProgress }}%"
+                ></div>
+
             </div>
+
         </div>
 
         {{-- LESSONS --}}
         <div class="mb-10">
+
             <div class="flex items-center justify-between mb-6">
+
                 <div>
+
                     <h2 class="text-2xl font-black text-navy">
                         Endelea Kujifunza
                     </h2>
 
                     <p class="text-sm text-gray-500 mt-1">
-                        Masomo yenye sharti yatafunguka baada ya kukamilisha somo lililotangulia.
+                        Masomo yenye sharti yatafunguka baada ya kukamilisha
+                        somo lililotangulia.
                     </p>
+
                 </div>
 
-                <a href="{{ route('lessons.index') }}"
-                   class="hidden sm:inline-flex text-sm font-bold text-primary hover:text-primaryDark">
+                <a
+                    href="{{ route('lessons.index') }}"
+                    class="hidden sm:inline-flex text-sm font-bold text-primary hover:text-primaryDark"
+                >
                     Tazama Masomo Yote →
                 </a>
+
             </div>
 
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
                 @forelse($lessons ?? [] as $lesson)
+
                     @php
                         $totalTopics = (int) ($lesson->total_topics_count ?? 0);
-                        $completedTopics = (int) ($lesson->completed_topics_count ?? 0);
-                        $lessonProgress = min(100, max(0, (int) ($lesson->progress ?? 0)));
 
-                        $lessonImage = $lesson->cover_image ?? $lesson->image ?? null;
+                        $completedTopics = (int) (
+                            $lesson->completed_topics_count ?? 0
+                        );
+
+                        $lessonProgress = min(
+                            100,
+                            max(
+                                0,
+                                (int) ($lesson->progress ?? 0)
+                            )
+                        );
+
+                        $lessonImage =
+                            $lesson->cover_image
+                            ?? $lesson->image
+                            ?? null;
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Certificate
+                        |--------------------------------------------------------------------------
+                        */
 
                         $certificate = $lesson->certificate ?? null;
 
                         if (! $certificate && isset($certificates)) {
-                            if ($certificates instanceof \Illuminate\Support\Collection) {
-                                $certificate = $certificates->get($lesson->id);
+                            if (
+                                $certificates instanceof
+                                \Illuminate\Support\Collection
+                            ) {
+                                $certificate = $certificates->get(
+                                    $lesson->id
+                                );
                             } else {
-                                $certificate = $certificates[$lesson->id] ?? null;
+                                $certificate =
+                                    $certificates[$lesson->id]
+                                    ?? null;
                             }
                         }
 
-                        $canGenerateCertificate = $lesson->can_generate_certificate ?? false;
+                        $canGenerateCertificate =
+                            $lesson->can_generate_certificate
+                            ?? false;
 
-                        $finalQuizRequired = $lesson->final_quiz_required ?? false;
-                        $finalQuizPassed = $lesson->final_quiz_passed ?? true;
-                        $finalQuiz = $lesson->final_quiz ?? $lesson->finalQuiz ?? null;
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Final Quiz
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $finalQuizRequired =
+                            $lesson->final_quiz_required
+                            ?? false;
+
+                        $finalQuizPassed =
+                            $lesson->final_quiz_passed
+                            ?? true;
+
+                        $finalQuiz =
+                            $lesson->final_quiz
+                            ?? $lesson->finalQuiz
+                            ?? null;
 
                         $nextTopic = $lesson->next_topic ?? null;
 
-                        $enrolledAt = $lesson->pivot?->enrolled_at ?? null;
-                        $studyPace = $lesson->pivot?->study_pace ?? null;
-                        $studyHoursPerWeek = $lesson->pivot?->study_hours_per_week ?? null;
-                        $targetCompletionDate = $lesson->pivot?->target_completion_date ?? null;
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Enrollment
+                        |--------------------------------------------------------------------------
+                        */
 
-                        $studyPaceLabel = $paceLabels[$studyPace] ?? null;
+                        $enrolledAt =
+                            $lesson->pivot?->enrolled_at
+                            ?? null;
+
+                        $studyPace =
+                            $lesson->pivot?->study_pace
+                            ?? null;
+
+                        $studyHoursPerWeek =
+                            $lesson->pivot?->study_hours_per_week
+                            ?? null;
+
+                        $targetCompletionDate =
+                            $lesson->pivot?->target_completion_date
+                            ?? null;
+
+                        $studyPaceLabel =
+                            $paceLabels[$studyPace]
+                            ?? null;
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Follow-up Instructor
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $followUpInstructorId =
+                            $lesson->pivot?->follow_up_instructor_id;
+
+                        $followUpInstructor =
+                            $followUpInstructorId
+                                ? $followUpInstructors->get(
+                                    (int) $followUpInstructorId
+                                )
+                                : null;
 
                         /*
                         |--------------------------------------------------------------------------
                         | Prerequisite / Lesson Lock Logic
                         |--------------------------------------------------------------------------
                         */
-                        $prerequisiteLesson = $lesson->prerequisiteLesson ?? null;
 
-                        $canStartLesson = method_exists($lesson, 'canBeStartedBy')
-                            ? $lesson->canBeStartedBy($authUser)
-                            : true;
+                        $prerequisiteLesson =
+                            $lesson->prerequisiteLesson
+                            ?? null;
+
+                        $canStartLesson =
+                            method_exists(
+                                $lesson,
+                                'canBeStartedBy'
+                            )
+                                ? $lesson->canBeStartedBy(
+                                    $authUser
+                                )
+                                : true;
 
                         $isLocked = ! $canStartLesson;
 
@@ -184,53 +365,93 @@
                         | Schedule Status
                         |--------------------------------------------------------------------------
                         */
+
                         $remainingDays = null;
                         $isBehindSchedule = false;
                         $isDueToday = false;
-                        $scheduleStatusLabel = 'Hakuna ratiba';
+
+                        $scheduleStatusLabel =
+                            'Hakuna ratiba';
+
                         $scheduleColor = 'gray';
 
                         if ($targetCompletionDate) {
-                            $targetDate = Carbon::parse($targetCompletionDate)->startOfDay();
+                            $targetDate = Carbon::parse(
+                                $targetCompletionDate
+                            )->startOfDay();
+
                             $today = now()->startOfDay();
 
-                            $remainingDays = $today->diffInDays($targetDate, false);
-                            $isBehindSchedule = $today->greaterThan($targetDate);
-                            $isDueToday = $today->equalTo($targetDate);
+                            $remainingDays =
+                                $today->diffInDays(
+                                    $targetDate,
+                                    false
+                                );
+
+                            $isBehindSchedule =
+                                $today->greaterThan(
+                                    $targetDate
+                                );
+
+                            $isDueToday =
+                                $today->equalTo(
+                                    $targetDate
+                                );
 
                             if ($isBehindSchedule) {
-                                $scheduleStatusLabel = 'Umechelewa';
+                                $scheduleStatusLabel =
+                                    'Umechelewa';
+
                                 $scheduleColor = 'red';
                             } elseif ($isDueToday) {
-                                $scheduleStatusLabel = 'Lengo ni leo';
+                                $scheduleStatusLabel =
+                                    'Lengo ni leo';
+
                                 $scheduleColor = 'yellow';
                             } else {
-                                $scheduleStatusLabel = 'Unaendelea vizuri';
+                                $scheduleStatusLabel =
+                                    'Unaendelea vizuri';
+
                                 $scheduleColor = 'green';
                             }
                         }
 
                         $imageUrl = $lessonImage
-                            ? Storage::disk('public')->url($lessonImage)
+                            ? Storage::disk('public')->url(
+                                $lessonImage
+                            )
                             : null;
                     @endphp
 
-                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden {{ $isLocked ? 'opacity-90' : '' }}">
+                    <div
+                        class="bg-white rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition overflow-hidden {{ $isLocked ? 'opacity-90' : '' }}"
+                    >
 
+                        {{-- COVER --}}
                         <div class="relative">
+
                             @if($imageUrl)
-                                <img src="{{ $imageUrl }}"
-                                     class="w-full h-48 object-cover"
-                                     alt="{{ $lesson->title }}">
+
+                                <img
+                                    src="{{ $imageUrl }}"
+                                    class="w-full h-48 object-cover"
+                                    alt="{{ $lesson->title }}"
+                                >
+
                             @else
+
                                 <div class="h-48 bg-gradient-to-br from-primary to-navy flex items-center justify-center text-white font-black text-2xl">
                                     Uzima Milele
                                 </div>
+
                             @endif
 
                             @if($isLocked)
+
                                 <div class="absolute inset-0 bg-navy/70 flex items-center justify-center text-white text-center px-6">
+
                                     <div>
+
                                         <div class="w-14 h-14 mx-auto rounded-full bg-white/20 flex items-center justify-center text-2xl font-black">
                                             🔒
                                         </div>
@@ -240,48 +461,208 @@
                                         </p>
 
                                         @if($prerequisiteLesson)
+
                                             <p class="mt-1 text-xs text-white/80">
-                                                Kamilisha kwanza: {{ $prerequisiteLesson->title }}
+                                                Kamilisha kwanza:
+                                                {{ $prerequisiteLesson->title }}
                                             </p>
+
                                         @endif
+
                                     </div>
+
                                 </div>
+
                             @endif
+
                         </div>
 
                         <div class="p-6">
+
+                            {{-- TITLE --}}
                             <div class="flex items-start justify-between gap-3 mb-2">
+
                                 <h3 class="font-black text-lg text-navy leading-snug">
                                     {{ $lesson->title }}
                                 </h3>
 
                                 @if($isLocked)
+
                                     <span class="shrink-0 rounded-full bg-yellow-100 text-yellow-700 text-[11px] font-black px-3 py-1">
                                         Locked
                                     </span>
+
                                 @elseif($lessonProgress >= 100)
+
                                     <span class="shrink-0 rounded-full bg-green-100 text-green-700 text-[11px] font-black px-3 py-1">
                                         Completed
                                     </span>
+
                                 @else
+
                                     <span class="shrink-0 rounded-full bg-primary/10 text-primary text-[11px] font-black px-3 py-1">
                                         Open
                                     </span>
+
                                 @endif
+
                             </div>
 
+                            {{-- ENROLLED DATE --}}
                             @if($enrolledAt)
+
                                 <p class="mb-3 text-xs text-gray-500">
+
                                     Ulijiunga:
+
                                     <span class="font-bold text-navy">
                                         {{ Carbon::parse($enrolledAt)->format('d M Y, H:i') }}
                                     </span>
+
                                 </p>
+
                             @endif
+
+                            {{-- FOLLOW-UP INSTRUCTOR --}}
+                            <div class="mb-5 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+
+                                <div class="flex items-start gap-3">
+
+                                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="h-5 w-5"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M19 8v6"></path>
+                                            <path d="M22 11h-6"></path>
+                                        </svg>
+
+                                    </div>
+
+                                    <div class="min-w-0 flex-1">
+
+                                        <p class="text-xs font-black uppercase tracking-wide text-primary">
+                                            Mwalimu wa Ufuatiliaji
+                                        </p>
+
+                                        @if($followUpInstructor)
+
+                                            <p class="mt-1 text-base font-black text-navy break-words">
+                                                {{ $followUpInstructor->name }}
+                                            </p>
+
+                                            @if($followUpInstructor->email)
+
+                                                <a
+                                                    href="mailto:{{ $followUpInstructor->email }}"
+                                                    class="mt-2 flex items-center gap-2 break-all text-sm font-bold text-primary hover:text-primaryDark"
+                                                >
+
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        class="h-4 w-4 shrink-0"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <rect
+                                                            width="18"
+                                                            height="14"
+                                                            x="3"
+                                                            y="5"
+                                                            rx="2"
+                                                        ></rect>
+
+                                                        <path d="m3 7 9 6 9-6"></path>
+                                                    </svg>
+
+                                                    <span>
+                                                        {{ $followUpInstructor->email }}
+                                                    </span>
+
+                                                </a>
+
+                                            @endif
+
+                                            @if($followUpInstructor->phone)
+
+                                                <a
+                                                    href="tel:{{ $followUpInstructor->phone }}"
+                                                    class="mt-2 flex items-center gap-2 text-sm font-bold text-primary hover:text-primaryDark"
+                                                >
+
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.8"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        class="h-4 w-4 shrink-0"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z"></path>
+                                                    </svg>
+
+                                                    <span>
+                                                        {{ $followUpInstructor->phone }}
+                                                    </span>
+
+                                                </a>
+
+                                            @endif
+
+                                            @if(
+                                                ! $followUpInstructor->email
+                                                && ! $followUpInstructor->phone
+                                            )
+
+                                                <p class="mt-2 text-xs text-gray-500">
+                                                    Mawasiliano ya mwalimu bado hayajawekwa.
+                                                </p>
+
+                                            @endif
+
+                                        @else
+
+                                            <p class="mt-1 text-sm font-bold text-gray-600">
+                                                Mwalimu wa ufuatiliaji bado hajapangwa.
+                                            </p>
+
+                                            <p class="mt-1 text-xs text-gray-500">
+                                                Utapata taarifa za mwalimu hapa baada ya kupangiwa.
+                                            </p>
+
+                                        @endif
+
+                                    </div>
+
+                                </div>
+
+                            </div>
 
                             {{-- PREREQUISITE MESSAGE --}}
                             @if($prerequisiteLesson)
-                                <div class="mb-5 rounded-2xl {{ $isLocked ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200' }} border p-4">
+
+                                <div
+                                    class="mb-5 rounded-2xl {{ $isLocked ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200' }} border p-4"
+                                >
+
                                     <p class="text-xs font-black {{ $isLocked ? 'text-yellow-700' : 'text-green-700' }}">
                                         Somo la awali:
                                     </p>
@@ -291,55 +672,82 @@
                                     </p>
 
                                     <p class="mt-1 text-xs {{ $isLocked ? 'text-yellow-700' : 'text-green-700' }}">
+
                                         @if($isLocked)
-                                            Kamilisha somo hili la awali ili kufungua somo hili.
+                                            Kamilisha somo hili la awali ili
+                                            kufungua somo hili.
                                         @else
                                             Umeruhusiwa kuendelea na somo hili.
                                         @endif
+
                                     </p>
+
                                 </div>
+
                             @endif
 
                             {{-- LEARNING SCHEDULE --}}
                             @if($targetCompletionDate)
+
                                 <div class="mb-5 rounded-2xl bg-primary/5 border border-primary/10 p-4">
+
                                     <div class="flex items-start justify-between gap-3">
+
                                         <div>
+
                                             <p class="text-sm font-black text-navy">
                                                 Ratiba yako ya kujifunza
                                             </p>
 
                                             <p class="mt-1 text-xs text-gray-600">
+
                                                 Kasi:
+
                                                 <span class="font-bold text-primary">
+
                                                     {{ $studyPaceLabel ?? 'Kawaida' }}
+
                                                     @if($studyHoursPerWeek)
                                                         · {{ $studyHoursPerWeek }} saa/wiki
                                                     @endif
+
                                                 </span>
+
                                             </p>
+
                                         </div>
 
-                                        <span class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black
+                                        <span
+                                            class="shrink-0 rounded-full px-3 py-1 text-[11px] font-black
                                             {{ $scheduleColor === 'red'
                                                 ? 'bg-red-100 text-red-700'
                                                 : ($scheduleColor === 'yellow'
                                                     ? 'bg-yellow-100 text-yellow-700'
-                                                    : 'bg-green-100 text-green-700') }}">
+                                                    : 'bg-green-100 text-green-700') }}"
+                                        >
                                             {{ $scheduleStatusLabel }}
                                         </span>
+
                                     </div>
 
                                     <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
+
                                         <div class="rounded-xl bg-white border border-primary/10 p-3">
-                                            <p class="text-gray-500">Lengo</p>
+
+                                            <p class="text-gray-500">
+                                                Lengo
+                                            </p>
+
                                             <p class="font-black text-navy mt-1">
                                                 {{ Carbon::parse($targetCompletionDate)->format('d M Y') }}
                                             </p>
+
                                         </div>
 
                                         <div class="rounded-xl bg-white border border-primary/10 p-3">
+
                                             <p class="text-gray-500">
+
                                                 @if($isBehindSchedule)
                                                     Hali
                                                 @elseif($isDueToday)
@@ -347,146 +755,269 @@
                                                 @else
                                                     Siku zilizobaki
                                                 @endif
+
                                             </p>
 
-                                            <p class="font-black mt-1
+                                            <p
+                                                class="font-black mt-1
                                                 {{ $isBehindSchedule
                                                     ? 'text-red-600'
-                                                    : ($isDueToday ? 'text-yellow-700' : 'text-navy') }}">
+                                                    : ($isDueToday
+                                                        ? 'text-yellow-700'
+                                                        : 'text-navy') }}"
+                                            >
+
                                                 @if($isBehindSchedule)
+
                                                     Pita muda
+
                                                 @elseif($isDueToday)
+
                                                     Leo
+
                                                 @else
+
                                                     {{ $remainingDays }} siku
+
                                                 @endif
+
                                             </p>
+
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             @else
+
                                 <div class="mb-5 rounded-2xl bg-yellow-50 border border-yellow-200 p-4">
+
                                     <p class="text-xs font-bold text-yellow-700">
-                                        Bado hujaweka ratiba ya kujifunza kwa somo hili.
+                                        Bado hujaweka ratiba ya kujifunza kwa
+                                        somo hili.
                                     </p>
+
                                 </div>
+
                             @endif
 
+                            {{-- DESCRIPTION --}}
                             <p class="text-sm text-gray-500 mb-5 line-clamp-3">
-                                {{ Str::limit(strip_tags($lesson->description ?? 'Hakuna maelezo yaliyowekwa.'), 130) }}
+                                {{ Str::limit(
+                                    strip_tags(
+                                        $lesson->description
+                                        ?? 'Hakuna maelezo yaliyowekwa.'
+                                    ),
+                                    130
+                                ) }}
                             </p>
 
+                            {{-- PROGRESS --}}
                             <div class="mb-4">
+
                                 <div class="flex justify-between text-sm mb-2">
-                                    <span class="font-bold text-navy">Maendeleo</span>
-                                    <span class="font-bold text-navy">{{ $lessonProgress }}%</span>
+
+                                    <span class="font-bold text-navy">
+                                        Maendeleo
+                                    </span>
+
+                                    <span class="font-bold text-navy">
+                                        {{ $lessonProgress }}%
+                                    </span>
+
                                 </div>
 
                                 <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                    <div class="bg-primary h-3 rounded-full"
-                                         style="width: {{ $lessonProgress }}%">
-                                    </div>
+
+                                    <div
+                                        class="bg-primary h-3 rounded-full"
+                                        style="width: {{ $lessonProgress }}%"
+                                    ></div>
+
                                 </div>
+
                             </div>
 
                             <p class="text-xs text-gray-400 mb-4">
-                                {{ $completedTopics }} / {{ $totalTopics }} mada zimekamilika
+                                {{ $completedTopics }} / {{ $totalTopics }}
+                                mada zimekamilika
                             </p>
 
                             {{-- ACTION BUTTON --}}
                             @if($isLocked)
+
                                 @if($prerequisiteLesson)
-                                    <a href="{{ route('lessons.show', $prerequisiteLesson->slug) }}"
-                                       class="block text-center bg-yellow-500 hover:bg-yellow-600 text-navy font-bold py-3 rounded-xl transition">
+
+                                    <a
+                                        href="{{ route('lessons.show', $prerequisiteLesson->slug) }}"
+                                        class="block text-center bg-yellow-500 hover:bg-yellow-600 text-navy font-bold py-3 rounded-xl transition"
+                                    >
                                         Kamilisha Somo la Awali
                                     </a>
+
                                 @else
-                                    <button disabled
-                                            class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed">
+
+                                    <button
+                                        disabled
+                                        class="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed"
+                                    >
                                         Somo Limefungwa
                                     </button>
+
                                 @endif
+
                             @elseif($nextTopic)
-                                <a href="{{ route('lessons.learn', ['lesson' => $lesson->slug, 'topic' => $nextTopic->id]) }}"
-                                   class="block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
-                                    {{ $lessonProgress > 0 ? 'Endelea Kusoma' : 'Anza Kusoma' }}
+
+                                <a
+                                    href="{{ route('lessons.learn', [
+                                        'lesson' => $lesson->slug,
+                                        'topic' => $nextTopic->id,
+                                    ]) }}"
+                                    class="block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition"
+                                >
+                                    {{ $lessonProgress > 0
+                                        ? 'Endelea Kusoma'
+                                        : 'Anza Kusoma'
+                                    }}
                                 </a>
+
                             @elseif($totalTopics > 0 && $lessonProgress >= 100)
-                                @if($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
-                                    <a href="{{ route('quiz.show', $finalQuiz->id) }}"
-                                       class="block text-center bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition">
+
+                                @if(
+                                    $finalQuizRequired
+                                    && ! $finalQuizPassed
+                                    && $finalQuiz
+                                )
+
+                                    <a
+                                        href="{{ route('quiz.show', $finalQuiz->id) }}"
+                                        class="block text-center bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition"
+                                    >
                                         Fanya Jaribio la Mwisho
                                     </a>
+
                                 @else
-                                    <a href="{{ route('lessons.learn', $lesson->slug) }}"
-                                       class="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition">
+
+                                    <a
+                                        href="{{ route('lessons.learn', $lesson->slug) }}"
+                                        class="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition"
+                                    >
                                         Somo Limekamilika
                                     </a>
+
                                 @endif
+
                             @else
-                                <a href="{{ route('lessons.show', $lesson->slug) }}"
-                                   class="block text-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition">
+
+                                <a
+                                    href="{{ route('lessons.show', $lesson->slug) }}"
+                                    class="block text-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition"
+                                >
                                     Hakuna Mada
                                 </a>
+
                             @endif
 
                             {{-- CERTIFICATE ACTIONS --}}
                             @if(! $isLocked)
+
                                 @if($certificate)
-                                    <a href="{{ route('certificates.show', $certificate->certificate_number) }}"
-                                       class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition">
+
+                                    <a
+                                        href="{{ route('certificates.show', $certificate->certificate_number) }}"
+                                        class="mt-3 block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition"
+                                    >
                                         Tazama Cheti
                                     </a>
 
-                                    <a href="{{ route('certificates.download', $certificate->certificate_number) }}"
-                                       class="mt-2 block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition">
+                                    <a
+                                        href="{{ route('certificates.download', $certificate->certificate_number) }}"
+                                        class="mt-2 block text-center bg-navy hover:bg-primaryDark text-white font-bold py-3 rounded-xl transition"
+                                    >
                                         Download Cheti
                                     </a>
+
                                 @elseif($lessonProgress < 100)
+
                                     <p class="mt-3 text-xs text-gray-500 text-center">
                                         Kamilisha mada zote ili kupata cheti.
                                     </p>
-                                @elseif($finalQuizRequired && ! $finalQuizPassed && $finalQuiz)
+
+                                @elseif(
+                                    $finalQuizRequired
+                                    && ! $finalQuizPassed
+                                    && $finalQuiz
+                                )
+
                                     <p class="mt-2 text-xs text-gray-500 text-center">
-                                        Lazima ufaulu jaribio la mwisho ili kupata cheti.
+                                        Lazima ufaulu jaribio la mwisho ili
+                                        kupata cheti.
                                     </p>
+
                                 @elseif($canGenerateCertificate)
-                                    <form action="{{ route('certificates.issue', $lesson->id) }}" method="POST" class="mt-3">
+
+                                    <form
+                                        action="{{ route('certificates.issue', $lesson->id) }}"
+                                        method="POST"
+                                        class="mt-3"
+                                    >
                                         @csrf
 
-                                        <button type="submit"
-                                                class="w-full bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition">
+                                        <button
+                                            type="submit"
+                                            class="w-full bg-accent hover:bg-yellow-500 text-navy font-bold py-3 rounded-xl transition"
+                                        >
                                             Tengeneza Cheti
                                         </button>
+
                                     </form>
+
                                 @endif
+
                             @endif
+
                         </div>
+
                     </div>
+
                 @empty
+
                     <div class="sm:col-span-2 lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+
                         <h3 class="text-xl font-black text-navy">
                             Bado hujajiunga na somo lolote.
                         </h3>
 
                         <p class="text-gray-500 mt-2">
-                            Fungua orodha ya masomo kisha bonyeza “Jiunge na Somo” ili somo lionekane hapa.
+                            Fungua orodha ya masomo kisha bonyeza
+                            “Jiunge na Somo” ili somo lionekane hapa.
                         </p>
 
-                        <a href="{{ route('lessons.index') }}"
-                           class="inline-flex mt-6 bg-primary hover:bg-primaryDark text-white font-bold px-6 py-3 rounded-xl transition">
+                        <a
+                            href="{{ route('lessons.index') }}"
+                            class="inline-flex mt-6 bg-primary hover:bg-primaryDark text-white font-bold px-6 py-3 rounded-xl transition"
+                        >
                             Tazama Masomo
                         </a>
+
                     </div>
+
                 @endforelse
+
             </div>
 
             <div class="sm:hidden mt-6">
-                <a href="{{ route('lessons.index') }}"
-                   class="block text-center bg-white border border-gray-200 rounded-xl py-3 font-bold text-primary">
+
+                <a
+                    href="{{ route('lessons.index') }}"
+                    class="block text-center bg-white border border-gray-200 rounded-xl py-3 font-bold text-primary"
+                >
                     Tazama Masomo Yote
                 </a>
+
             </div>
+
         </div>
 
     </div>

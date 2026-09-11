@@ -44,7 +44,10 @@ class ModuleResource extends Resource
                                 titleAttribute: 'title',
                                 modifyQueryUsing: function (Builder $query) {
                                     if (auth()->user()?->role === 'instructor') {
-                                        return $query->where('instructor_id', auth()->id());
+                                        return static::applyInstructorLessonScope(
+                                            $query,
+                                            auth()->id()
+                                        );
                                     }
 
                                     return $query;
@@ -138,7 +141,10 @@ class ModuleResource extends Resource
                         titleAttribute: 'title',
                         modifyQueryUsing: function (Builder $query) {
                             if (auth()->user()?->role === 'instructor') {
-                                return $query->where('instructor_id', auth()->id());
+                                return static::applyInstructorLessonScope(
+                                    $query,
+                                    auth()->id()
+                                );
                             }
 
                             return $query;
@@ -173,15 +179,61 @@ class ModuleResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with('lesson');
+            ->with([
+                'lesson.leadInstructor',
+                'lesson.followUpInstructors',
+            ]);
 
         if (auth()->user()?->role === 'instructor') {
-            return $query->whereHas('lesson', function (Builder $lessonQuery) {
-                $lessonQuery->where('instructor_id', auth()->id());
-            });
+            return $query->whereHas(
+                'lesson',
+                fn (Builder $lessonQuery) =>
+                    static::applyInstructorLessonScope(
+                        $lessonQuery,
+                        auth()->id()
+                    )
+            );
         }
 
         return $query;
+    }
+
+    protected static function applyInstructorLessonScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $lessonQuery) use ($instructorId) {
+                $lessonQuery
+                    ->where(
+                        'lead_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'followUpInstructors',
+                        fn (Builder $followUpQuery) =>
+                            $followUpQuery->where(
+                                'users.id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhere(
+                        function (Builder $legacyQuery) use ($instructorId) {
+                            $legacyQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
     }
 
     public static function getRelations(): array

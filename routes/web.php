@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
+use App\Http\Controllers\InstructorStudentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonQuestionController;
 use App\Http\Controllers\LessonTopicController;
@@ -35,27 +37,41 @@ Route::get('/', function () {
         ->take(6)
         ->get();
 
-    return view('home', compact('latestDevotions'));
+    return view(
+        'home',
+        compact('latestDevotions')
+    );
 })->name('home');
 
 /*
 |--------------------------------------------------------------------------
-| Social Login - Google Only
-|--------------------------------------------------------------------------
-| Google login has been recreated using a clean GoogleAuthController.
-| Facebook login remains disabled for now.
+| Google Login
 |--------------------------------------------------------------------------
 */
-Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])
-    ->name('google.login');
+Route::get(
+    '/auth/google',
+    [GoogleAuthController::class, 'redirect']
+)->name('google.login');
 
-Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
-    ->name('google.callback');
+Route::get(
+    '/auth/google/callback',
+    [GoogleAuthController::class, 'callback']
+)->name('google.callback');
 
 /*
 |--------------------------------------------------------------------------
-| Default Dashboard Redirect
+| Dashboard Redirect
 |--------------------------------------------------------------------------
+|
+| Admin:
+| - Goes to the Filament panel.
+|
+| Instructor:
+| - Goes to the existing full Instructor Dashboard.
+|
+| Student:
+| - Goes to the Student Dashboard.
+|
 */
 Route::get('/dashboard', function () {
     $user = auth()->user();
@@ -69,206 +85,368 @@ Route::get('/dashboard', function () {
     }
 
     if ($user->role === 'instructor') {
-        return redirect()->route('instructor.dashboard');
+        return redirect()->route(
+            'instructor.dashboard'
+        );
     }
 
-    return redirect()->route('student.dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+    return redirect()->route(
+        'student.dashboard'
+    );
+})
+    ->middleware('auth')
+    ->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
 | Static Pages
 |--------------------------------------------------------------------------
 */
-Route::view('/about', 'about')->name('about');
-Route::view('/contact', 'contact')->name('contact');
-Route::view('/changia', 'donation')->name('changia');
+Route::view(
+    '/about',
+    'about'
+)->name('about');
+
+Route::view(
+    '/contact',
+    'contact'
+)->name('contact');
+
+Route::view(
+    '/changia',
+    'donation'
+)->name('changia');
 
 /*
 |--------------------------------------------------------------------------
 | Maombi na Ushuhuda
 |--------------------------------------------------------------------------
 */
-Route::get('/maombi-na-ushuhuda', [PrayerTestimonyController::class, 'index'])
-    ->name('prayers.testimonies');
+Route::get(
+    '/maombi-na-ushuhuda',
+    [PrayerTestimonyController::class, 'index']
+)->name('prayers.testimonies');
 
-Route::post('/maombi', [PrayerRequestController::class, 'store'])
-    ->name('prayers.store');
+Route::post(
+    '/maombi',
+    [PrayerRequestController::class, 'store']
+)->name('prayers.store');
 
-Route::post('/ushuhuda', [TestimonialController::class, 'store'])
-    ->name('testimonials.store');
+Route::post(
+    '/ushuhuda',
+    [TestimonialController::class, 'store']
+)->name('testimonials.store');
 
 /*
 |--------------------------------------------------------------------------
 | Public Certificate Verification
 |--------------------------------------------------------------------------
 */
-Route::get('/certificates/verify/{certificateNumber}', [CertificateController::class, 'verify'])
-    ->name('certificates.verify');
+Route::get(
+    '/certificates/verify/{certificateNumber}',
+    [CertificateController::class, 'verify']
+)->name('certificates.verify');
 
 /*
 |--------------------------------------------------------------------------
-| Lessons - Public + Authenticated Learning Flow
+| Lessons
 |--------------------------------------------------------------------------
 */
-Route::prefix('lessons')->name('lessons.')->group(function () {
-    Route::get('/', [LessonController::class, 'index'])
-        ->name('index');
+Route::prefix('lessons')
+    ->name('lessons.')
+    ->group(function () {
 
-    Route::get('/{lesson:slug}', [LessonController::class, 'show'])
-        ->name('show');
+        Route::get(
+            '/',
+            [LessonController::class, 'index']
+        )->name('index');
 
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/{lesson:slug}/learn', [LessonController::class, 'learn'])
-            ->name('learn');
+        Route::get(
+            '/{lesson:slug}',
+            [LessonController::class, 'show']
+        )->name('show');
 
-        Route::post('/{lesson:slug}/enroll', [LessonController::class, 'enroll'])
-            ->name('enroll');
+        Route::middleware('auth')
+            ->group(function () {
 
-        Route::post('/{lesson:slug}/questions', [LessonQuestionController::class, 'store'])
-            ->name('questions.store');
+                Route::get(
+                    '/{lesson:slug}/learn',
+                    [LessonController::class, 'learn']
+                )->name('learn');
 
-        Route::post('/{lesson:slug}/progress', [LessonController::class, 'markProgress'])
-            ->name('progress');
+                Route::post(
+                    '/{lesson:slug}/enroll',
+                    [LessonController::class, 'enroll']
+                )->name('enroll');
 
-        Route::patch('/{lesson:slug}/schedule', [LessonController::class, 'resetSchedule'])
-            ->name('schedule.reset');
+                Route::post(
+                    '/{lesson:slug}/questions',
+                    [LessonQuestionController::class, 'store']
+                )->name('questions.store');
 
-        Route::get('/{lesson:slug}/topics/{topic:slug}', [LessonTopicController::class, 'show'])
-            ->name('topics.show');
+                Route::post(
+                    '/{lesson:slug}/progress',
+                    [LessonController::class, 'markProgress']
+                )->name('progress');
 
-        Route::post('/{lesson:slug}/topics/{topic:slug}/complete', [LessonTopicController::class, 'complete'])
-            ->name('topics.complete');
+                Route::patch(
+                    '/{lesson:slug}/schedule',
+                    [LessonController::class, 'resetSchedule']
+                )->name('schedule.reset');
+
+                Route::get(
+                    '/{lesson:slug}/topics/{topic:slug}',
+                    [LessonTopicController::class, 'show']
+                )->name('topics.show');
+
+                Route::post(
+                    '/{lesson:slug}/topics/{topic:slug}/complete',
+                    [LessonTopicController::class, 'complete']
+                )->name('topics.complete');
+            });
     });
-});
 
 /*
 |--------------------------------------------------------------------------
 | Children / Watoto
 |--------------------------------------------------------------------------
 */
-Route::prefix('children')->name('children.')->group(function () {
-    Route::get('/', [WatotoController::class, 'index'])
-        ->name('index');
+Route::prefix('children')
+    ->name('children.')
+    ->group(function () {
 
-    Route::get('/{slug}', [WatotoController::class, 'show'])
-        ->name('show');
+        Route::get(
+            '/',
+            [WatotoController::class, 'index']
+        )->name('index');
 
-    Route::post('/{slug}/quiz', [WatotoController::class, 'submitQuiz'])
-        ->name('quiz.submit');
-});
+        Route::get(
+            '/{slug}',
+            [WatotoController::class, 'show']
+        )->name('show');
+
+        Route::post(
+            '/{slug}/quiz',
+            [WatotoController::class, 'submitQuiz']
+        )->name('quiz.submit');
+    });
 
 /*
 |--------------------------------------------------------------------------
 | Devotions
 |--------------------------------------------------------------------------
 */
-Route::prefix('devotions')->name('devotions.')->group(function () {
-    Route::get('/', [DevotionController::class, 'index'])
-        ->name('index');
+Route::prefix('devotions')
+    ->name('devotions.')
+    ->group(function () {
 
-    Route::get('/{slug}', [DevotionController::class, 'show'])
-        ->name('show');
-});
+        Route::get(
+            '/',
+            [DevotionController::class, 'index']
+        )->name('index');
+
+        Route::get(
+            '/{slug}',
+            [DevotionController::class, 'show']
+        )->name('show');
+    });
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated User Routes
+| Authenticated Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
-    /*
-    |--------------------------------------------------------------------------
-    | Student Dashboard
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])
-        ->name('student.dashboard');
+Route::middleware('auth')
+    ->group(function () {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Instructor Dashboard
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'index'])
-        ->name('instructor.dashboard');
+        /*
+        |--------------------------------------------------------------------------
+        | Admin Center Dashboard
+        |--------------------------------------------------------------------------
+        |
+        | Full Uzima Milele-style admin dashboard.
+        | Controller is responsible for restricting this page to admins.
+        |
+        */
+        Route::get(
+            '/admin-center/dashboard',
+            [AdminCenterDashboardController::class, 'index']
+        )->name('admin.center.dashboard');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Instructor Q&A
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/instructor/questions', [InstructorQuestionController::class, 'index'])
-        ->name('instructor.questions.index');
+        /*
+        |--------------------------------------------------------------------------
+        | Student Dashboard
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/student/dashboard',
+            [StudentDashboardController::class, 'index']
+        )->name('student.dashboard');
 
-    Route::get('/instructor/questions/{question}', [InstructorQuestionController::class, 'show'])
-        ->name('instructor.questions.show');
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor Dashboard
+        |--------------------------------------------------------------------------
+        |
+        | This remains the full instructor dashboard used by Instructor Hub.
+        |
+        */
+        Route::get(
+            '/instructor/dashboard',
+            [InstructorDashboardController::class, 'index']
+        )->name('instructor.dashboard');
 
-    Route::put('/instructor/questions/{question}', [InstructorQuestionController::class, 'update'])
-        ->name('instructor.questions.update');
+        /*
+        |--------------------------------------------------------------------------
+        | Lead Instructor Team Students
+        |--------------------------------------------------------------------------
+        |
+        | Lead instructor can open a follow-up instructor and see the students
+        | assigned to that instructor for the selected lesson.
+        |
+        */
+        Route::get(
+            '/instructor/team/{lesson}/{instructor}/students',
+            [InstructorDashboardController::class, 'teamStudents']
+        )->name('instructor.team.students');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Notifications
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/notifications', [NotificationController::class, 'index'])
-        ->name('notifications.index');
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor Student Detail
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/instructor/students/{enrollment}',
+            [InstructorStudentController::class, 'show']
+        )->name('instructor.students.show');
 
-    Route::get('/notifications/{notification}/read', [NotificationController::class, 'read'])
-        ->name('notifications.read');
+        Route::post(
+            '/instructor/students/{enrollment}/follow-ups',
+            [InstructorStudentController::class, 'storeFollowUp']
+        )->name(
+            'instructor.students.follow-ups.store'
+        );
 
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
-        ->name('notifications.markAllRead');
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor Questions
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/instructor/questions',
+            [InstructorQuestionController::class, 'index']
+        )->name('instructor.questions.index');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Quizzes
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/quiz/{quiz}', [QuizController::class, 'show'])
-        ->name('quiz.show');
+        Route::get(
+            '/instructor/questions/{question}',
+            [InstructorQuestionController::class, 'show']
+        )->name('instructor.questions.show');
 
-    Route::post('/quiz/{quiz}/submit', [QuizController::class, 'submit'])
-        ->name('quiz.submit');
+        Route::put(
+            '/instructor/questions/{question}',
+            [InstructorQuestionController::class, 'update']
+        )->name('instructor.questions.update');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Certificates
-    |--------------------------------------------------------------------------
-    */
-    Route::post('/lessons/{lesson}/certificate', [CertificateController::class, 'issue'])
-        ->name('certificates.issue');
+        /*
+        |--------------------------------------------------------------------------
+        | Notifications
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/notifications',
+            [NotificationController::class, 'index']
+        )->name('notifications.index');
 
-    Route::get('/certificates/{certificateNumber}', [CertificateController::class, 'show'])
-        ->name('certificates.show');
+        Route::get(
+            '/notifications/{notification}/read',
+            [NotificationController::class, 'read']
+        )->name('notifications.read');
 
-    Route::get('/certificates/{certificateNumber}/download', [CertificateController::class, 'download'])
-        ->name('certificates.download');
+        Route::post(
+            '/notifications/mark-all-read',
+            [NotificationController::class, 'markAllAsRead']
+        )->name('notifications.markAllRead');
 
-    Route::get('/certificates/{certificateNumber}/print-preview', function (string $certificateNumber) {
-        $certificate = Certificate::with(['user', 'lesson'])
-            ->where('certificate_number', $certificateNumber)
-            ->firstOrFail();
+        /*
+        |--------------------------------------------------------------------------
+        | Quizzes
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/quiz/{quiz}',
+            [QuizController::class, 'show']
+        )->name('quiz.show');
 
-        abort_if($certificate->user_id !== auth()->id(), 403);
+        Route::post(
+            '/quiz/{quiz}/submit',
+            [QuizController::class, 'submit']
+        )->name('quiz.submit');
 
-        return view('certificates.print', compact('certificate'));
-    })->name('certificates.print-preview');
+        /*
+        |--------------------------------------------------------------------------
+        | Certificates
+        |--------------------------------------------------------------------------
+        */
+        Route::post(
+            '/lessons/{lesson}/certificate',
+            [CertificateController::class, 'issue']
+        )->name('certificates.issue');
 
-    /*
-    |--------------------------------------------------------------------------
-    | Profile
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
+        Route::get(
+            '/certificates/{certificateNumber}',
+            [CertificateController::class, 'show']
+        )->name('certificates.show');
 
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
+        Route::get(
+            '/certificates/{certificateNumber}/download',
+            [CertificateController::class, 'download']
+        )->name('certificates.download');
 
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
-});
+        Route::get(
+            '/certificates/{certificateNumber}/print-preview',
+            function (string $certificateNumber) {
+
+                $certificate = Certificate::with([
+                    'user',
+                    'lesson',
+                ])
+                    ->where(
+                        'certificate_number',
+                        $certificateNumber
+                    )
+                    ->firstOrFail();
+
+                abort_if(
+                    $certificate->user_id !== auth()->id(),
+                    403
+                );
+
+                return view(
+                    'certificates.print',
+                    compact('certificate')
+                );
+            }
+        )->name('certificates.print-preview');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/profile',
+            [ProfileController::class, 'edit']
+        )->name('profile.edit');
+
+        Route::patch(
+            '/profile',
+            [ProfileController::class, 'update']
+        )->name('profile.update');
+
+        Route::delete(
+            '/profile',
+            [ProfileController::class, 'destroy']
+        )->name('profile.destroy');
+    });
 
 require __DIR__.'/auth.php';

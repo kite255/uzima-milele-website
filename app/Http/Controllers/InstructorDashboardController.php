@@ -7,27 +7,122 @@ use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\LessonQuestion;
 use App\Models\QuizResult;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\View\View;
 
 class InstructorDashboardController extends Controller
 {
-    public function index()
+    /*
+    |--------------------------------------------------------------------------
+    | Instructor Dashboard
+    |--------------------------------------------------------------------------
+    */
+    public function index(): View
     {
         $user = auth()->user();
 
-        abort_if(! in_array($user->role, ['admin', 'instructor']), 403);
+        abort_if(
+            ! $user
+            || ! in_array(
+                $user->role,
+                ['admin', 'instructor'],
+                true
+            ),
+            403
+        );
+
+        return view(
+            'instructor.dashboard',
+            $this->getDashboardData($user)
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reusable Dashboard Data
+    |--------------------------------------------------------------------------
+    |
+    | This method is used by:
+    |
+    | 1. The normal instructor dashboard:
+    |    /instructor/dashboard
+    |
+    | 2. The Filament Instructor Hub:
+    |    /admin/instructor-hub
+    |
+    | This keeps all dashboard calculations and access rules in one place.
+    |
+    */
+    public function getDashboardData(User $user): array
+    {
+        abort_unless(
+            in_array(
+                $user->role,
+                ['admin', 'instructor'],
+                true
+            ),
+            403
+        );
 
         /*
         |--------------------------------------------------------------------------
-        | Admin sees all lessons, instructor sees only assigned lessons
+        | Lessons Visible on Dashboard
         |--------------------------------------------------------------------------
+        |
+        | Admin:
+        | - All lessons.
+        |
+        | Lead instructor:
+        | - Lessons they lead.
+        |
+        | Follow-up instructor:
+        | - Lessons where they belong to the follow-up team.
+        |
+        | Legacy instructor:
+        | - Old instructor_id lessons that have not yet been migrated to the
+        |   lead/follow-up instructor structure.
+        |
         */
         $lessonQuery = Lesson::query();
 
         if ($user->role === 'instructor') {
-            $lessonQuery->where('instructor_id', $user->id);
+            $lessonQuery->where(
+                function (Builder $query) use ($user) {
+                    $query
+                        ->where(
+                            'lead_instructor_id',
+                            $user->id
+                        )
+                        ->orWhereHas(
+                            'followUpInstructors',
+                            fn (Builder $followUpQuery) =>
+                                $followUpQuery->where(
+                                    'users.id',
+                                    $user->id
+                                )
+                        )
+                        ->orWhere(
+                            function (Builder $legacyQuery) use ($user) {
+                                $legacyQuery
+                                    ->where(
+                                        'instructor_id',
+                                        $user->id
+                                    )
+                                    ->whereNull(
+                                        'lead_instructor_id'
+                                    )
+                                    ->whereDoesntHave(
+                                        'followUpInstructors'
+                                    );
+                            }
+                        );
+                }
+            );
         }
 
-        $lessonIds = (clone $lessonQuery)->pluck('id');
+        $lessonIds = (clone $lessonQuery)
+            ->pluck('id');
 
         $lessons = (clone $lessonQuery)
             ->withCount([
@@ -41,41 +136,439 @@ class InstructorDashboardController extends Controller
 
         $totalLessons = $lessons->count();
 
-        $totalStudents = LessonEnrollment::whereIn('lesson_id', $lessonIds)
-            ->distinct('user_id')
+        /*
+        |--------------------------------------------------------------------------
+        | Student Visibility
+        |--------------------------------------------------------------------------
+        |
+        | Lead instructor:
+        | - All students in lessons they lead.
+        |
+        | Follow-up instructor:
+        | - Only students assigned to them.
+        |
+        | Legacy instructor:
+        | - Students in legacy instructor_id lessons.
+        |
+        | Admin:
+        | - Students from all visible lessons.
+        |
+        */
+        $studentQuery = LessonEnrollment::query();
+
+        if ($user->role === 'instructor') {
+            $studentQuery->where(
+                function (Builder $query) use ($user) {
+                    $query
+                        ->where(
+                            'follow_up_instructor_id',
+                            $user->id
+                        )
+                        ->orWhereHas(
+                            'lesson',
+                            fn (Builder $lessonQuery) =>
+                                $lessonQuery->where(
+                                    'lead_instructor_id',
+                                    $user->id
+                                )
+                        )
+                        ->orWhereHas(
+                            'lesson',
+                            function (Builder $lessonQuery) use ($user) {
+                                $lessonQuery
+                                    ->where(
+                                        'instructor_id',
+                                        $user->id
+                                    )
+                                    ->whereNull(
+                                        'lead_instructor_id'
+                                    )
+                                    ->whereDoesntHave(
+                                        'followUpInstructors'
+                                    );
+                            }
+                        );
+                }
+            );
+        } else {
+            $studentQuery->whereIn(
+                'lesson_id',
+                $lessonIds
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Student Count
+        |--------------------------------------------------------------------------
+        */
+        $totalStudents = (clone $studentQuery)
+            ->distinct()
             ->count('user_id');
 
-        $pendingQuestions = LessonQuestion::whereIn('lesson_id', $lessonIds)
+        /*
+        |--------------------------------------------------------------------------
+        | Assigned / Visible Students
+        |--------------------------------------------------------------------------
+        */
+        $assignedStudents = (clone $studentQuery)
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->latest('id')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Due Follow-ups
+        |--------------------------------------------------------------------------
+        */
+        $dueFollowUps = (clone $studentQuery)
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->whereNotNull(
+                'next_follow_up_at'
+            )
+            ->where(
+                'next_follow_up_at',
+                '<=',
+                now()
+            )
+            ->orderBy(
+                'next_follow_up_at'
+            )
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lead Instructor Team Supervision
+        |--------------------------------------------------------------------------
+        */
+        $canViewTeamSupervision = false;
+
+        $teamSupervision = collect();
+
+        $unassignedStudents = collect();
+
+        if ($user->role === 'instructor') {
+            $ledLessons = Lesson::query()
+                ->with([
+                    'followUpInstructors',
+                ])
+                ->where(
+                    'lead_instructor_id',
+                    $user->id
+                )
+                ->orderBy('title')
+                ->get();
+
+            $canViewTeamSupervision =
+                $ledLessons->isNotEmpty();
+
+            if ($canViewTeamSupervision) {
+                $ledLessonIds = $ledLessons
+                    ->pluck('id');
+
+                /*
+                |--------------------------------------------------------------------------
+                | Follow-up Instructor Workload
+                |--------------------------------------------------------------------------
+                */
+                $teamSupervision = $ledLessons
+                    ->flatMap(
+                        function (Lesson $lesson) {
+                            return $lesson
+                                ->followUpInstructors
+                                ->map(
+                                    function ($instructor) use ($lesson) {
+                                        $studentCount =
+                                            LessonEnrollment::query()
+                                                ->where(
+                                                    'lesson_id',
+                                                    $lesson->id
+                                                )
+                                                ->where(
+                                                    'follow_up_instructor_id',
+                                                    $instructor->id
+                                                )
+                                                ->count();
+
+                                        $dueFollowUpCount =
+                                            LessonEnrollment::query()
+                                                ->where(
+                                                    'lesson_id',
+                                                    $lesson->id
+                                                )
+                                                ->where(
+                                                    'follow_up_instructor_id',
+                                                    $instructor->id
+                                                )
+                                                ->whereNotNull(
+                                                    'next_follow_up_at'
+                                                )
+                                                ->where(
+                                                    'next_follow_up_at',
+                                                    '<=',
+                                                    now()
+                                                )
+                                                ->count();
+
+                                        return [
+                                            'lesson' => $lesson,
+                                            'instructor' => $instructor,
+                                            'student_count' => $studentCount,
+                                            'due_follow_up_count' => $dueFollowUpCount,
+                                        ];
+                                    }
+                                );
+                        }
+                    )
+                    ->values();
+
+                /*
+                |--------------------------------------------------------------------------
+                | Unassigned Students
+                |--------------------------------------------------------------------------
+                */
+                $unassignedStudents =
+                    LessonEnrollment::query()
+                        ->with([
+                            'user',
+                            'lesson',
+                        ])
+                        ->whereIn(
+                            'lesson_id',
+                            $ledLessonIds
+                        )
+                        ->whereNull(
+                            'follow_up_instructor_id'
+                        )
+                        ->latest('id')
+                        ->get();
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Questions
+        |--------------------------------------------------------------------------
+        */
+        $pendingQuestions = LessonQuestion::query()
+            ->whereIn(
+                'lesson_id',
+                $lessonIds
+            )
             ->whereNull('answer')
             ->count();
 
-        $answeredQuestions = LessonQuestion::whereIn('lesson_id', $lessonIds)
+        $answeredQuestions = LessonQuestion::query()
+            ->whereIn(
+                'lesson_id',
+                $lessonIds
+            )
             ->whereNotNull('answer')
             ->count();
 
-        $certificatesIssued = Certificate::whereIn('lesson_id', $lessonIds)
+        /*
+        |--------------------------------------------------------------------------
+        | Certificates
+        |--------------------------------------------------------------------------
+        */
+        $certificatesIssued = Certificate::query()
+            ->whereIn(
+                'lesson_id',
+                $lessonIds
+            )
             ->count();
 
-        $recentQuestions = LessonQuestion::with(['lesson', 'user'])
-            ->whereIn('lesson_id', $lessonIds)
+        /*
+        |--------------------------------------------------------------------------
+        | Recent Questions
+        |--------------------------------------------------------------------------
+        */
+        $recentQuestions = LessonQuestion::query()
+            ->with([
+                'lesson',
+                'user',
+            ])
+            ->whereIn(
+                'lesson_id',
+                $lessonIds
+            )
             ->latest()
             ->take(8)
             ->get();
 
-        $recentQuizResults = QuizResult::with(['quiz'])
+        /*
+        |--------------------------------------------------------------------------
+        | Recent Quiz Results
+        |--------------------------------------------------------------------------
+        */
+        $recentQuizResults = QuizResult::query()
+            ->with([
+                'quiz',
+            ])
             ->latest()
             ->take(8)
             ->get();
 
-        return view('instructor.dashboard', compact(
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard Data
+        |--------------------------------------------------------------------------
+        */
+        return compact(
             'lessons',
             'totalLessons',
             'totalStudents',
+            'assignedStudents',
+            'dueFollowUps',
+            'canViewTeamSupervision',
+            'teamSupervision',
+            'unassignedStudents',
             'pendingQuestions',
             'answeredQuestions',
             'certificatesIssued',
             'recentQuestions',
             'recentQuizResults'
-        ));
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lead Instructor - Assigned Students by Follow-up Instructor
+    |--------------------------------------------------------------------------
+    |
+    | The lead instructor can open one member of the follow-up team and see
+    | students assigned to that instructor for the selected lesson.
+    |
+    */
+    public function teamStudents(
+        Lesson $lesson,
+        User $instructor
+    ): View {
+        $user = auth()->user();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor Access Only
+        |--------------------------------------------------------------------------
+        */
+        abort_unless(
+            $user
+            && $user->role === 'instructor',
+            403
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Current Instructor Must Lead This Lesson
+        |--------------------------------------------------------------------------
+        */
+        abort_unless(
+            (int) $lesson->lead_instructor_id
+                === (int) $user->id,
+            403
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selected Instructor Must Belong to Follow-up Team
+        |--------------------------------------------------------------------------
+        */
+        $isFollowUpInstructor = $lesson
+            ->followUpInstructors()
+            ->where(
+                'users.id',
+                $instructor->id
+            )
+            ->exists();
+
+        abort_unless(
+            $isFollowUpInstructor,
+            404
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assigned Students
+        |--------------------------------------------------------------------------
+        */
+        $students = LessonEnrollment::query()
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->where(
+                'lesson_id',
+                $lesson->id
+            )
+            ->where(
+                'follow_up_instructor_id',
+                $instructor->id
+            )
+            ->orderByRaw(
+                'CASE WHEN next_follow_up_at IS NULL THEN 1 ELSE 0 END'
+            )
+            ->orderBy(
+                'next_follow_up_at'
+            )
+            ->latest('id')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Team Member Statistics
+        |--------------------------------------------------------------------------
+        */
+        $totalStudents = $students->count();
+
+        $dueStudents = $students
+            ->filter(
+                fn (LessonEnrollment $enrollment) =>
+                    $enrollment->next_follow_up_at
+                    && $enrollment
+                        ->next_follow_up_at
+                        ->lte(now())
+            )
+            ->count();
+
+        $needsFollowUp = $students
+            ->where(
+                'follow_up_status',
+                LessonEnrollment::FOLLOW_UP_NEEDS_FOLLOW_UP
+            )
+            ->count();
+
+        $doingWell = $students
+            ->where(
+                'follow_up_status',
+                LessonEnrollment::FOLLOW_UP_DOING_WELL
+            )
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assigned Students Page
+        |--------------------------------------------------------------------------
+        */
+        return view(
+            'instructor.team.students',
+            compact(
+                'lesson',
+                'instructor',
+                'students',
+                'totalStudents',
+                'dueStudents',
+                'needsFollowUp',
+                'doingWell'
+            )
+        );
     }
 }

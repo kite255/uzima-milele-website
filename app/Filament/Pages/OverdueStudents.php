@@ -63,17 +63,11 @@ class OverdueStudents extends Page
             ->whereNotNull('enrolled_at')
             ->when(
                 auth()->user()?->role === 'instructor',
-                function (Builder $query) {
-                    $query->whereHas(
-                        'lesson',
-                        function (Builder $lessonQuery) {
-                            $lessonQuery->where(
-                                'instructor_id',
-                                auth()->id()
-                            );
-                        }
-                    );
-                }
+                fn (Builder $query) =>
+                    static::applyInstructorEnrollmentScope(
+                        $query,
+                        auth()->id()
+                    )
             )
             ->get()
             ->map(function (LessonEnrollment $enrollment) {
@@ -186,6 +180,45 @@ class OverdueStudents extends Page
             ->values();
     }
 
+    protected static function applyInstructorEnrollmentScope(
+        Builder $query,
+        int $instructorId
+    ): Builder {
+        return $query->where(
+            function (Builder $enrollmentQuery) use ($instructorId) {
+                $enrollmentQuery
+                    ->where(
+                        'follow_up_instructor_id',
+                        $instructorId
+                    )
+                    ->orWhereHas(
+                        'lesson',
+                        fn (Builder $lessonQuery) =>
+                            $lessonQuery->where(
+                                'lead_instructor_id',
+                                $instructorId
+                            )
+                    )
+                    ->orWhereHas(
+                        'lesson',
+                        function (Builder $lessonQuery) use ($instructorId) {
+                            $lessonQuery
+                                ->where(
+                                    'instructor_id',
+                                    $instructorId
+                                )
+                                ->whereNull(
+                                    'lead_instructor_id'
+                                )
+                                ->whereDoesntHave(
+                                    'followUpInstructors'
+                                );
+                        }
+                    );
+            }
+        );
+    }
+
     public function sendManualReminder(
         int $enrollmentId,
         string $mode = 'both'
@@ -199,17 +232,11 @@ class OverdueStudents extends Page
             ])
             ->when(
                 auth()->user()?->role === 'instructor',
-                function (Builder $query) {
-                    $query->whereHas(
-                        'lesson',
-                        function (Builder $lessonQuery) {
-                            $lessonQuery->where(
-                                'instructor_id',
-                                auth()->id()
-                            );
-                        }
-                    );
-                }
+                fn (Builder $query) =>
+                    static::applyInstructorEnrollmentScope(
+                        $query,
+                        auth()->id()
+                    )
             )
             ->find($enrollmentId);
 

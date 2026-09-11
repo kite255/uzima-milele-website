@@ -9,7 +9,10 @@
 
     <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap"
+        rel="stylesheet"
+    >
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -34,6 +37,7 @@
                     fontFamily: {
                         lato: ['Lato', 'sans-serif'],
                     },
+
                     colors: {
                         primary: '#0083CB',
                         primaryDark: '#076994',
@@ -54,29 +58,43 @@
             : 0;
     @endphp
 
+    {{-- MAIN NAVIGATION --}}
     @includeIf('partials.navbar', [
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
+    {{-- PAGE CONTENT --}}
     <main class="min-h-screen">
         @yield('content')
     </main>
 
+    {{-- FOOTER --}}
     @includeIf('partials.footer', [
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
-    {{-- Alpine Collapse plugin for smooth dropdown/accordion --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    {{-- Alpine Collapse plugin for smooth dropdown / accordion --}}
+    <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"
+    ></script>
 
     {{-- Alpine.js --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script
+        defer
+        src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
 
+    {{-- Elfsight AI Chatbot | Mtumishi Bot --}}
+    <script
+        src="https://elfsightcdn.com/platform.js"
+        async
+    ></script>
 
-    <!-- Elfsight AI Chatbot | Mtumishi Bot -->
-    <script src="https://elfsightcdn.com/platform.js" async></script>
-    <div class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872" data-elfsight-app-lazy></div>
-
+    <div
+        class="elfsight-app-3a148ff9-1e5a-4372-9098-4aed0e13b872"
+        data-elfsight-app-lazy
+    ></div>
 
 </body>
 </html>

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LessonEnrollmentResource\Pages;
 use App\Models\Certificate;
+use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -48,6 +49,28 @@ class LessonEnrollmentResource extends Resource
                             ->preload()
                             ->required(),
 
+                        Forms\Components\Select::make('follow_up_instructor_id')
+                            ->label('Follow-up Instructor')
+                            ->options(
+                                fn (Forms\Get $get): array =>
+                                    static::eligibleInstructorOptions(
+                                        $get('lesson_id')
+                                            ? (int) $get('lesson_id')
+                                            : null
+                                    )
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->placeholder('Unassigned')
+                            ->visible(
+                                fn (): bool =>
+                                    auth()->user()?->role === 'admin'
+                            )
+                            ->helperText(
+                                'Admin can manually assign or reassign the student to an eligible instructor.'
+                            ),
+
                         Forms\Components\DateTimePicker::make('enrolled_at')
                             ->label('Enrolled At')
                             ->seconds(false)
@@ -76,6 +99,13 @@ class LessonEnrollmentResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->limit(40),
+
+                Tables\Columns\TextColumn::make('followUpInstructor.name')
+                    ->label('Follow-up Instructor')
+                    ->placeholder('Unassigned')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -300,9 +330,71 @@ class LessonEnrollmentResource extends Resource
                     ->relationship('user', 'name')
                     ->searchable()
                     ->preload(),
+
+                Tables\Filters\SelectFilter::make('follow_up_instructor_id')
+                    ->label('Follow-up Instructor')
+                    ->relationship(
+                        'followUpInstructor',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query) =>
+                            $query->where(
+                                'role',
+                                'instructor'
+                            )
+                    )
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+
+                Tables\Actions\Action::make('reassignInstructor')
+                    ->label('Reassign Instructor')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'admin'
+                    )
+                    ->form(
+                        fn (LessonEnrollment $record): array => [
+                            Forms\Components\Select::make(
+                                'follow_up_instructor_id'
+                            )
+                                ->label('Follow-up Instructor')
+                                ->options(
+                                    static::eligibleInstructorOptions(
+                                        $record->lesson_id
+                                    )
+                                )
+                                ->searchable()
+                                ->preload()
+                                ->nullable()
+                                ->placeholder('Unassigned')
+                                ->default(
+                                    $record->follow_up_instructor_id
+                                ),
+                        ]
+                    )
+                    ->action(
+                        function (
+                            LessonEnrollment $record,
+                            array $data
+                        ): void {
+                            $instructorId =
+                                $data['follow_up_instructor_id']
+                                ?? null;
+
+                            $record->forceFill([
+                                'follow_up_instructor_id' =>
+                                    $instructorId,
+                                'instructor_assigned_at' =>
+                                    $instructorId
+                                        ? now()
+                                        : null,
+                            ])->save();
+                        }
+                    ),
 
                 Tables\Actions\Action::make('viewStudent')
                     ->label('View Student')
@@ -350,15 +442,12 @@ class LessonEnrollmentResource extends Resource
         $query = parent::getEloquentQuery()
             ->with([
                 'user',
-
-                /*
-                |--------------------------------------------------------------------------
-                | Lesson completion relationships
-                |--------------------------------------------------------------------------
-                */
+                'followUpInstructor',
                 'lesson.modules.topics',
                 'lesson.modules.quizzes',
                 'lesson.finalQuiz',
+                'lesson.leadInstructor',
+                'lesson.followUpInstructors',
             ]);
 
         $user = auth()->user();
@@ -367,18 +456,81 @@ class LessonEnrollmentResource extends Resource
             $user
             && $user->role === 'instructor'
         ) {
-            return $query->whereHas(
-                'lesson',
-                function (Builder $lessonQuery) use ($user) {
-                    $lessonQuery->where(
-                        'instructor_id',
-                        $user->id
-                    );
+            return $query->where(
+                function (Builder $enrollmentQuery) use ($user) {
+                    $enrollmentQuery
+                        ->whereHas(
+                            'lesson',
+                            fn (Builder $lessonQuery) =>
+                                $lessonQuery->where(
+                                    'lead_instructor_id',
+                                    $user->id
+                                )
+                        )
+                        ->orWhere(
+                            'follow_up_instructor_id',
+                            $user->id
+                        )
+                        ->orWhereHas(
+                            'lesson',
+                            function (Builder $lessonQuery) use ($user) {
+                                $lessonQuery
+                                    ->where(
+                                        'instructor_id',
+                                        $user->id
+                                    )
+                                    ->whereNull(
+                                        'lead_instructor_id'
+                                    )
+                                    ->whereDoesntHave(
+                                        'followUpInstructors'
+                                    );
+                            }
+                        );
                 }
             );
         }
 
         return $query;
+    }
+
+    public static function eligibleInstructorOptions(
+        ?int $lessonId
+    ): array {
+        if (! $lessonId) {
+            return [];
+        }
+
+        $lesson = Lesson::query()
+            ->with([
+                'leadInstructor',
+                'followUpInstructors',
+            ])
+            ->find($lessonId);
+
+        if (! $lesson) {
+            return [];
+        }
+
+        $instructors = $lesson
+            ->followUpInstructors
+            ->where('role', 'instructor');
+
+        if (
+            $lesson->lead_can_receive_students
+            && $lesson->leadInstructor
+            && $lesson->leadInstructor->role === 'instructor'
+        ) {
+            $instructors = $instructors->push(
+                $lesson->leadInstructor
+            );
+        }
+
+        return $instructors
+            ->unique('id')
+            ->sortBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
     }
 
     public static function getPages(): array
