@@ -7,7 +7,9 @@ use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\LessonQuestion;
 use App\Models\QuizResult;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\View\View;
 
 class InstructorDashboardController extends Controller
 {
@@ -206,19 +208,6 @@ class InstructorDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Lead Instructor Team Supervision
         |--------------------------------------------------------------------------
-        |
-        | Only instructors who are lead instructors receive supervision data.
-        |
-        | Follow-up instructors:
-        | - Cannot see the supervision section.
-        | - Cannot see another follow-up instructor's workload.
-        |
-        | Lead instructors:
-        | - See follow-up instructors attached to lessons they lead.
-        | - See student counts for each instructor.
-        | - See due follow-up counts for each instructor.
-        | - See students who have not yet been assigned.
-        |
         */
         $canViewTeamSupervision = false;
 
@@ -404,6 +393,137 @@ class InstructorDashboardController extends Controller
                 'certificatesIssued',
                 'recentQuestions',
                 'recentQuizResults'
+            )
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lead Instructor - Assigned Students by Follow-up Instructor
+    |--------------------------------------------------------------------------
+    |
+    | The lead instructor can open one follow-up instructor and see only
+    | students assigned to that instructor for the selected lesson.
+    |
+    */
+    public function teamStudents(
+        Lesson $lesson,
+        User $instructor
+    ): View {
+        $user = auth()->user();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Instructor Access Only
+        |--------------------------------------------------------------------------
+        */
+        abort_unless(
+            $user
+            && $user->role === 'instructor',
+            403
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Current User Must Lead This Lesson
+        |--------------------------------------------------------------------------
+        */
+        abort_unless(
+            (int) $lesson->lead_instructor_id
+                === (int) $user->id,
+            403
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selected Instructor Must Belong to This Lesson's Follow-up Team
+        |--------------------------------------------------------------------------
+        */
+        $isFollowUpInstructor = $lesson
+            ->followUpInstructors()
+            ->where(
+                'users.id',
+                $instructor->id
+            )
+            ->exists();
+
+        abort_unless(
+            $isFollowUpInstructor,
+            404
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assigned Students
+        |--------------------------------------------------------------------------
+        */
+        $students = LessonEnrollment::query()
+            ->with([
+                'user',
+                'lesson',
+                'followUpInstructor',
+            ])
+            ->where(
+                'lesson_id',
+                $lesson->id
+            )
+            ->where(
+                'follow_up_instructor_id',
+                $instructor->id
+            )
+            ->orderByRaw(
+                'CASE WHEN next_follow_up_at IS NULL THEN 1 ELSE 0 END'
+            )
+            ->orderBy(
+                'next_follow_up_at'
+            )
+            ->latest('id')
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Team Member Statistics
+        |--------------------------------------------------------------------------
+        */
+        $totalStudents = $students->count();
+
+        $dueStudents = $students
+            ->filter(
+                fn (LessonEnrollment $enrollment) =>
+                    $enrollment->next_follow_up_at
+                    && $enrollment->next_follow_up_at->lte(now())
+            )
+            ->count();
+
+        $needsFollowUp = $students
+            ->where(
+                'follow_up_status',
+                LessonEnrollment::FOLLOW_UP_NEEDS_FOLLOW_UP
+            )
+            ->count();
+
+        $doingWell = $students
+            ->where(
+                'follow_up_status',
+                LessonEnrollment::FOLLOW_UP_DOING_WELL
+            )
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Assigned Students Page
+        |--------------------------------------------------------------------------
+        */
+        return view(
+            'instructor.team.students',
+            compact(
+                'lesson',
+                'instructor',
+                'students',
+                'totalStudents',
+                'dueStudents',
+                'needsFollowUp',
+                'doingWell'
             )
         );
     }

@@ -285,11 +285,38 @@
                                                 </p>
                                             </td>
 
+                                            {{-- CLICKABLE ASSIGNED STUDENTS --}}
                                             <td class="px-6 py-4">
-                                                <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-black text-primary">
-                                                    {{ $teamMember['student_count'] }}
-                                                    {{ $teamMember['student_count'] === 1 ? 'Student' : 'Students' }}
-                                                </span>
+
+                                                <a
+                                                    href="{{ route('instructor.team.students', [
+                                                        'lesson' => $teamMember['lesson'],
+                                                        'instructor' => $teamMember['instructor'],
+                                                    ]) }}"
+                                                    class="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-black text-primary transition hover:bg-primary hover:text-white"
+                                                    title="View assigned students"
+                                                >
+                                                    <span>
+                                                        {{ $teamMember['student_count'] }}
+                                                        {{ $teamMember['student_count'] === 1 ? 'Student' : 'Students' }}
+                                                    </span>
+
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        class="h-4 w-4"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <path d="M5 12h14"></path>
+                                                        <path d="m13 6 6 6-6 6"></path>
+                                                    </svg>
+                                                </a>
+
                                             </td>
 
                                             <td class="px-6 py-4">
@@ -346,6 +373,7 @@
                         @if($unassignedStudents->isEmpty())
 
                             <div class="p-8 text-center">
+
                                 <p class="font-black text-green-700">
                                     All students are assigned.
                                 </p>
@@ -353,11 +381,13 @@
                                 <p class="mt-1 text-sm text-gray-400">
                                     There are currently no students waiting for a follow-up instructor.
                                 </p>
+
                             </div>
 
                         @else
 
                             <div class="overflow-x-auto">
+
                                 <table class="w-full text-left">
 
                                     <thead class="bg-gray-50 text-sm text-gray-600">
@@ -416,6 +446,7 @@
 
                                     </tbody>
                                 </table>
+
                             </div>
 
                         @endif
@@ -448,6 +479,7 @@
                 @else
 
                     <div class="overflow-x-auto">
+
                         <table class="w-full text-left">
 
                             <thead class="bg-gray-50 text-sm text-gray-600">
@@ -512,29 +544,37 @@
                                         </td>
 
                                         <td class="px-6 py-4">
+
                                             @if($student?->email)
+
                                                 <a
                                                     href="mailto:{{ $student->email }}"
                                                     class="font-semibold text-primary hover:underline"
                                                 >
                                                     {{ $student->email }}
                                                 </a>
+
                                             @else
                                                 <span class="text-gray-400">—</span>
                                             @endif
+
                                         </td>
 
                                         <td class="px-6 py-4">
+
                                             @if($student?->phone)
+
                                                 <a
                                                     href="tel:{{ $student->phone }}"
                                                     class="font-semibold text-primary hover:underline"
                                                 >
                                                     {{ $student->phone }}
                                                 </a>
+
                                             @else
                                                 <span class="text-gray-400">—</span>
                                             @endif
+
                                         </td>
 
                                         <td class="px-6 py-4 text-sm text-gray-600">
@@ -556,6 +596,7 @@
 
                             </tbody>
                         </table>
+
                     </div>
 
                 @endif
@@ -572,6 +613,7 @@
             >
 
                 <div class="overflow-x-auto">
+
                     <table class="w-full text-left">
 
                         <thead class="bg-gray-50 text-sm text-gray-600">
@@ -593,6 +635,7 @@
                                 <tr class="hover:bg-gray-50">
 
                                     <td class="px-6 py-4">
+
                                         <p class="font-black text-navy">
                                             {{ $lesson->title }}
                                         </p>
@@ -600,6 +643,7 @@
                                         <p class="mt-1 text-xs text-gray-500">
                                             {{ $lesson->category ?? 'No category' }}
                                         </p>
+
                                     </td>
 
                                     <td class="px-6 py-4">
@@ -664,6 +708,7 @@
 
                         </tbody>
                     </table>
+
                 </div>
 
             </x-ui.section-card>

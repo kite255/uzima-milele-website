@@ -54,18 +54,6 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
 |--------------------------------------------------------------------------
 | Dashboard Redirect
 |--------------------------------------------------------------------------
-|
-| Every authenticated user can use the same Dashboard shortcut.
-|
-| Admin:
-| - Redirected to Filament Admin Panel.
-|
-| Instructor:
-| - Redirected to Instructor Dashboard.
-|
-| Student / Normal User:
-| - Redirected to Student Dashboard.
-|
 */
 Route::get('/dashboard', function () {
     $user = auth()->user();
@@ -133,7 +121,7 @@ Route::get(
 
 /*
 |--------------------------------------------------------------------------
-| Lessons - Public + Authenticated Learning Flow
+| Lessons
 |--------------------------------------------------------------------------
 */
 Route::prefix('lessons')
@@ -258,6 +246,16 @@ Route::middleware('auth')
             '/instructor/dashboard',
             [InstructorDashboardController::class, 'index']
         )->name('instructor.dashboard');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Lead Instructor Team Students
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/instructor/team/{lesson}/{instructor}/students',
+            [InstructorDashboardController::class, 'teamStudents']
+        )->name('instructor.team.students');
 
         /*
         |--------------------------------------------------------------------------
