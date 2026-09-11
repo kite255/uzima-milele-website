@@ -73,50 +73,6 @@
         'unreadNotificationsCount' => $unreadNotificationsCount
     ])
 
-    {{-- GLOBAL DASHBOARD SHORTCUT --}}
-    @auth
-        <a
-            href="{{ route('dashboard') }}"
-            title="Open Dashboard"
-            aria-label="Open Dashboard"
-            class="fixed bottom-5 left-5 z-50
-                   inline-flex items-center gap-2
-                   rounded-2xl
-                   bg-gradient-to-r from-navy to-primary
-                   px-4 py-3
-                   text-sm font-black text-white
-                   shadow-lg shadow-gray-900/20
-                   transition
-                   hover:-translate-y-0.5
-                   hover:shadow-xl
-                   focus:outline-none
-                   focus:ring-4
-                   focus:ring-primary/30"
-        >
-            {{-- DASHBOARD ICON --}}
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="h-5 w-5"
-                aria-hidden="true"
-            >
-                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-            </svg>
-
-            <span class="hidden sm:inline">
-                Dashboard
-            </span>
-        </a>
-    @endauth
-
     {{-- Alpine Collapse plugin for smooth dropdown / accordion --}}
     <script
         defer

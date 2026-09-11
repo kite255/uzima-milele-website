@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
@@ -36,7 +37,10 @@ Route::get('/', function () {
         ->take(6)
         ->get();
 
-    return view('home', compact('latestDevotions'));
+    return view(
+        'home',
+        compact('latestDevotions')
+    );
 })->name('home');
 
 /*
@@ -58,6 +62,16 @@ Route::get(
 |--------------------------------------------------------------------------
 | Dashboard Redirect
 |--------------------------------------------------------------------------
+|
+| Admin:
+| - Goes to the Filament panel.
+|
+| Instructor:
+| - Goes to the existing full Instructor Dashboard.
+|
+| Student:
+| - Goes to the Student Dashboard.
+|
 */
 Route::get('/dashboard', function () {
     $user = auth()->user();
@@ -71,10 +85,14 @@ Route::get('/dashboard', function () {
     }
 
     if ($user->role === 'instructor') {
-        return redirect()->route('instructor.dashboard');
+        return redirect()->route(
+            'instructor.dashboard'
+        );
     }
 
-    return redirect()->route('student.dashboard');
+    return redirect()->route(
+        'student.dashboard'
+    );
 })
     ->middleware('auth')
     ->name('dashboard');
@@ -84,14 +102,20 @@ Route::get('/dashboard', function () {
 | Static Pages
 |--------------------------------------------------------------------------
 */
-Route::view('/about', 'about')
-    ->name('about');
+Route::view(
+    '/about',
+    'about'
+)->name('about');
 
-Route::view('/contact', 'contact')
-    ->name('contact');
+Route::view(
+    '/contact',
+    'contact'
+)->name('contact');
 
-Route::view('/changia', 'donation')
-    ->name('changia');
+Route::view(
+    '/changia',
+    'donation'
+)->name('changia');
 
 /*
 |--------------------------------------------------------------------------
@@ -237,6 +261,20 @@ Route::middleware('auth')
 
         /*
         |--------------------------------------------------------------------------
+        | Admin Center Dashboard
+        |--------------------------------------------------------------------------
+        |
+        | Full Uzima Milele-style admin dashboard.
+        | Controller is responsible for restricting this page to admins.
+        |
+        */
+        Route::get(
+            '/admin-center/dashboard',
+            [AdminCenterDashboardController::class, 'index']
+        )->name('admin.center.dashboard');
+
+        /*
+        |--------------------------------------------------------------------------
         | Student Dashboard
         |--------------------------------------------------------------------------
         */
@@ -249,6 +287,9 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         | Instructor Dashboard
         |--------------------------------------------------------------------------
+        |
+        | This remains the full instructor dashboard used by Instructor Hub.
+        |
         */
         Route::get(
             '/instructor/dashboard',
@@ -282,7 +323,9 @@ Route::middleware('auth')
         Route::post(
             '/instructor/students/{enrollment}/follow-ups',
             [InstructorStudentController::class, 'storeFollowUp']
-        )->name('instructor.students.follow-ups.store');
+        )->name(
+            'instructor.students.follow-ups.store'
+        );
 
         /*
         |--------------------------------------------------------------------------

@@ -13,7 +13,12 @@ use Illuminate\View\View;
 
 class InstructorDashboardController extends Controller
 {
-    public function index()
+    /*
+    |--------------------------------------------------------------------------
+    | Instructor Dashboard
+    |--------------------------------------------------------------------------
+    */
+    public function index(): View
     {
         $user = auth()->user();
 
@@ -27,23 +32,56 @@ class InstructorDashboardController extends Controller
             403
         );
 
+        return view(
+            'instructor.dashboard',
+            $this->getDashboardData($user)
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reusable Dashboard Data
+    |--------------------------------------------------------------------------
+    |
+    | This method is used by:
+    |
+    | 1. The normal instructor dashboard:
+    |    /instructor/dashboard
+    |
+    | 2. The Filament Instructor Hub:
+    |    /admin/instructor-hub
+    |
+    | This keeps all dashboard calculations and access rules in one place.
+    |
+    */
+    public function getDashboardData(User $user): array
+    {
+        abort_unless(
+            in_array(
+                $user->role,
+                ['admin', 'instructor'],
+                true
+            ),
+            403
+        );
+
         /*
         |--------------------------------------------------------------------------
-        | Lessons Visible on the Instructor Dashboard
+        | Lessons Visible on Dashboard
         |--------------------------------------------------------------------------
         |
         | Admin:
-        | - Sees every lesson.
+        | - All lessons.
         |
         | Lead instructor:
-        | - Sees every lesson they lead.
+        | - Lessons they lead.
         |
         | Follow-up instructor:
-        | - Sees lessons where they belong to the follow-up team.
+        | - Lessons where they belong to the follow-up team.
         |
-        | Legacy compatibility:
-        | - Old lessons using instructor_id remain visible until they are
-        |   configured with the new lead/follow-up structure.
+        | Legacy instructor:
+        | - Old instructor_id lessons that have not yet been migrated to the
+        |   lead/follow-up instructor structure.
         |
         */
         $lessonQuery = Lesson::query();
@@ -104,14 +142,16 @@ class InstructorDashboardController extends Controller
         |--------------------------------------------------------------------------
         |
         | Lead instructor:
-        | - Sees every student enrolled in lessons they lead.
+        | - All students in lessons they lead.
         |
         | Follow-up instructor:
-        | - Sees only students assigned directly to them.
+        | - Only students assigned to them.
         |
         | Legacy instructor:
-        | - Sees students from old instructor_id lessons only when those
-        |   lessons have not been configured with the new structure.
+        | - Students in legacy instructor_id lessons.
+        |
+        | Admin:
+        | - Students from all visible lessons.
         |
         */
         $studentQuery = LessonEnrollment::query();
@@ -168,7 +208,7 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Students Visible on Dashboard
+        | Assigned / Visible Students
         |--------------------------------------------------------------------------
         */
         $assignedStudents = (clone $studentQuery)
@@ -227,7 +267,8 @@ class InstructorDashboardController extends Controller
                 ->orderBy('title')
                 ->get();
 
-            $canViewTeamSupervision = $ledLessons->isNotEmpty();
+            $canViewTeamSupervision =
+                $ledLessons->isNotEmpty();
 
             if ($canViewTeamSupervision) {
                 $ledLessonIds = $ledLessons
@@ -241,38 +282,41 @@ class InstructorDashboardController extends Controller
                 $teamSupervision = $ledLessons
                     ->flatMap(
                         function (Lesson $lesson) {
-                            return $lesson->followUpInstructors
+                            return $lesson
+                                ->followUpInstructors
                                 ->map(
                                     function ($instructor) use ($lesson) {
-                                        $studentCount = LessonEnrollment::query()
-                                            ->where(
-                                                'lesson_id',
-                                                $lesson->id
-                                            )
-                                            ->where(
-                                                'follow_up_instructor_id',
-                                                $instructor->id
-                                            )
-                                            ->count();
+                                        $studentCount =
+                                            LessonEnrollment::query()
+                                                ->where(
+                                                    'lesson_id',
+                                                    $lesson->id
+                                                )
+                                                ->where(
+                                                    'follow_up_instructor_id',
+                                                    $instructor->id
+                                                )
+                                                ->count();
 
-                                        $dueFollowUpCount = LessonEnrollment::query()
-                                            ->where(
-                                                'lesson_id',
-                                                $lesson->id
-                                            )
-                                            ->where(
-                                                'follow_up_instructor_id',
-                                                $instructor->id
-                                            )
-                                            ->whereNotNull(
-                                                'next_follow_up_at'
-                                            )
-                                            ->where(
-                                                'next_follow_up_at',
-                                                '<=',
-                                                now()
-                                            )
-                                            ->count();
+                                        $dueFollowUpCount =
+                                            LessonEnrollment::query()
+                                                ->where(
+                                                    'lesson_id',
+                                                    $lesson->id
+                                                )
+                                                ->where(
+                                                    'follow_up_instructor_id',
+                                                    $instructor->id
+                                                )
+                                                ->whereNotNull(
+                                                    'next_follow_up_at'
+                                                )
+                                                ->where(
+                                                    'next_follow_up_at',
+                                                    '<=',
+                                                    now()
+                                                )
+                                                ->count();
 
                                         return [
                                             'lesson' => $lesson,
@@ -291,20 +335,21 @@ class InstructorDashboardController extends Controller
                 | Unassigned Students
                 |--------------------------------------------------------------------------
                 */
-                $unassignedStudents = LessonEnrollment::query()
-                    ->with([
-                        'user',
-                        'lesson',
-                    ])
-                    ->whereIn(
-                        'lesson_id',
-                        $ledLessonIds
-                    )
-                    ->whereNull(
-                        'follow_up_instructor_id'
-                    )
-                    ->latest('id')
-                    ->get();
+                $unassignedStudents =
+                    LessonEnrollment::query()
+                        ->with([
+                            'user',
+                            'lesson',
+                        ])
+                        ->whereIn(
+                            'lesson_id',
+                            $ledLessonIds
+                        )
+                        ->whereNull(
+                            'follow_up_instructor_id'
+                        )
+                        ->latest('id')
+                        ->get();
             }
         }
 
@@ -374,26 +419,23 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Dashboard
+        | Dashboard Data
         |--------------------------------------------------------------------------
         */
-        return view(
-            'instructor.dashboard',
-            compact(
-                'lessons',
-                'totalLessons',
-                'totalStudents',
-                'assignedStudents',
-                'dueFollowUps',
-                'canViewTeamSupervision',
-                'teamSupervision',
-                'unassignedStudents',
-                'pendingQuestions',
-                'answeredQuestions',
-                'certificatesIssued',
-                'recentQuestions',
-                'recentQuizResults'
-            )
+        return compact(
+            'lessons',
+            'totalLessons',
+            'totalStudents',
+            'assignedStudents',
+            'dueFollowUps',
+            'canViewTeamSupervision',
+            'teamSupervision',
+            'unassignedStudents',
+            'pendingQuestions',
+            'answeredQuestions',
+            'certificatesIssued',
+            'recentQuestions',
+            'recentQuizResults'
         );
     }
 
@@ -402,7 +444,7 @@ class InstructorDashboardController extends Controller
     | Lead Instructor - Assigned Students by Follow-up Instructor
     |--------------------------------------------------------------------------
     |
-    | The lead instructor can open one follow-up instructor and see only
+    | The lead instructor can open one member of the follow-up team and see
     | students assigned to that instructor for the selected lesson.
     |
     */
@@ -425,7 +467,7 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Current User Must Lead This Lesson
+        | Current Instructor Must Lead This Lesson
         |--------------------------------------------------------------------------
         */
         abort_unless(
@@ -436,7 +478,7 @@ class InstructorDashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Selected Instructor Must Belong to This Lesson's Follow-up Team
+        | Selected Instructor Must Belong to Follow-up Team
         |--------------------------------------------------------------------------
         */
         $isFollowUpInstructor = $lesson
@@ -491,7 +533,9 @@ class InstructorDashboardController extends Controller
             ->filter(
                 fn (LessonEnrollment $enrollment) =>
                     $enrollment->next_follow_up_at
-                    && $enrollment->next_follow_up_at->lte(now())
+                    && $enrollment
+                        ->next_follow_up_at
+                        ->lte(now())
             )
             ->count();
 
