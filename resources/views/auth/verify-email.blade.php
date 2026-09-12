@@ -3,15 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>Thibitisha Barua Pepe - Uzima Milele</title>
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap"
-        rel="stylesheet"
-    >
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+    ])
 
     <style>
         * {
@@ -34,11 +35,11 @@
         body {
             margin: 0;
             min-height: 100%;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         body {
             min-height: 100vh;
-            font-family: 'Lato', sans-serif;
             background:
                 radial-gradient(
                     circle at 95% 5%,
@@ -56,6 +57,14 @@
                     var(--navy) 52%,
                     #15576F 100%
                 );
+        }
+
+        button,
+        input,
+        textarea,
+        select,
+        option {
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         .page {
@@ -153,6 +162,7 @@
         .heading h1 {
             margin: 0;
             color: var(--text);
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 25px;
             line-height: 1.15;
             font-weight: 900;
@@ -162,6 +172,7 @@
             margin: 7px auto 0;
             max-width: 400px;
             color: var(--muted);
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 12px;
             line-height: 1.6;
             font-weight: 500;
@@ -174,6 +185,7 @@
             background: #ECFDF5;
             border: 1px solid #BBF7D0;
             color: #047857;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 11px;
             line-height: 1.5;
             font-weight: 700;
@@ -196,7 +208,7 @@
             width: 100%;
             height: 48px;
             border-radius: 4px;
-            font-family: inherit;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 13px;
             font-weight: 900;
             cursor: pointer;
@@ -246,6 +258,7 @@
             gap: 6px;
             margin-top: 10px;
             color: rgba(255, 255, 255, 0.95);
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 10px;
             font-weight: 900;
             text-decoration: none;

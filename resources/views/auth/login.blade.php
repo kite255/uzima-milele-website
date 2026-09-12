@@ -7,7 +7,6 @@
     <title>Ingia - Uzima Milele</title>
 
     <link
-        href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap"
         rel="stylesheet"
     >
 
@@ -38,7 +37,7 @@
 
         body {
             min-height: 100vh;
-            font-family: 'Lato', sans-serif;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             background:
                 radial-gradient(
                     circle at 95% 5%,

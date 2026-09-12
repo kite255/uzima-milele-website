@@ -3,15 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>Umesahau Nenosiri - Uzima Milele</title>
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap"
-        rel="stylesheet"
-    >
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+    ])
 
     <style>
         * {
@@ -34,11 +35,11 @@
         body {
             margin: 0;
             min-height: 100%;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         body {
             min-height: 100vh;
-            font-family: 'Lato', sans-serif;
             background:
                 radial-gradient(
                     circle at 95% 5%,
@@ -56,6 +57,14 @@
                     var(--navy) 52%,
                     #15576F 100%
                 );
+        }
+
+        button,
+        input,
+        textarea,
+        select,
+        option {
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         .page {
@@ -215,7 +224,7 @@
             border-radius: 4px;
             background: #FFFFFF;
             color: var(--text);
-            font-family: inherit;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 13px;
             font-weight: 500;
             outline: none;
@@ -253,7 +262,7 @@
                     var(--primary-dark) 100%
                 );
             color: var(--white);
-            font-family: inherit;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
             font-size: 13px;
             font-weight: 900;
             cursor: pointer;
@@ -356,7 +365,6 @@
 
             <section class="card">
 
-                {{-- LOGO --}}
                 <div class="brand">
 
                     <img
@@ -372,7 +380,6 @@
 
                 </div>
 
-                {{-- HEADING --}}
                 <div class="heading">
 
                     <h1>
@@ -385,7 +392,6 @@
 
                 </div>
 
-                {{-- STATUS --}}
                 @if(session('status'))
                     <div class="status">
                         {{ session('status') }}

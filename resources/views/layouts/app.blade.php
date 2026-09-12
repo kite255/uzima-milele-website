@@ -9,12 +9,11 @@
 
     <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700;900&display=swap"
-        rel="stylesheet"
-    >
-
-    <script src="https://cdn.tailwindcss.com"></script>
+    {{-- Laravel Vite: Tailwind + local Lato/Yang Bagus fonts --}}
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+    ])
 
     <style>
         [x-cloak] {
@@ -30,27 +29,10 @@
         }
     </style>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        lato: ['Lato', 'sans-serif'],
-                    },
-
-                    colors: {
-                        primary: '#0083CB',
-                        primaryDark: '#076994',
-                        navy: '#0E3D4F',
-                        accent: '#F4B122',
-                    }
-                }
-            }
-        }
-    </script>
+    @stack('styles')
 </head>
 
-<body class="font-lato bg-gray-50 text-gray-900 antialiased">
+<body class="font-sans bg-gray-50 text-gray-900 antialiased">
 
     @php
         $unreadNotificationsCount = auth()->check()
@@ -58,34 +40,58 @@
             : 0;
     @endphp
 
-    {{-- MAIN NAVIGATION --}}
+    {{-- =====================================================
+         MAIN NAVIGATION
+         ===================================================== --}}
     @includeIf('partials.navbar', [
-        'unreadNotificationsCount' => $unreadNotificationsCount
+        'unreadNotificationsCount' => $unreadNotificationsCount,
     ])
 
-    {{-- PAGE CONTENT --}}
+
+    {{-- =====================================================
+         PAGE CONTENT
+         ===================================================== --}}
     <main class="min-h-screen">
         @yield('content')
     </main>
 
-    {{-- FOOTER --}}
+
+    {{-- =====================================================
+         FOOTER
+         ===================================================== --}}
     @includeIf('partials.footer', [
-        'unreadNotificationsCount' => $unreadNotificationsCount
+        'unreadNotificationsCount' => $unreadNotificationsCount,
     ])
 
-    {{-- Alpine Collapse plugin for smooth dropdown / accordion --}}
+
+    {{-- =====================================================
+         PAGE-SPECIFIC SCRIPTS
+         ===================================================== --}}
+    @stack('scripts')
+
+
+    {{-- =====================================================
+         Alpine Collapse Plugin
+         Must load before Alpine.js
+         ===================================================== --}}
     <script
         defer
         src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"
     ></script>
 
-    {{-- Alpine.js --}}
+
+    {{-- =====================================================
+         Alpine.js
+         ===================================================== --}}
     <script
         defer
         src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
     ></script>
 
-    {{-- Elfsight AI Chatbot | Mtumishi Bot --}}
+
+    {{-- =====================================================
+         Elfsight AI Chatbot | Mtumishi Bot
+         ===================================================== --}}
     <script
         src="https://elfsightcdn.com/platform.js"
         async

@@ -3,15 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Umesahau Nenosiri - Uzima Milele</title>
+    <title>Badili Nenosiri - Uzima Milele</title>
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700;900&display=swap"
-        rel="stylesheet"
-    >
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+    ])
 
     <style>
         * {
@@ -34,11 +35,11 @@
         body {
             margin: 0;
             min-height: 100%;
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         body {
             min-height: 100vh;
-            font-family: 'Lato', sans-serif;
             background:
                 radial-gradient(
                     circle at 95% 5%,
@@ -56,6 +57,14 @@
                     var(--navy) 52%,
                     #15576F 100%
                 );
+        }
+
+        button,
+        input,
+        textarea,
+        select,
+        option {
+            font-family: 'Lato', Arial, Helvetica, sans-serif;
         }
 
         .page {
@@ -167,19 +176,6 @@
             font-weight: 500;
         }
 
-        .status {
-            margin-bottom: 14px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            background: #ECFDF5;
-            border: 1px solid #BBF7D0;
-            color: #047857;
-            font-size: 11px;
-            line-height: 1.5;
-            font-weight: 700;
-            text-align: center;
-        }
-
         .field {
             margin-bottom: 14px;
         }
@@ -210,18 +206,21 @@
         .input-control {
             width: 100%;
             height: 48px;
-            padding: 0 14px 0 42px;
+            padding: 0 46px 0 42px;
             border: 1px solid var(--border);
             border-radius: 4px;
             background: #FFFFFF;
             color: var(--text);
-            font-family: inherit;
             font-size: 13px;
             font-weight: 500;
             outline: none;
             transition:
                 border-color 0.2s ease,
                 box-shadow 0.2s ease;
+        }
+
+        .input-control.email-input {
+            padding-right: 14px;
         }
 
         .input-control::placeholder {
@@ -233,10 +232,36 @@
             box-shadow: 0 0 0 3px rgba(0, 131, 203, 0.10);
         }
 
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 7px;
+            transform: translateY(-50%);
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            background: transparent;
+            color: #64748B;
+            cursor: pointer;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary);
+        }
+
+        .password-toggle svg {
+            width: 19px;
+            height: 19px;
+        }
+
         .error {
             margin-top: 6px;
             color: #DC2626;
             font-size: 11px;
+            line-height: 1.4;
             font-weight: 800;
         }
 
@@ -252,7 +277,6 @@
                     var(--primary-dark) 100%
                 );
             color: var(--white);
-            font-family: inherit;
             font-size: 13px;
             font-weight: 900;
             cursor: pointer;
@@ -264,24 +288,6 @@
         .btn:hover {
             filter: brightness(0.96);
             transform: translateY(-1px);
-        }
-
-        .login-text {
-            margin: 14px 0 0;
-            text-align: center;
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .login-text a {
-            color: var(--primary-dark);
-            font-weight: 800;
-            text-decoration: none;
-        }
-
-        .login-text a:hover {
-            text-decoration: underline;
         }
 
         .back-wrap {
@@ -355,6 +361,7 @@
 
             <section class="card">
 
+                {{-- LOGO --}}
                 <div class="brand">
 
                     <img
@@ -370,30 +377,34 @@
 
                 </div>
 
+                {{-- HEADING --}}
                 <div class="heading">
 
                     <h1>
-                        Umesahau Nenosiri?
+                        Badili Nenosiri
                     </h1>
 
                     <p>
-                        Weka barua pepe yako, tutakutumia kiungo cha kubadili nenosiri.
+                        Weka nenosiri jipya la akaunti yako.
                     </p>
 
                 </div>
 
-                @if(session('status'))
-                    <div class="status">
-                        {{ session('status') }}
-                    </div>
-                @endif
-
+                {{-- RESET PASSWORD FORM --}}
                 <form
                     method="POST"
-                    action="{{ route('password.email') }}"
+                    action="{{ route('password.update') }}"
                 >
                     @csrf
 
+                    {{-- RESET TOKEN --}}
+                    <input
+                        type="hidden"
+                        name="token"
+                        value="{{ $request->route('token') }}"
+                    >
+
+                    {{-- EMAIL --}}
                     <div class="field">
 
                         <label for="email">
@@ -426,13 +437,13 @@
 
                             <input
                                 id="email"
-                                class="input-control"
+                                class="input-control email-input"
                                 type="email"
                                 name="email"
-                                value="{{ old('email') }}"
+                                value="{{ old('email', $request->email) }}"
                                 required
                                 autofocus
-                                autocomplete="username"
+                                autocomplete="email"
                                 placeholder="Weka barua pepe yako"
                             >
 
@@ -446,29 +457,169 @@
 
                     </div>
 
+                    {{-- NEW PASSWORD --}}
+                    <div class="field">
+
+                        <label for="password">
+                            Nenosiri Jipya
+                        </label>
+
+                        <div class="input-wrap">
+
+                            <svg
+                                class="input-icon"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <rect
+                                    width="16"
+                                    height="12"
+                                    x="4"
+                                    y="10"
+                                    rx="2"
+                                ></rect>
+
+                                <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                            </svg>
+
+                            <input
+                                id="password"
+                                class="input-control"
+                                type="password"
+                                name="password"
+                                required
+                                autocomplete="new-password"
+                                placeholder="Weka nenosiri jipya"
+                            >
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                data-toggle-password="password"
+                                aria-label="Onyesha au ficha nenosiri"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M2.1 12a10.6 10.6 0 0 1 19.8 0"></path>
+                                    <path d="M21.9 12a10.6 10.6 0 0 1-19.8 0"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+
+                        </div>
+
+                        @error('password')
+                            <div class="error">
+                                {{ $message }}
+                            </div>
+                        @enderror
+
+                    </div>
+
+                    {{-- CONFIRM PASSWORD --}}
+                    <div class="field">
+
+                        <label for="password_confirmation">
+                            Thibitisha Nenosiri Jipya
+                        </label>
+
+                        <div class="input-wrap">
+
+                            <svg
+                                class="input-icon"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                            >
+                                <rect
+                                    width="16"
+                                    height="12"
+                                    x="4"
+                                    y="10"
+                                    rx="2"
+                                ></rect>
+
+                                <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                            </svg>
+
+                            <input
+                                id="password_confirmation"
+                                class="input-control"
+                                type="password"
+                                name="password_confirmation"
+                                required
+                                autocomplete="new-password"
+                                placeholder="Rudia nenosiri jipya"
+                            >
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                data-toggle-password="password_confirmation"
+                                aria-label="Onyesha au ficha nenosiri"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M2.1 12a10.6 10.6 0 0 1 19.8 0"></path>
+                                    <path d="M21.9 12a10.6 10.6 0 0 1-19.8 0"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+
+                        </div>
+
+                        @error('password_confirmation')
+                            <div class="error">
+                                {{ $message }}
+                            </div>
+                        @enderror
+
+                    </div>
+
+                    {{-- SUBMIT --}}
                     <button
                         type="submit"
                         class="btn"
                     >
-                        Tuma Kiungo
+                        Hifadhi Nenosiri Jipya
                     </button>
-
-                    <p class="login-text">
-                        Unakumbuka nenosiri?
-
-                        <a href="{{ route('login') }}">
-                            Ingia
-                        </a>
-                    </p>
 
                 </form>
 
             </section>
 
+            {{-- BACK --}}
             <div class="back-wrap">
 
                 <a
-                    href="{{ url('/') }}"
+                    href="{{ route('login') }}"
                     class="back-link"
                 >
                     <svg
@@ -485,7 +636,7 @@
                         <path d="M19 12H5"></path>
                     </svg>
 
-                    Rudi kwenye Tovuti
+                    Rudi Kuingia
                 </a>
 
             </div>
@@ -493,6 +644,33 @@
         </div>
 
     </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const buttons = document.querySelectorAll(
+                '[data-toggle-password]'
+            );
+
+            buttons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const targetId =
+                        button.getAttribute('data-toggle-password');
+
+                    const input =
+                        document.getElementById(targetId);
+
+                    if (! input) {
+                        return;
+                    }
+
+                    input.type =
+                        input.type === 'password'
+                            ? 'text'
+                            : 'password';
+                });
+            });
+        });
+    </script>
 
 </body>
 </html>

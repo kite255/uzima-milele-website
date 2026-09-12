@@ -179,7 +179,7 @@
         width: 1122px;
         height: 794px;
         color: #0E3D4F;
-        font-family: Arial, sans-serif;
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
     }
 
     .top-header {

@@ -165,7 +165,7 @@
         width: 1122px;
         height: 794px;
         color: #0E3D4F;
-        font-family: Arial, sans-serif;
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
         overflow: hidden;
         display: grid;
         grid-template-rows: 235px 190px 215px 154px;

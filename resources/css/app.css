@@ -1,3 +1,344 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* =========================================================
+   Uzima Milele Brand Fonts
+   ========================================================= */
+
+/* Lato Hairline - 100 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Hairline.ttf') format('truetype');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-HairlineItalic.ttf') format('truetype');
+    font-weight: 100;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Thin - 200 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Thin.ttf') format('truetype');
+    font-weight: 200;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-ThinItalic.ttf') format('truetype');
+    font-weight: 200;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Regular - 400 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Italic.ttf') format('truetype');
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Medium - 500 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-MediumItalic.ttf') format('truetype');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Semibold - 600 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Semibold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-SemiboldItalic.ttf') format('truetype');
+    font-weight: 600;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Bold - 700 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-BoldItalic.ttf') format('truetype');
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Heavy - 800 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Heavy.ttf') format('truetype');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-HeavyItalic.ttf') format('truetype');
+    font-weight: 800;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* Lato Black - 900 */
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-Black.ttf') format('truetype');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Lato';
+    src: url('/fonts/Lato-BlackItalic.ttf') format('truetype');
+    font-weight: 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+
+/* =========================================================
+   Uzima Milele Watoto - Yang Bagus
+   ========================================================= */
+
+@font-face {
+    font-family: 'Yang Bagus';
+    src: url('/fonts/YangBagus.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+
+/* =========================================================
+   Global Brand Typography
+   ========================================================= */
+
+@layer base {
+
+    html {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 400;
+    }
+
+    body {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 400;
+    }
+
+    /*
+     * Ensure normal page elements inherit Lato.
+     */
+    p,
+    span,
+    div,
+    section,
+    article,
+    aside,
+    header,
+    footer,
+    nav,
+    main,
+    ul,
+    ol,
+    li,
+    dl,
+    dt,
+    dd,
+    table,
+    thead,
+    tbody,
+    tfoot,
+    tr,
+    th,
+    td,
+    label,
+    a {
+        font-family: inherit;
+    }
+
+    /*
+     * Brand headings
+     */
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+    }
+
+    h1 {
+        font-weight: 800;
+    }
+
+    h2 {
+        font-weight: 700;
+    }
+
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-weight: 700;
+    }
+
+    /*
+     * Forms and buttons sometimes use browser defaults,
+     * so explicitly inherit the brand font.
+     */
+    button,
+    input,
+    textarea,
+    select,
+    option {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+    }
+
+    button {
+        font-weight: 600;
+    }
+
+    strong,
+    b {
+        font-weight: 700;
+    }
+
+    em,
+    i {
+        font-style: italic;
+    }
+}
+
+
+/* =========================================================
+   Uzima Milele Font Utilities
+   ========================================================= */
+
+@layer components {
+
+    .font-brand,
+    .font-lato {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+    }
+
+    .font-brand-hairline {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 100;
+    }
+
+    .font-brand-thin {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 200;
+    }
+
+    /*
+     * Weight 300 is intentionally omitted.
+     * Lato-Light.ttf is not currently available in your
+     * public/fonts folder.
+     */
+
+    .font-brand-regular {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 400;
+    }
+
+    .font-brand-medium {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 500;
+    }
+
+    .font-brand-semibold {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 600;
+    }
+
+    .font-brand-bold {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 700;
+    }
+
+    .font-brand-heavy {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 800;
+    }
+
+    .font-brand-black {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 900;
+    }
+
+
+    /* =====================================================
+       Uzima Milele Watoto Typography
+       ===================================================== */
+
+    .font-watoto,
+    .watoto-font,
+    .watoto-title,
+    .watoto-heading,
+    .watoto-brand {
+        font-family: 'Yang Bagus', 'Lato', Arial, sans-serif;
+        font-weight: 400;
+    }
+
+    .watoto-body {
+        font-family: 'Lato', Arial, Helvetica, sans-serif;
+        font-weight: 400;
+    }
+}

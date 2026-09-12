@@ -25,128 +25,189 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        /*
+        |--------------------------------------------------------------------------
+        | Lugha ya Mfumo
+        |--------------------------------------------------------------------------
+        |
+        | Filament na Laravel zitatumia Kiswahili kwa maandishi ambayo yana
+        | tafsiri ya lugha ya "sw".
+        |
+        */
+
+        app()->setLocale('sw');
+
+
         return $panel
             ->default()
+
+            /*
+            |--------------------------------------------------------------------------
+            | Panel
+            |--------------------------------------------------------------------------
+            */
+
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
 
+
             /*
             |--------------------------------------------------------------------------
-            | Global Appearance
+            | Muonekano
             |--------------------------------------------------------------------------
             */
+
             ->darkMode(false)
 
-            /*
-            |--------------------------------------------------------------------------
-            | Uzima Milele Branding
-            |--------------------------------------------------------------------------
-            */
-            ->brandName('Uzima Milele')
-            ->brandLogo(asset('logo.png'))
-            ->brandLogoHeight('3rem')
 
             /*
             |--------------------------------------------------------------------------
-            | Filament Colours
+            | Utambulisho wa Uzima Milele
             |--------------------------------------------------------------------------
             */
+
+            ->brandName('Uzima Milele')
+
+            ->brandLogo(
+                asset('logo.png')
+            )
+
+            ->brandLogoHeight('3rem')
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Rangi za Mfumo
+            |--------------------------------------------------------------------------
+            */
+
             ->colors([
                 'primary' => Color::hex('#0083CB'),
                 'warning' => Color::hex('#F4B122'),
             ])
 
+
             /*
             |--------------------------------------------------------------------------
-            | Role-Based Navigation
+            | Navigation Kulingana na Role
             |--------------------------------------------------------------------------
             |
             | Admin:
-            | - Uses the standard Dashboard.
-            | - Sees Admin Center through its Filament page registration.
+            | - Anatumia Dashboard ya kawaida ya Filament.
+            | - Anaona Kituo cha Msimamizi kupitia Filament page.
             |
-            | Instructor:
-            | - Uses the standard Dashboard.
-            | - Sees Instructor Hub here.
-            |
-            | Instructor Hub reuses the existing instructor dashboard instead
-            | of creating a second copy of its business logic.
+            | Mwalimu:
+            | - Anatumia Dashboard ya kawaida.
+            | - Anaona Kituo cha Mwalimu.
             |
             */
+
             ->navigationItems([
-                NavigationItem::make('Instructor Hub')
-                    ->icon('heroicon-o-academic-cap')
+
+                NavigationItem::make('Kituo cha Mwalimu')
+
+                    ->icon(
+                        'heroicon-o-academic-cap'
+                    )
+
                     ->url(
                         fn (): string =>
-                            route('instructor.dashboard')
+                            route(
+                                'instructor.dashboard'
+                            )
                     )
+
                     ->sort(1)
+
                     ->visible(
                         fn (): bool =>
                             auth()->user()?->role === 'instructor'
                     ),
+
             ])
+
 
             /*
             |--------------------------------------------------------------------------
             | Resources
             |--------------------------------------------------------------------------
             */
+
             ->discoverResources(
                 in: app_path('Filament/Resources'),
                 for: 'App\\Filament\\Resources'
             )
 
+
             /*
             |--------------------------------------------------------------------------
-            | Pages
+            | Kurasa
             |--------------------------------------------------------------------------
             */
+
             ->discoverPages(
                 in: app_path('Filament/Pages'),
                 for: 'App\\Filament\\Pages'
             )
+
             ->pages([
                 Pages\Dashboard::class,
             ])
+
 
             /*
             |--------------------------------------------------------------------------
             | Widgets
             |--------------------------------------------------------------------------
             */
+
             ->discoverWidgets(
                 in: app_path('Filament/Widgets'),
                 for: 'App\\Filament\\Widgets'
             )
+
             ->widgets([
                 Widgets\AccountWidget::class,
                 DashboardStats::class,
             ])
+
 
             /*
             |--------------------------------------------------------------------------
             | Middleware
             |--------------------------------------------------------------------------
             */
+
             ->middleware([
+
                 EncryptCookies::class,
+
                 AddQueuedCookiesToResponse::class,
+
                 StartSession::class,
+
                 AuthenticateSession::class,
+
                 ShareErrorsFromSession::class,
+
                 VerifyCsrfToken::class,
+
                 SubstituteBindings::class,
+
                 DisableBladeIconComponents::class,
+
                 DispatchServingFilamentEvent::class,
+
             ])
+
 
             /*
             |--------------------------------------------------------------------------
             | Authentication Middleware
             |--------------------------------------------------------------------------
             */
+
             ->authMiddleware([
                 Authenticate::class,
             ]);

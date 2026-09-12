@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
+use App\Http\Controllers\EmailSubscriberController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
 use App\Http\Controllers\InstructorStudentController;
@@ -18,13 +19,16 @@ use App\Http\Controllers\QuizController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TestimonialController;
 use App\Http\Controllers\WatotoController;
+
 use App\Models\Certificate;
 use App\Models\Devotion;
+use App\Models\EmailSubscriber;
+
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Home
+| Home / Nyumbani
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
@@ -43,10 +47,14 @@ Route::get('/', function () {
     );
 })->name('home');
 
+
 /*
 |--------------------------------------------------------------------------
 | Google Login
 |--------------------------------------------------------------------------
+|
+| Keep OAuth callback URLs technical because they are configured with Google.
+|
 */
 Route::get(
     '/auth/google',
@@ -58,22 +66,60 @@ Route::get(
     [GoogleAuthController::class, 'callback']
 )->name('google.callback');
 
+
+/*
+|--------------------------------------------------------------------------
+| Email Subscription / Usajili wa Barua Pepe
+|--------------------------------------------------------------------------
+|
+| Public subscription page, subscription endpoint, unsubscribe link and
+| subscriber preference management.
+|
+*/
+Route::view(
+    '/jiandikishe-tafakari',
+    'subscriptions.create'
+)->name('subscriptions.create');
+
+Route::post(
+    '/jiandikishe',
+    [EmailSubscriberController::class, 'store']
+)->name('email-subscribers.store');
+
+
+/*
+|--------------------------------------------------------------------------
+| Unsubscribe / Kujiondoa
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/email/unsubscribe/{token}',
+    [EmailSubscriberController::class, 'unsubscribe']
+)->name('email-subscribers.unsubscribe');
+
+
+/*
+|--------------------------------------------------------------------------
+| Email Preferences / Mapendeleo ya Barua Pepe
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/email/preferences/{token}',
+    [EmailSubscriberController::class, 'preferences']
+)->name('email-subscribers.preferences');
+
+Route::patch(
+    '/email/preferences/{token}',
+    [EmailSubscriberController::class, 'updatePreferences']
+)->name('email-subscribers.preferences.update');
+
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard Redirect
 |--------------------------------------------------------------------------
-|
-| Admin:
-| - Goes to the Filament panel.
-|
-| Instructor:
-| - Goes to the existing full Instructor Dashboard.
-|
-| Student:
-| - Goes to the Student Dashboard.
-|
 */
-Route::get('/dashboard', function () {
+Route::get('/dashibodi', function () {
     $user = auth()->user();
 
     if (! $user) {
@@ -97,18 +143,19 @@ Route::get('/dashboard', function () {
     ->middleware('auth')
     ->name('dashboard');
 
+
 /*
 |--------------------------------------------------------------------------
-| Static Pages
+| Static Public Pages
 |--------------------------------------------------------------------------
 */
 Route::view(
-    '/about',
+    '/kuhusu-sisi',
     'about'
 )->name('about');
 
 Route::view(
-    '/contact',
+    '/wasiliana-nasi',
     'contact'
 )->name('contact');
 
@@ -116,6 +163,7 @@ Route::view(
     '/changia',
     'donation'
 )->name('changia');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -137,22 +185,24 @@ Route::post(
     [TestimonialController::class, 'store']
 )->name('testimonials.store');
 
-/*
-|--------------------------------------------------------------------------
-| Public Certificate Verification
-|--------------------------------------------------------------------------
-*/
-Route::get(
-    '/certificates/verify/{certificateNumber}',
-    [CertificateController::class, 'verify']
-)->name('certificates.verify');
 
 /*
 |--------------------------------------------------------------------------
-| Lessons
+| Public Certificate Verification / Uhakiki wa Cheti
 |--------------------------------------------------------------------------
 */
-Route::prefix('lessons')
+Route::get(
+    '/vyeti/hakiki/{certificateNumber}',
+    [CertificateController::class, 'verify']
+)->name('certificates.verify');
+
+
+/*
+|--------------------------------------------------------------------------
+| Lessons / Jifunze Biblia
+|--------------------------------------------------------------------------
+*/
+Route::prefix('jifunze-biblia')
     ->name('lessons.')
     ->group(function () {
 
@@ -170,48 +220,49 @@ Route::prefix('lessons')
             ->group(function () {
 
                 Route::get(
-                    '/{lesson:slug}/learn',
+                    '/{lesson:slug}/jifunze',
                     [LessonController::class, 'learn']
                 )->name('learn');
 
                 Route::post(
-                    '/{lesson:slug}/enroll',
+                    '/{lesson:slug}/jiunge',
                     [LessonController::class, 'enroll']
                 )->name('enroll');
 
                 Route::post(
-                    '/{lesson:slug}/questions',
+                    '/{lesson:slug}/maswali',
                     [LessonQuestionController::class, 'store']
                 )->name('questions.store');
 
                 Route::post(
-                    '/{lesson:slug}/progress',
+                    '/{lesson:slug}/maendeleo',
                     [LessonController::class, 'markProgress']
                 )->name('progress');
 
                 Route::patch(
-                    '/{lesson:slug}/schedule',
+                    '/{lesson:slug}/ratiba',
                     [LessonController::class, 'resetSchedule']
                 )->name('schedule.reset');
 
                 Route::get(
-                    '/{lesson:slug}/topics/{topic:slug}',
+                    '/{lesson:slug}/mada/{topic:slug}',
                     [LessonTopicController::class, 'show']
                 )->name('topics.show');
 
                 Route::post(
-                    '/{lesson:slug}/topics/{topic:slug}/complete',
+                    '/{lesson:slug}/mada/{topic:slug}/kamilisha',
                     [LessonTopicController::class, 'complete']
                 )->name('topics.complete');
             });
     });
 
+
 /*
 |--------------------------------------------------------------------------
-| Children / Watoto
+| Watoto
 |--------------------------------------------------------------------------
 */
-Route::prefix('children')
+Route::prefix('watoto')
     ->name('children.')
     ->group(function () {
 
@@ -226,17 +277,18 @@ Route::prefix('children')
         )->name('show');
 
         Route::post(
-            '/{slug}/quiz',
+            '/{slug}/jaribio',
             [WatotoController::class, 'submitQuiz']
         )->name('quiz.submit');
     });
 
+
 /*
 |--------------------------------------------------------------------------
-| Devotions
+| Tafakari
 |--------------------------------------------------------------------------
 */
-Route::prefix('devotions')
+Route::prefix('tafakari')
     ->name('devotions.')
     ->group(function () {
 
@@ -251,6 +303,7 @@ Route::prefix('devotions')
         )->name('show');
     });
 
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -261,17 +314,38 @@ Route::middleware('auth')
 
         /*
         |--------------------------------------------------------------------------
-        | Admin Center Dashboard
+        | Devotion Email Preview
         |--------------------------------------------------------------------------
-        |
-        | Full Uzima Milele-style admin dashboard.
-        | Controller is responsible for restricting this page to admins.
-        |
         */
         Route::get(
-            '/admin-center/dashboard',
+            '/admin/devotions/{devotion}/email-preview',
+            function (Devotion $devotion) {
+
+                $subscriber = EmailSubscriber::query()
+                    ->where('status', 'subscribed')
+                    ->first();
+
+                return view(
+                    'emails.devotions.daily',
+                    [
+                        'devotion' => $devotion,
+                        'subscriber' => $subscriber,
+                    ]
+                );
+            }
+        )->name('devotions.email.preview');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Admin Center Dashboard
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/kituo-cha-msimamizi/dashibodi',
             [AdminCenterDashboardController::class, 'index']
         )->name('admin.center.dashboard');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -279,53 +353,41 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         */
         Route::get(
-            '/student/dashboard',
+            '/mwanafunzi/dashibodi',
             [StudentDashboardController::class, 'index']
         )->name('student.dashboard');
+
 
         /*
         |--------------------------------------------------------------------------
         | Instructor Dashboard
         |--------------------------------------------------------------------------
-        |
-        | This remains the full instructor dashboard used by Instructor Hub.
-        |
         */
         Route::get(
-            '/instructor/dashboard',
+            '/mwalimu/dashibodi',
             [InstructorDashboardController::class, 'index']
         )->name('instructor.dashboard');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lead Instructor Team Students
-        |--------------------------------------------------------------------------
-        |
-        | Lead instructor can open a follow-up instructor and see the students
-        | assigned to that instructor for the selected lesson.
-        |
-        */
+
         Route::get(
-            '/instructor/team/{lesson}/{instructor}/students',
+            '/mwalimu/timu/{lesson}/{instructor}/wanafunzi',
             [InstructorDashboardController::class, 'teamStudents']
         )->name('instructor.team.students');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Instructor Student Detail
-        |--------------------------------------------------------------------------
-        */
+
         Route::get(
-            '/instructor/students/{enrollment}',
+            '/mwalimu/wanafunzi/{enrollment}',
             [InstructorStudentController::class, 'show']
         )->name('instructor.students.show');
 
+
         Route::post(
-            '/instructor/students/{enrollment}/follow-ups',
+            '/mwalimu/wanafunzi/{enrollment}/ufuatiliaji',
             [InstructorStudentController::class, 'storeFollowUp']
         )->name(
             'instructor.students.follow-ups.store'
         );
+
 
         /*
         |--------------------------------------------------------------------------
@@ -333,77 +395,80 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         */
         Route::get(
-            '/instructor/questions',
+            '/mwalimu/maswali',
             [InstructorQuestionController::class, 'index']
         )->name('instructor.questions.index');
 
         Route::get(
-            '/instructor/questions/{question}',
+            '/mwalimu/maswali/{question}',
             [InstructorQuestionController::class, 'show']
         )->name('instructor.questions.show');
 
         Route::put(
-            '/instructor/questions/{question}',
+            '/mwalimu/maswali/{question}',
             [InstructorQuestionController::class, 'update']
         )->name('instructor.questions.update');
 
+
         /*
         |--------------------------------------------------------------------------
-        | Notifications
+        | Notifications / Arifa
         |--------------------------------------------------------------------------
         */
         Route::get(
-            '/notifications',
+            '/arifa',
             [NotificationController::class, 'index']
         )->name('notifications.index');
 
         Route::get(
-            '/notifications/{notification}/read',
+            '/arifa/{notification}/soma',
             [NotificationController::class, 'read']
         )->name('notifications.read');
 
         Route::post(
-            '/notifications/mark-all-read',
+            '/arifa/soma-zote',
             [NotificationController::class, 'markAllAsRead']
         )->name('notifications.markAllRead');
 
+
         /*
         |--------------------------------------------------------------------------
-        | Quizzes
+        | Quizzes / Majaribio
         |--------------------------------------------------------------------------
         */
         Route::get(
-            '/quiz/{quiz}',
+            '/jaribio/{quiz}',
             [QuizController::class, 'show']
         )->name('quiz.show');
 
         Route::post(
-            '/quiz/{quiz}/submit',
+            '/jaribio/{quiz}/wasilisha',
             [QuizController::class, 'submit']
         )->name('quiz.submit');
 
+
         /*
         |--------------------------------------------------------------------------
-        | Certificates
+        | Certificates / Vyeti
         |--------------------------------------------------------------------------
         */
         Route::post(
-            '/lessons/{lesson}/certificate',
+            '/jifunze-biblia/{lesson}/cheti',
             [CertificateController::class, 'issue']
         )->name('certificates.issue');
 
         Route::get(
-            '/certificates/{certificateNumber}',
+            '/vyeti/{certificateNumber}',
             [CertificateController::class, 'show']
         )->name('certificates.show');
 
         Route::get(
-            '/certificates/{certificateNumber}/download',
+            '/vyeti/{certificateNumber}/pakua',
             [CertificateController::class, 'download']
         )->name('certificates.download');
 
         Route::get(
-            '/certificates/{certificateNumber}/print-preview',
+            '/vyeti/{certificateNumber}/hakiki-uchapishaji',
             function (string $certificateNumber) {
 
                 $certificate = Certificate::with([
@@ -428,25 +493,123 @@ Route::middleware('auth')
             }
         )->name('certificates.print-preview');
 
+
         /*
         |--------------------------------------------------------------------------
-        | Profile
+        | Font Sample
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/font-sample', function () {
+            return view('font-sample');
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile / Wasifu
         |--------------------------------------------------------------------------
         */
         Route::get(
-            '/profile',
+            '/wasifu',
             [ProfileController::class, 'edit']
         )->name('profile.edit');
 
         Route::patch(
-            '/profile',
+            '/wasifu',
             [ProfileController::class, 'update']
         )->name('profile.update');
 
         Route::delete(
-            '/profile',
+            '/wasifu',
             [ProfileController::class, 'destroy']
         )->name('profile.destroy');
     });
 
+
+/*
+|--------------------------------------------------------------------------
+| Legacy English URL Redirects
+|--------------------------------------------------------------------------
+*/
+Route::redirect(
+    '/about',
+    '/kuhusu-sisi',
+    301
+);
+
+Route::redirect(
+    '/contact',
+    '/wasiliana-nasi',
+    301
+);
+
+Route::redirect(
+    '/devotions',
+    '/tafakari',
+    301
+);
+
+Route::get(
+    '/devotions/{slug}',
+    function (string $slug) {
+        return redirect()->route(
+            'devotions.show',
+            $slug,
+            301
+        );
+    }
+);
+
+Route::redirect(
+    '/children',
+    '/watoto',
+    301
+);
+
+Route::get(
+    '/children/{slug}',
+    function (string $slug) {
+        return redirect()->route(
+            'children.show',
+            $slug,
+            301
+        );
+    }
+);
+
+Route::redirect(
+    '/lessons',
+    '/jifunze-biblia',
+    301
+);
+
+Route::get(
+    '/lessons/{lesson}',
+    function (string $lesson) {
+        return redirect()->route(
+            'lessons.show',
+            $lesson,
+            301
+        );
+    }
+);
+
+Route::redirect(
+    '/dashboard',
+    '/dashibodi',
+    301
+);
+
+Route::redirect(
+    '/profile',
+    '/wasifu',
+    301
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+*/
 require __DIR__.'/auth.php';
