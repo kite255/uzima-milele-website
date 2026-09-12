@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -140,6 +141,16 @@ class EmailSubscriber extends Model
         );
     }
 
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            EmailSubscriberGroup::class,
+            'email_subscriber_group_members',
+            'email_subscriber_id',
+            'email_subscriber_group_id'
+        )->withTimestamps();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes
@@ -177,7 +188,9 @@ class EmailSubscriber extends Model
                 $firstName,
                 $lastName,
             ])
-                ->filter(fn ($value) => filled($value))
+                ->filter(
+                    fn ($value) => filled($value)
+                )
                 ->implode(' ')
         );
     }
