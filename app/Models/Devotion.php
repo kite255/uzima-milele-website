@@ -24,6 +24,7 @@ class Devotion extends Model
 
         'image',
         'published_at',
+        'email_send_time',
     ];
 
     protected $casts = [
@@ -38,7 +39,29 @@ class Devotion extends Model
 
     public function emailCampaigns(): HasMany
     {
-        return $this->hasMany(EmailCampaign::class);
+        return $this->hasMany(
+            EmailCampaign::class
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Scheduling
+    |--------------------------------------------------------------------------
+    */
+
+    public function effectiveEmailSendTime(): string
+    {
+        if (
+            filled(
+                $this->email_send_time
+            )
+        ) {
+            return $this->email_send_time;
+        }
+
+        return EmailSetting::current()
+            ->default_devotion_send_time;
     }
 
     /*
@@ -47,17 +70,30 @@ class Devotion extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function scopePublished(Builder $query): Builder
-    {
+    public function scopePublished(
+        Builder $query
+    ): Builder {
         return $query
-            ->whereNotNull('published_at')
-            ->whereDate('published_at', '<=', today());
+            ->whereNotNull(
+                'published_at'
+            )
+            ->whereDate(
+                'published_at',
+                '<=',
+                today()
+            );
     }
 
-    public function scopeForToday(Builder $query): Builder
-    {
+    public function scopeForToday(
+        Builder $query
+    ): Builder {
         return $query
-            ->whereNotNull('published_at')
-            ->whereDate('published_at', today());
+            ->whereNotNull(
+                'published_at'
+            )
+            ->whereDate(
+                'published_at',
+                today()
+            );
     }
 }

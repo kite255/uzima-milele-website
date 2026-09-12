@@ -4,12 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DevotionResource\Pages;
 use App\Models\Devotion;
+use App\Models\EmailSetting;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -93,11 +95,19 @@ class DevotionResource extends Resource
                         ->required()
                         ->maxLength(255)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, callable $set) {
-                            if (filled($state)) {
-                                $set('slug', Str::slug($state));
+                        ->afterStateUpdated(
+                            function (
+                                $state,
+                                callable $set
+                            ): void {
+                                if (filled($state)) {
+                                    $set(
+                                        'slug',
+                                        Str::slug($state)
+                                    );
+                                }
                             }
-                        }),
+                        ),
 
                     TextInput::make('slug')
                         ->label('Kiungo (Slug)')
@@ -115,6 +125,19 @@ class DevotionResource extends Resource
                     DatePicker::make('published_at')
                         ->label('Tarehe ya Kuchapishwa')
                         ->required(),
+
+                    TimePicker::make('email_send_time')
+                        ->label('Muda wa Kutuma Barua Pepe')
+                        ->seconds(false)
+                        ->native(false)
+                        ->default(
+                            fn (): string =>
+                                EmailSetting::current()
+                                    ->default_devotion_send_time
+                        )
+                        ->helperText(
+                            'Muda wa kawaida unatoka kwenye mipangilio ya barua pepe. Unaweza kuubadilisha kwa tafakari hii.'
+                        ),
 
                     FileUpload::make('image')
                         ->label('Picha Kuu')
@@ -273,6 +296,11 @@ class DevotionResource extends Resource
                     ->date('d M Y')
                     ->sortable(),
 
+                TextColumn::make('email_send_time')
+                    ->label('Muda wa Barua')
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 /*
                 |--------------------------------------------------------------------------
                 | Hali ya Tafakari
@@ -282,45 +310,87 @@ class DevotionResource extends Resource
                 TextColumn::make('status')
                     ->label('Hali')
                     ->badge()
-                    ->getStateUsing(function (Devotion $record): string {
-                        if (blank($record->published_at)) {
-                            return 'Haijapangiwa';
+                    ->getStateUsing(
+                        function (
+                            Devotion $record
+                        ): string {
+                            if (
+                                blank(
+                                    $record->published_at
+                                )
+                            ) {
+                                return 'Haijapangiwa';
+                            }
+
+                            $today =
+                                now(
+                                    'Africa/Dar_es_Salaam'
+                                )->toDateString();
+
+                            $publishDate =
+                                \Carbon\Carbon::parse(
+                                    $record->published_at
+                                )
+                                    ->timezone(
+                                        'Africa/Dar_es_Salaam'
+                                    )
+                                    ->toDateString();
+
+                            if (
+                                $publishDate
+                                === $today
+                            ) {
+                                return 'Leo';
+                            }
+
+                            if (
+                                $publishDate
+                                < $today
+                            ) {
+                                return 'Imechapishwa';
+                            }
+
+                            return 'Ijayo';
                         }
+                    )
+                    ->color(
+                        function (
+                            string $state
+                        ): string {
+                            return match ($state) {
+                                'Leo' =>
+                                    'warning',
 
-                        $today = now('Africa/Dar_es_Salaam')->toDateString();
+                                'Imechapishwa' =>
+                                    'success',
 
-                        $publishDate = \Carbon\Carbon::parse(
-                            $record->published_at
-                        )
-                            ->timezone('Africa/Dar_es_Salaam')
-                            ->toDateString();
+                                'Ijayo' =>
+                                    'info',
 
-                        if ($publishDate === $today) {
-                            return 'Leo';
+                                default =>
+                                    'gray',
+                            };
                         }
+                    )
+                    ->icon(
+                        function (
+                            string $state
+                        ): string {
+                            return match ($state) {
+                                'Leo' =>
+                                    'heroicon-o-sun',
 
-                        if ($publishDate < $today) {
-                            return 'Imechapishwa';
+                                'Imechapishwa' =>
+                                    'heroicon-o-check-circle',
+
+                                'Ijayo' =>
+                                    'heroicon-o-clock',
+
+                                default =>
+                                    'heroicon-o-minus-circle',
+                            };
                         }
-
-                        return 'Ijayo';
-                    })
-                    ->color(function (string $state): string {
-                        return match ($state) {
-                            'Leo' => 'warning',
-                            'Imechapishwa' => 'success',
-                            'Ijayo' => 'info',
-                            default => 'gray',
-                        };
-                    })
-                    ->icon(function (string $state): string {
-                        return match ($state) {
-                            'Leo' => 'heroicon-o-sun',
-                            'Imechapishwa' => 'heroicon-o-check-circle',
-                            'Ijayo' => 'heroicon-o-clock',
-                            default => 'heroicon-o-minus-circle',
-                        };
-                    }),
+                    ),
 
                 TextColumn::make('slug')
                     ->label('Kiungo (Slug)')
@@ -351,30 +421,52 @@ class DevotionResource extends Resource
                 |--------------------------------------------------------------------------
                 */
 
-                Tables\Actions\Action::make('viewPublic')
-                    ->label('Fungua Tafakari')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
+                Tables\Actions\Action::make(
+                    'viewPublic'
+                )
+                    ->label(
+                        'Fungua Tafakari'
+                    )
+                    ->icon(
+                        'heroicon-o-arrow-top-right-on-square'
+                    )
                     ->color('primary')
                     ->url(
-                        fn (Devotion $record): string =>
+                        fn (
+                            Devotion $record
+                        ): string =>
                             route(
                                 'devotions.show',
                                 $record->slug
                             )
                     )
-                    ->visible(function (Devotion $record): bool {
-                        if (blank($record->published_at)) {
-                            return false;
-                        }
+                    ->visible(
+                        function (
+                            Devotion $record
+                        ): bool {
+                            if (
+                                blank(
+                                    $record
+                                        ->published_at
+                                )
+                            ) {
+                                return false;
+                            }
 
-                        return \Carbon\Carbon::parse(
-                            $record->published_at
-                        )
-                            ->timezone('Africa/Dar_es_Salaam')
-                            ->lte(
-                                now('Africa/Dar_es_Salaam')
-                            );
-                    })
+                            return \Carbon\Carbon::parse(
+                                $record
+                                    ->published_at
+                            )
+                                ->timezone(
+                                    'Africa/Dar_es_Salaam'
+                                )
+                                ->lte(
+                                    now(
+                                        'Africa/Dar_es_Salaam'
+                                    )
+                                );
+                        }
+                    )
                     ->openUrlInNewTab(),
 
                 /*
@@ -383,12 +475,20 @@ class DevotionResource extends Resource
                 |--------------------------------------------------------------------------
                 */
 
-                Tables\Actions\Action::make('previewEmail')
-                    ->label('Hakiki Barua Pepe')
-                    ->icon('heroicon-o-envelope')
+                Tables\Actions\Action::make(
+                    'previewEmail'
+                )
+                    ->label(
+                        'Hakiki Barua Pepe'
+                    )
+                    ->icon(
+                        'heroicon-o-envelope'
+                    )
                     ->color('gray')
                     ->url(
-                        fn (Devotion $record): string =>
+                        fn (
+                            Devotion $record
+                        ): string =>
                             route(
                                 'devotions.email.preview',
                                 $record
@@ -413,12 +513,18 @@ class DevotionResource extends Resource
 
                 Tables\Actions\DeleteAction::make()
                     ->label('Futa')
-                    ->modalHeading('Futa Tafakari')
+                    ->modalHeading(
+                        'Futa Tafakari'
+                    )
                     ->modalDescription(
                         'Una uhakika unataka kufuta tafakari hii? Kitendo hiki hakiwezi kutenduliwa.'
                     )
-                    ->modalSubmitActionLabel('Ndiyo, Futa')
-                    ->modalCancelActionLabel('Ghairi')
+                    ->modalSubmitActionLabel(
+                        'Ndiyo, Futa'
+                    )
+                    ->modalCancelActionLabel(
+                        'Ghairi'
+                    )
                     ->requiresConfirmation(),
 
             ])
@@ -428,13 +534,21 @@ class DevotionResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
 
                     Tables\Actions\DeleteBulkAction::make()
-                        ->label('Futa Zilizochaguliwa')
-                        ->modalHeading('Futa Tafakari Zilizochaguliwa')
+                        ->label(
+                            'Futa Zilizochaguliwa'
+                        )
+                        ->modalHeading(
+                            'Futa Tafakari Zilizochaguliwa'
+                        )
                         ->modalDescription(
                             'Una uhakika unataka kufuta tafakari zote ulizochagua? Kitendo hiki hakiwezi kutenduliwa.'
                         )
-                        ->modalSubmitActionLabel('Ndiyo, Futa')
-                        ->modalCancelActionLabel('Ghairi'),
+                        ->modalSubmitActionLabel(
+                            'Ndiyo, Futa'
+                        )
+                        ->modalCancelActionLabel(
+                            'Ghairi'
+                        ),
 
                 ]),
 
@@ -461,9 +575,20 @@ class DevotionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDevotions::route('/'),
-            'create' => Pages\CreateDevotion::route('/create'),
-            'edit' => Pages\EditDevotion::route('/{record}/edit'),
+            'index' =>
+                Pages\ListDevotions::route(
+                    '/'
+                ),
+
+            'create' =>
+                Pages\CreateDevotion::route(
+                    '/create'
+                ),
+
+            'edit' =>
+                Pages\EditDevotion::route(
+                    '/{record}/edit'
+                ),
         ];
     }
 }
