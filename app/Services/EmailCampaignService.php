@@ -7,6 +7,7 @@ use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailSubscriber;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -39,12 +40,6 @@ class EmailCampaignService
                 ->lockForUpdate()
                 ->findOrFail($campaign->getKey());
 
-            /*
-            |--------------------------------------------------------------------------
-            | Only drafts can be sent immediately
-            |--------------------------------------------------------------------------
-            */
-
             if (! $campaign->canSend()) {
                 throw ValidationException::withMessages([
                     'campaign' =>
@@ -56,7 +51,7 @@ class EmailCampaignService
 
             /*
             |--------------------------------------------------------------------------
-            | Remove stale draft snapshots
+            | Remove stale snapshots
             |--------------------------------------------------------------------------
             */
 
@@ -64,16 +59,18 @@ class EmailCampaignService
 
             /*
             |--------------------------------------------------------------------------
-            | Snapshot current active subscribers
+            | Snapshot campaign audience
             |--------------------------------------------------------------------------
             */
 
-            $totalRecipients = $this->snapshotRecipients($campaign);
+            $totalRecipients = $this->snapshotRecipients(
+                $campaign
+            );
 
             if ($totalRecipients === 0) {
                 throw ValidationException::withMessages([
                     'recipients' =>
-                        'Hakuna wasajili hai wa kupokea kampeni hii.',
+                        $this->emptyAudienceMessage($campaign),
                 ]);
             }
 
@@ -84,25 +81,31 @@ class EmailCampaignService
             */
 
             $campaign->update([
-                'status' => EmailCampaign::STATUS_QUEUED,
+                'status' =>
+                    EmailCampaign::STATUS_QUEUED,
 
-                'total_recipients' => $totalRecipients,
-                'sent_count' => 0,
-                'failed_count' => 0,
+                'total_recipients' =>
+                    $totalRecipients,
 
-                'scheduled_at' => null,
-                'queued_at' => now(),
-                'sent_at' => null,
+                'sent_count' =>
+                    0,
+
+                'failed_count' =>
+                    0,
+
+                'scheduled_at' =>
+                    null,
+
+                'queued_at' =>
+                    now(),
+
+                'sent_at' =>
+                    null,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Dispatch after transaction commits
-            |--------------------------------------------------------------------------
-            */
-
-            SendEmailCampaign::dispatch($campaign->id)
-                ->afterCommit();
+            SendEmailCampaign::dispatch(
+                $campaign->id
+            )->afterCommit();
 
             return $campaign->fresh();
         });
@@ -118,8 +121,7 @@ class EmailCampaignService
      * Schedule a campaign for a future date and time.
      *
      * Recipient snapshots are created at scheduling time.
-     * This means the campaign keeps the exact audience that existed
-     * when the administrator scheduled it.
+     * This preserves the exact audience that existed when scheduled.
      */
     public function scheduleCampaign(
         EmailCampaign $campaign,
@@ -132,13 +134,9 @@ class EmailCampaignService
             ): EmailCampaign {
                 $campaign = EmailCampaign::query()
                     ->lockForUpdate()
-                    ->findOrFail($campaign->getKey());
-
-                /*
-                |--------------------------------------------------------------------------
-                | Only draft campaigns may be scheduled
-                |--------------------------------------------------------------------------
-                */
+                    ->findOrFail(
+                        $campaign->getKey()
+                    );
 
                 if (! $campaign->canSchedule()) {
                     throw ValidationException::withMessages([
@@ -147,23 +145,14 @@ class EmailCampaignService
                     ]);
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate campaign itself
-                |--------------------------------------------------------------------------
-                */
-
-                $this->validateCampaign($campaign);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Validate scheduled date
-                |--------------------------------------------------------------------------
-                */
-
-                $scheduledDate = $this->parseScheduledDate(
-                    $scheduledAt
+                $this->validateCampaign(
+                    $campaign
                 );
+
+                $scheduledDate =
+                    $this->parseScheduledDate(
+                        $scheduledAt
+                    );
 
                 if ($scheduledDate->lte(now())) {
                     throw ValidationException::withMessages([
@@ -174,26 +163,30 @@ class EmailCampaignService
 
                 /*
                 |--------------------------------------------------------------------------
-                | Remove previous draft recipient snapshots
+                | Remove previous snapshots
                 |--------------------------------------------------------------------------
                 */
 
-                $campaign->recipients()->delete();
+                $campaign->recipients()
+                    ->delete();
 
                 /*
                 |--------------------------------------------------------------------------
-                | Snapshot recipients now
+                | Snapshot campaign audience
                 |--------------------------------------------------------------------------
                 */
 
-                $totalRecipients = $this->snapshotRecipients(
-                    $campaign
-                );
+                $totalRecipients =
+                    $this->snapshotRecipients(
+                        $campaign
+                    );
 
                 if ($totalRecipients === 0) {
                     throw ValidationException::withMessages([
                         'recipients' =>
-                            'Hakuna wasajili hai wa kupokea kampeni hii.',
+                            $this->emptyAudienceMessage(
+                                $campaign
+                            ),
                     ]);
                 }
 
@@ -213,11 +206,17 @@ class EmailCampaignService
                     'total_recipients' =>
                         $totalRecipients,
 
-                    'sent_count' => 0,
-                    'failed_count' => 0,
+                    'sent_count' =>
+                        0,
 
-                    'queued_at' => null,
-                    'sent_at' => null,
+                    'failed_count' =>
+                        0,
+
+                    'queued_at' =>
+                        null,
+
+                    'sent_at' =>
+                        null,
                 ]);
 
                 return $campaign->fresh();
@@ -231,53 +230,53 @@ class EmailCampaignService
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Cancel a scheduled campaign and return it to draft.
-     *
-     * Recipient snapshots are removed because, after cancellation,
-     * the administrator may edit and schedule the campaign again.
-     */
     public function cancelScheduledCampaign(
         EmailCampaign $campaign
     ): EmailCampaign {
         return DB::transaction(
-            function () use ($campaign): EmailCampaign {
+            function () use (
+                $campaign
+            ): EmailCampaign {
                 $campaign = EmailCampaign::query()
                     ->lockForUpdate()
-                    ->findOrFail($campaign->getKey());
+                    ->findOrFail(
+                        $campaign->getKey()
+                    );
 
-                if (! $campaign->canCancelSchedule()) {
+                if (
+                    ! $campaign
+                        ->canCancelSchedule()
+                ) {
                     throw ValidationException::withMessages([
                         'campaign' =>
                             'Kampeni hii haina ratiba inayoweza kughairiwa.',
                     ]);
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Remove scheduled recipient snapshot
-                |--------------------------------------------------------------------------
-                */
-
-                $campaign->recipients()->delete();
-
-                /*
-                |--------------------------------------------------------------------------
-                | Return to draft
-                |--------------------------------------------------------------------------
-                */
+                $campaign->recipients()
+                    ->delete();
 
                 $campaign->update([
                     'status' =>
                         EmailCampaign::STATUS_DRAFT,
 
-                    'scheduled_at' => null,
-                    'queued_at' => null,
-                    'sent_at' => null,
+                    'scheduled_at' =>
+                        null,
 
-                    'total_recipients' => 0,
-                    'sent_count' => 0,
-                    'failed_count' => 0,
+                    'queued_at' =>
+                        null,
+
+                    'sent_at' =>
+                        null,
+
+                    'total_recipients' =>
+                        0,
+
+                    'sent_count' =>
+                        0,
+
+                    'failed_count' =>
+                        0,
                 ]);
 
                 return $campaign->fresh();
@@ -291,12 +290,6 @@ class EmailCampaignService
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Find scheduled campaigns whose time has arrived
-     * and place them into the existing email queue.
-     *
-     * Returns the number of campaigns released.
-     */
     public function releaseDueCampaigns(
         int $limit = 100
     ): int {
@@ -305,24 +298,34 @@ class EmailCampaignService
                 'status',
                 EmailCampaign::STATUS_SCHEDULED
             )
-            ->whereNotNull('scheduled_at')
+            ->whereNotNull(
+                'scheduled_at'
+            )
             ->where(
                 'scheduled_at',
                 '<=',
                 now()
             )
-            ->orderBy('scheduled_at')
-            ->limit($limit)
-            ->pluck('id');
+            ->orderBy(
+                'scheduled_at'
+            )
+            ->limit(
+                $limit
+            )
+            ->pluck(
+                'id'
+            );
 
         $released = 0;
 
-        foreach ($campaignIds as $campaignId) {
-            $wasReleased = $this->releaseScheduledCampaign(
-                (int) $campaignId
-            );
-
-            if ($wasReleased) {
+        foreach (
+            $campaignIds as $campaignId
+        ) {
+            if (
+                $this->releaseScheduledCampaign(
+                    (int) $campaignId
+                )
+            ) {
                 $released++;
             }
         }
@@ -330,32 +333,28 @@ class EmailCampaignService
         return $released;
     }
 
-    /**
-     * Move one due scheduled campaign to queued.
-     *
-     * The database lock protects against two scheduler processes
-     * releasing the same campaign at the same time.
-     */
     protected function releaseScheduledCampaign(
         int $campaignId
     ): bool {
         return DB::transaction(
-            function () use ($campaignId): bool {
-                $campaign = EmailCampaign::query()
-                    ->lockForUpdate()
-                    ->find($campaignId);
+            function () use (
+                $campaignId
+            ): bool {
+                $campaign =
+                    EmailCampaign::query()
+                        ->lockForUpdate()
+                        ->find(
+                            $campaignId
+                        );
 
                 if (! $campaign) {
                     return false;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Confirm it is still scheduled and actually due
-                |--------------------------------------------------------------------------
-                */
-
-                if (! $campaign->isDueForSending()) {
+                if (
+                    ! $campaign
+                        ->isDueForSending()
+                ) {
                     return false;
                 }
 
@@ -365,30 +364,23 @@ class EmailCampaignService
                 |--------------------------------------------------------------------------
                 */
 
-                $pendingCount = $campaign
-                    ->recipients()
-                    ->where(
-                        'status',
-                        EmailCampaignRecipient::STATUS_PENDING
-                    )
-                    ->count();
+                $pendingCount =
+                    $campaign
+                        ->recipients()
+                        ->where(
+                            'status',
+                            EmailCampaignRecipient::STATUS_PENDING
+                        )
+                        ->count();
 
                 if ($pendingCount === 0) {
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Safety recovery
-                    |--------------------------------------------------------------------------
-                    |
-                    | A scheduled campaign should normally already contain its
-                    | snapshot. If not, rebuild it using current subscribers.
-                    |
-                    */
+                    $campaign->recipients()
+                        ->delete();
 
-                    $campaign->recipients()->delete();
-
-                    $pendingCount = $this->snapshotRecipients(
-                        $campaign
-                    );
+                    $pendingCount =
+                        $this->snapshotRecipients(
+                            $campaign
+                        );
                 }
 
                 if ($pendingCount === 0) {
@@ -396,29 +388,23 @@ class EmailCampaignService
                         'status' =>
                             EmailCampaign::STATUS_FAILED,
 
-                        'failed_count' => 0,
-                        'queued_at' => null,
-                        'sent_at' => null,
+                        'failed_count' =>
+                            0,
+
+                        'queued_at' =>
+                            null,
+
+                        'sent_at' =>
+                            null,
                     ]);
 
                     return false;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Recalculate total snapshot recipients
-                |--------------------------------------------------------------------------
-                */
-
-                $totalRecipients = $campaign
-                    ->recipients()
-                    ->count();
-
-                /*
-                |--------------------------------------------------------------------------
-                | Move scheduled -> queued
-                |--------------------------------------------------------------------------
-                */
+                $totalRecipients =
+                    $campaign
+                        ->recipients()
+                        ->count();
 
                 $campaign->update([
                     'status' =>
@@ -427,18 +413,18 @@ class EmailCampaignService
                     'total_recipients' =>
                         $totalRecipients,
 
-                    'sent_count' => 0,
-                    'failed_count' => 0,
+                    'sent_count' =>
+                        0,
 
-                    'queued_at' => now(),
-                    'sent_at' => null,
+                    'failed_count' =>
+                        0,
+
+                    'queued_at' =>
+                        now(),
+
+                    'sent_at' =>
+                        null,
                 ]);
-
-                /*
-                |--------------------------------------------------------------------------
-                | Existing job handles actual delivery
-                |--------------------------------------------------------------------------
-                */
 
                 SendEmailCampaign::dispatch(
                     $campaign->id
@@ -451,30 +437,123 @@ class EmailCampaignService
 
     /*
     |--------------------------------------------------------------------------
-    | RECIPIENT SNAPSHOT
+    | RECIPIENT QUERY
     |--------------------------------------------------------------------------
     */
 
     /**
-     * Copy current active subscribers into the campaign recipient table.
+     * Build the recipient query based on campaign audience.
      *
-     * The exact name and email are preserved for historical reporting.
+     * subscribed:
+     * All active subscribers.
+     *
+     * selected:
+     * Only explicitly selected active subscribers.
+     *
+     * group:
+     * Only active subscribers belonging to the selected group.
      */
+    protected function recipientQuery(
+        EmailCampaign $campaign
+    ): Builder {
+        $query =
+            EmailSubscriber::query()
+                ->subscribed();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selected Subscribers
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $campaign
+                ->sendsToSelectedSubscribers()
+        ) {
+            $query->whereIn(
+                'email_subscribers.id',
+                function (
+                    $subQuery
+                ) use (
+                    $campaign
+                ): void {
+                    $subQuery
+                        ->select(
+                            'email_subscriber_id'
+                        )
+                        ->from(
+                            'email_campaign_targets'
+                        )
+                        ->where(
+                            'email_campaign_id',
+                            $campaign->id
+                        );
+                }
+            );
+
+            return $query;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Subscriber Group
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $campaign
+                ->sendsToSubscriberGroup()
+        ) {
+            $query->whereIn(
+                'email_subscribers.id',
+                function (
+                    $subQuery
+                ) use (
+                    $campaign
+                ): void {
+                    $subQuery
+                        ->select(
+                            'email_subscriber_id'
+                        )
+                        ->from(
+                            'email_subscriber_group_members'
+                        )
+                        ->where(
+                            'email_subscriber_group_id',
+                            $campaign
+                                ->email_subscriber_group_id
+                        );
+                }
+            );
+        }
+
+        return $query;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | RECIPIENT SNAPSHOT
+    |--------------------------------------------------------------------------
+    */
+
     protected function snapshotRecipients(
         EmailCampaign $campaign
     ): int {
         $total = 0;
 
-        EmailSubscriber::query()
-            ->subscribed()
+        $this->recipientQuery(
+            $campaign
+        )
             ->select([
-                'id',
-                'name',
-                'first_name',
-                'last_name',
-                'email',
+                'email_subscribers.id',
+                'email_subscribers.name',
+                'email_subscribers.first_name',
+                'email_subscribers.last_name',
+                'email_subscribers.email',
             ])
-            ->orderBy('id')
+            ->orderBy(
+                'email_subscribers.id'
+            )
             ->chunkById(
                 500,
                 function (
@@ -487,18 +566,15 @@ class EmailCampaignService
 
                     $rows = [];
 
-                    foreach ($subscribers as $subscriber) {
+                    foreach (
+                        $subscribers as $subscriber
+                    ) {
                         $email = strtolower(
                             trim(
-                                (string) $subscriber->email
+                                (string)
+                                $subscriber->email
                             )
                         );
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | Skip invalid email addresses
-                        |--------------------------------------------------------------------------
-                        */
 
                         if (
                             blank($email)
@@ -510,11 +586,18 @@ class EmailCampaignService
                             continue;
                         }
 
-                        $name = $subscriber->name
+                        $name =
+                            $subscriber->name
                             ?: trim(
-                                ($subscriber->first_name ?? '')
+                                (
+                                    $subscriber->first_name
+                                    ?? ''
+                                )
                                 . ' '
-                                . ($subscriber->last_name ?? '')
+                                . (
+                                    $subscriber->last_name
+                                    ?? ''
+                                )
                             );
 
                         $rows[] = [
@@ -556,23 +639,47 @@ class EmailCampaignService
                         return;
                     }
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Unique database constraint prevents duplicates
-                    |--------------------------------------------------------------------------
-                    */
+                    $inserted =
+                        DB::table(
+                            'email_campaign_recipients'
+                        )->insertOrIgnore(
+                            $rows
+                        );
 
-                    $inserted = DB::table(
-                        'email_campaign_recipients'
-                    )->insertOrIgnore(
-                        $rows
-                    );
-
-                    $total += $inserted;
-                }
+                    $total +=
+                        $inserted;
+                },
+                'email_subscribers.id',
+                'id'
             );
 
         return $total;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EMPTY AUDIENCE MESSAGE
+    |--------------------------------------------------------------------------
+    */
+
+    protected function emptyAudienceMessage(
+        EmailCampaign $campaign
+    ): string {
+        if (
+            $campaign
+                ->sendsToSelectedSubscribers()
+        ) {
+            return 'Hakuna wasajili waliochaguliwa wanaoweza kupokea kampeni hii.';
+        }
+
+        if (
+            $campaign
+                ->sendsToSubscriberGroup()
+        ) {
+            return 'Kundi lililochaguliwa halina wasajili hai wanaoweza kupokea kampeni hii.';
+        }
+
+        return 'Hakuna wasajili hai wa kupokea kampeni hii.';
     }
 
     /*
@@ -625,19 +732,106 @@ class EmailCampaignService
 
         /*
         |--------------------------------------------------------------------------
+        | Recipient Scope
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            ! in_array(
+                $campaign->recipient_scope,
+                [
+                    EmailCampaign::RECIPIENT_SCOPE_SUBSCRIBED,
+                    EmailCampaign::RECIPIENT_SCOPE_SELECTED,
+                    EmailCampaign::RECIPIENT_SCOPE_GROUP,
+                ],
+                true
+            )
+        ) {
+            throw ValidationException::withMessages([
+                'recipient_scope' =>
+                    'Aina ya wapokeaji haijatambulika.',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selected Subscribers
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $campaign
+                ->sendsToSelectedSubscribers()
+            && ! $campaign
+                ->targetSubscribers()
+                ->where(
+                    'email_subscribers.status',
+                    'subscribed'
+                )
+                ->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'recipients' =>
+                    'Chagua angalau msajili mmoja hai wa kupokea kampeni hii.',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Subscriber Group
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $campaign
+                ->sendsToSubscriberGroup()
+            && blank(
+                $campaign
+                    ->email_subscriber_group_id
+            )
+        ) {
+            throw ValidationException::withMessages([
+                'email_subscriber_group_id' =>
+                    'Chagua kundi la wasajili.',
+            ]);
+        }
+
+        if (
+            $campaign
+                ->sendsToSubscriberGroup()
+            && ! $campaign
+                ->subscriberGroup()
+                ->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'email_subscriber_group_id' =>
+                    'Kundi la wasajili lililochaguliwa halipatikani.',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Devotion Campaign
         |--------------------------------------------------------------------------
         */
 
         if ($campaign->isDevotion()) {
-            if (blank($campaign->devotion_id)) {
+            if (
+                blank(
+                    $campaign->devotion_id
+                )
+            ) {
                 throw ValidationException::withMessages([
                     'devotion_id' =>
                         'Chagua tafakari ya kutuma.',
                 ]);
             }
 
-            if (! $campaign->devotion()->exists()) {
+            if (
+                ! $campaign
+                    ->devotion()
+                    ->exists()
+            ) {
                 throw ValidationException::withMessages([
                     'devotion_id' =>
                         'Tafakari iliyochaguliwa haipatikani.',
@@ -654,7 +848,11 @@ class EmailCampaignService
         */
 
         if ($campaign->isCustom()) {
-            if (blank($campaign->content)) {
+            if (
+                blank(
+                    $campaign->content
+                )
+            ) {
                 throw ValidationException::withMessages([
                     'content' =>
                         'Andika ujumbe wa kampeni.',

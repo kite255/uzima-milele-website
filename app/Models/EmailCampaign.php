@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EmailCampaign extends Model
@@ -20,6 +21,18 @@ class EmailCampaign extends Model
     public const TYPE_DEVOTION = 'devotion';
 
     public const TYPE_CUSTOM = 'custom';
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recipient Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public const RECIPIENT_SCOPE_SUBSCRIBED = 'subscribed';
+
+    public const RECIPIENT_SCOPE_SELECTED = 'selected';
+
+    public const RECIPIENT_SCOPE_GROUP = 'group';
 
     /*
     |--------------------------------------------------------------------------
@@ -52,6 +65,7 @@ class EmailCampaign extends Model
         'subject',
         'content',
         'recipient_scope',
+        'email_subscriber_group_id',
         'status',
 
         'total_recipients',
@@ -121,6 +135,24 @@ class EmailCampaign extends Model
             );
     }
 
+    public function targetSubscribers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            EmailSubscriber::class,
+            'email_campaign_targets',
+            'email_campaign_id',
+            'email_subscriber_id'
+        )->withTimestamps();
+    }
+
+    public function subscriberGroup(): BelongsTo
+    {
+        return $this->belongsTo(
+            EmailSubscriberGroup::class,
+            'email_subscriber_group_id'
+        );
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Campaign Type Helpers
@@ -135,6 +167,30 @@ class EmailCampaign extends Model
     public function isCustom(): bool
     {
         return $this->type === self::TYPE_CUSTOM;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recipient Scope Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function sendsToAllSubscribers(): bool
+    {
+        return $this->recipient_scope
+            === self::RECIPIENT_SCOPE_SUBSCRIBED;
+    }
+
+    public function sendsToSelectedSubscribers(): bool
+    {
+        return $this->recipient_scope
+            === self::RECIPIENT_SCOPE_SELECTED;
+    }
+
+    public function sendsToSubscriberGroup(): bool
+    {
+        return $this->recipient_scope
+            === self::RECIPIENT_SCOPE_GROUP;
     }
 
     /*
