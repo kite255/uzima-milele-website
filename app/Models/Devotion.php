@@ -14,6 +14,7 @@ class Devotion extends Model
         'content',
         'image',
         'published_at',
+        'email_send_time',
     ];
 
     protected $casts = [
@@ -31,6 +32,23 @@ class Devotion extends Model
         return $this->hasMany(
             EmailCampaign::class
         );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Scheduling
+    |--------------------------------------------------------------------------
+    */
+
+    public function effectiveEmailSendTime(): string
+    {
+        if (filled($this->email_send_time)) {
+            return $this->email_send_time;
+        }
+
+        return EmailSetting::current()
+            ->default_devotion_send_time;
     }
 
     /*

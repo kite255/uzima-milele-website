@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DevotionResource\Pages;
 use App\Models\Devotion;
+use App\Models\EmailSetting;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables;
@@ -93,6 +95,19 @@ class DevotionResource extends Resource
                 ->label('Publish Date')
                 ->required(),
 
+            TimePicker::make('email_send_time')
+                ->label('Email Send Time')
+                ->seconds(false)
+                ->native(false)
+                ->default(
+                    fn (): string =>
+                        EmailSetting::current()
+                            ->default_devotion_send_time
+                )
+                ->helperText(
+                    'Defaults to the devotion email time configured in Email Settings. You can override it for this devotion.'
+                ),
+
             FileUpload::make('image')
                 ->label('Featured Image')
                 ->image()
@@ -161,6 +176,11 @@ class DevotionResource extends Resource
                     ->label('Publish Date')
                     ->date('d M, Y')
                     ->sortable(),
+
+                TextColumn::make('email_send_time')
+                    ->label('Email Send Time')
+                    ->placeholder('—')
+                    ->toggleable(),
 
                 TextColumn::make('created_at')
                     ->label('Created')
