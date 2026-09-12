@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EmailCampaign;
+use App\Models\EmailSetting;
 use App\Models\EmailSubscriber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,18 +38,38 @@ class EmailSubscriberController extends Controller
                     'string',
                     'max:30',
                 ],
+
+                'consent' => [
+                    'accepted',
+                ],
             ],
             [
-                'name.required' => 'Tafadhali weka jina lako.',
-                'name.string' => 'Tafadhali weka jina sahihi.',
-                'name.max' => 'Jina ni refu sana.',
+                'name.required' =>
+                    'Tafadhali weka jina lako.',
 
-                'email.required' => 'Tafadhali weka barua pepe.',
-                'email.email' => 'Tafadhali weka barua pepe sahihi.',
-                'email.max' => 'Barua pepe ni ndefu sana.',
+                'name.string' =>
+                    'Tafadhali weka jina sahihi.',
 
-                'phone.string' => 'Tafadhali weka namba ya simu sahihi.',
-                'phone.max' => 'Namba ya simu ni ndefu sana.',
+                'name.max' =>
+                    'Jina ni refu sana.',
+
+                'email.required' =>
+                    'Tafadhali weka barua pepe.',
+
+                'email.email' =>
+                    'Tafadhali weka barua pepe sahihi.',
+
+                'email.max' =>
+                    'Barua pepe ni ndefu sana.',
+
+                'phone.string' =>
+                    'Tafadhali weka namba ya simu sahihi.',
+
+                'phone.max' =>
+                    'Namba ya simu ni ndefu sana.',
+
+                'consent.accepted' =>
+                    'Tafadhali kubali kupokea tafakari na taarifa kwa barua pepe.',
             ]
         );
 
@@ -56,59 +78,96 @@ class EmailSubscriberController extends Controller
         | Clean Submitted Data
         |--------------------------------------------------------------------------
         */
+
         $fullName = $this->cleanName(
             $validated['name']
         );
 
         $email = Str::lower(
-            trim($validated['email'])
+            trim(
+                $validated['email']
+            )
         );
 
-        $phone = filled($validated['phone'] ?? null)
-            ? trim($validated['phone'])
+        $phone = filled(
+            $validated['phone']
+            ?? null
+        )
+            ? trim(
+                $validated['phone']
+            )
             : null;
 
-        [$firstName, $lastName] = $this->splitName(
-            $fullName
-        );
+        [$firstName, $lastName] =
+            $this->splitName(
+                $fullName
+            );
 
         /*
         |--------------------------------------------------------------------------
         | Find Existing Subscriber
         |--------------------------------------------------------------------------
         */
-        $subscriber = EmailSubscriber::query()
-            ->whereRaw(
-                'LOWER(email) = ?',
-                [$email]
-            )
-            ->first();
+
+        $subscriber =
+            EmailSubscriber::query()
+                ->whereRaw(
+                    'LOWER(email) = ?',
+                    [
+                        $email,
+                    ]
+                )
+                ->first();
 
         /*
         |--------------------------------------------------------------------------
         | Existing Subscriber
         |--------------------------------------------------------------------------
         */
+
         if ($subscriber) {
             $subscriber->update([
-                'name' => $fullName,
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'email' => $email,
+                'name' =>
+                    $fullName,
+
+                'first_name' =>
+                    $firstName,
+
+                'last_name' =>
+                    $lastName,
+
+                'email' =>
+                    $email,
 
                 /*
-                 * Do not erase an existing phone number when the footer form
-                 * does not submit one.
+                 * Do not erase an existing phone number when the
+                 * subscription form does not submit one.
                  */
-                'phone' => $phone ?? $subscriber->phone,
+                'phone' =>
+                    $phone
+                    ?? $subscriber->phone,
 
-                'status' => 'subscribed',
-                'subscribed_at' => now(),
-                'unsubscribed_at' => null,
+                'status' =>
+                    'subscribed',
 
-                'source' => $subscriber->source ?: 'website',
-                'language' => $subscriber->language ?: 'sw',
+                'subscribed_at' =>
+                    now(),
+
+                'unsubscribed_at' =>
+                    null,
+
+                'source' =>
+                    $subscriber->source
+                    ?: 'website',
+
+                'language' =>
+                    $subscriber->language
+                    ?: 'sw',
             ]);
+
+            $this->attachToDefaultDevotionGroup(
+                $subscriber
+            );
 
             return back()->with(
                 'subscription_success',
@@ -121,20 +180,43 @@ class EmailSubscriberController extends Controller
         | New Subscriber
         |--------------------------------------------------------------------------
         */
-        EmailSubscriber::create([
-            'name' => $fullName,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'email' => $email,
-            'phone' => $phone,
 
-            'status' => 'subscribed',
-            'subscribed_at' => now(),
-            'unsubscribed_at' => null,
+        $subscriber =
+            EmailSubscriber::create([
+                'name' =>
+                    $fullName,
 
-            'source' => 'website',
-            'language' => 'sw',
-        ]);
+                'first_name' =>
+                    $firstName,
+
+                'last_name' =>
+                    $lastName,
+
+                'email' =>
+                    $email,
+
+                'phone' =>
+                    $phone,
+
+                'status' =>
+                    'subscribed',
+
+                'subscribed_at' =>
+                    now(),
+
+                'unsubscribed_at' =>
+                    null,
+
+                'source' =>
+                    'website',
+
+                'language' =>
+                    'sw',
+            ]);
+
+        $this->attachToDefaultDevotionGroup(
+            $subscriber
+        );
 
         return back()->with(
             'subscription_success',
@@ -145,28 +227,37 @@ class EmailSubscriberController extends Controller
     /**
      * Unsubscribe a subscriber using their secure token.
      */
-    public function unsubscribe(string $token): View
-    {
-        $subscriber = $this->findSubscriberByToken(
-            $token
-        );
+    public function unsubscribe(
+        string $token
+    ): View {
+        $subscriber =
+            $this->findSubscriberByToken(
+                $token
+            );
 
         $alreadyUnsubscribed = (
-            $subscriber->status === 'unsubscribed'
+            $subscriber->status
+            === 'unsubscribed'
         );
 
         if (! $alreadyUnsubscribed) {
             $subscriber->update([
-                'status' => 'unsubscribed',
-                'unsubscribed_at' => now(),
+                'status' =>
+                    'unsubscribed',
+
+                'unsubscribed_at' =>
+                    now(),
             ]);
         }
 
         return view(
             'subscriptions.unsubscribed',
             [
-                'subscriber' => $subscriber,
-                'alreadyUnsubscribed' => $alreadyUnsubscribed,
+                'subscriber' =>
+                    $subscriber,
+
+                'alreadyUnsubscribed' =>
+                    $alreadyUnsubscribed,
             ]
         );
     }
@@ -174,15 +265,19 @@ class EmailSubscriberController extends Controller
     /**
      * Show subscriber email preferences.
      */
-    public function preferences(string $token): View
-    {
-        $subscriber = $this->findSubscriberByToken(
-            $token
-        );
+    public function preferences(
+        string $token
+    ): View {
+        $subscriber =
+            $this->findSubscriberByToken(
+                $token
+            );
 
         return view(
             'subscriptions.preferences',
-            compact('subscriber')
+            compact(
+                'subscriber'
+            )
         );
     }
 
@@ -193,119 +288,168 @@ class EmailSubscriberController extends Controller
         Request $request,
         string $token
     ): RedirectResponse {
-        $subscriber = $this->findSubscriberByToken(
-            $token
-        );
+        $subscriber =
+            $this->findSubscriberByToken(
+                $token
+            );
 
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:200',
+        $validator =
+            Validator::make(
+                $request->all(),
+                [
+                    'name' => [
+                        'required',
+                        'string',
+                        'max:200',
+                    ],
+
+                    'email' => [
+                        'required',
+                        'email',
+                        'max:255',
+
+                        Rule::unique(
+                            'email_subscribers',
+                            'email'
+                        )->ignore(
+                            $subscriber->id
+                        ),
+                    ],
+
+                    'phone' => [
+                        'nullable',
+                        'string',
+                        'max:30',
+                    ],
+
+                    'language' => [
+                        'required',
+
+                        Rule::in([
+                            'sw',
+                            'en',
+                        ]),
+                    ],
+
+                    'receive_emails' => [
+                        'nullable',
+                        'boolean',
+                    ],
                 ],
+                [
+                    'name.required' =>
+                        'Tafadhali weka jina lako.',
 
-                'email' => [
-                    'required',
-                    'email',
-                    'max:255',
-                    Rule::unique(
-                        'email_subscribers',
-                        'email'
-                    )->ignore($subscriber->id),
-                ],
+                    'name.string' =>
+                        'Tafadhali weka jina sahihi.',
 
-                'phone' => [
-                    'nullable',
-                    'string',
-                    'max:30',
-                ],
+                    'name.max' =>
+                        'Jina ni refu sana.',
 
-                'language' => [
-                    'required',
-                    Rule::in([
-                        'sw',
-                        'en',
-                    ]),
-                ],
+                    'email.required' =>
+                        'Tafadhali weka barua pepe.',
 
-                'receive_emails' => [
-                    'nullable',
-                    'boolean',
-                ],
-            ],
-            [
-                'name.required' => 'Tafadhali weka jina lako.',
-                'name.string' => 'Tafadhali weka jina sahihi.',
-                'name.max' => 'Jina ni refu sana.',
+                    'email.email' =>
+                        'Tafadhali weka barua pepe sahihi.',
 
-                'email.required' => 'Tafadhali weka barua pepe.',
-                'email.email' => 'Tafadhali weka barua pepe sahihi.',
-                'email.max' => 'Barua pepe ni ndefu sana.',
-                'email.unique' => 'Barua pepe hii tayari inatumika na msajili mwingine.',
+                    'email.max' =>
+                        'Barua pepe ni ndefu sana.',
 
-                'phone.string' => 'Tafadhali weka namba ya simu sahihi.',
-                'phone.max' => 'Namba ya simu ni ndefu sana.',
+                    'email.unique' =>
+                        'Barua pepe hii tayari inatumika na msajili mwingine.',
 
-                'language.required' => 'Tafadhali chagua lugha.',
-                'language.in' => 'Lugha uliyochagua haitambuliki.',
-            ]
-        );
+                    'phone.string' =>
+                        'Tafadhali weka namba ya simu sahihi.',
 
-        $validated = $validator->validate();
+                    'phone.max' =>
+                        'Namba ya simu ni ndefu sana.',
+
+                    'language.required' =>
+                        'Tafadhali chagua lugha.',
+
+                    'language.in' =>
+                        'Lugha uliyochagua haitambuliki.',
+                ]
+            );
+
+        $validated =
+            $validator->validate();
 
         /*
         |--------------------------------------------------------------------------
         | Clean Data
         |--------------------------------------------------------------------------
         */
-        $fullName = $this->cleanName(
-            $validated['name']
-        );
 
-        [$firstName, $lastName] = $this->splitName(
-            $fullName
-        );
+        $fullName =
+            $this->cleanName(
+                $validated['name']
+            );
 
-        $email = Str::lower(
-            trim($validated['email'])
-        );
+        [$firstName, $lastName] =
+            $this->splitName(
+                $fullName
+            );
 
-        $phone = filled($validated['phone'] ?? null)
-            ? trim($validated['phone'])
-            : null;
+        $email =
+            Str::lower(
+                trim(
+                    $validated['email']
+                )
+            );
 
-        $receiveEmails = $request->boolean(
-            'receive_emails'
-        );
+        $phone =
+            filled(
+                $validated['phone']
+                ?? null
+            )
+                ? trim(
+                    $validated['phone']
+                )
+                : null;
+
+        $receiveEmails =
+            $request->boolean(
+                'receive_emails'
+            );
 
         /*
         |--------------------------------------------------------------------------
         | Subscription Status
         |--------------------------------------------------------------------------
         */
+
         if ($receiveEmails) {
-            $status = 'subscribed';
+            $status =
+                'subscribed';
 
             $subscribedAt = (
-                $subscriber->status === 'subscribed' &&
-                $subscriber->subscribed_at
+                $subscriber->status
+                    === 'subscribed'
+                && $subscriber->subscribed_at
             )
-                ? $subscriber->subscribed_at
+                ? $subscriber
+                    ->subscribed_at
                 : now();
 
-            $unsubscribedAt = null;
+            $unsubscribedAt =
+                null;
         } else {
-            $status = 'unsubscribed';
+            $status =
+                'unsubscribed';
 
-            $subscribedAt = $subscriber->subscribed_at;
+            $subscribedAt =
+                $subscriber
+                    ->subscribed_at;
 
             $unsubscribedAt = (
-                $subscriber->status === 'unsubscribed' &&
-                $subscriber->unsubscribed_at
+                $subscriber->status
+                    === 'unsubscribed'
+                && $subscriber
+                    ->unsubscribed_at
             )
-                ? $subscriber->unsubscribed_at
+                ? $subscriber
+                    ->unsubscribed_at
                 : now();
         }
 
@@ -314,30 +458,105 @@ class EmailSubscriberController extends Controller
         | Update Subscriber
         |--------------------------------------------------------------------------
         */
+
         $subscriber->update([
-            'name' => $fullName,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
+            'name' =>
+                $fullName,
 
-            'email' => $email,
-            'phone' => $phone,
+            'first_name' =>
+                $firstName,
 
-            'language' => $validated['language'],
+            'last_name' =>
+                $lastName,
 
-            'status' => $status,
-            'subscribed_at' => $subscribedAt,
-            'unsubscribed_at' => $unsubscribedAt,
+            'email' =>
+                $email,
+
+            'phone' =>
+                $phone,
+
+            'language' =>
+                $validated[
+                    'language'
+                ],
+
+            'status' =>
+                $status,
+
+            'subscribed_at' =>
+                $subscribedAt,
+
+            'unsubscribed_at' =>
+                $unsubscribedAt,
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Keep Default Devotion Group In Sync When Re-Subscribed
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $status
+            === 'subscribed'
+        ) {
+            $this->attachToDefaultDevotionGroup(
+                $subscriber
+            );
+        }
 
         return redirect()
             ->route(
                 'email-subscribers.preferences',
-                $subscriber->unsubscribe_token
+                $subscriber
+                    ->unsubscribe_token
             )
             ->with(
                 'preferences_success',
                 'Mapendeleo yako yamehifadhiwa kwa mafanikio.'
             );
+    }
+
+    /**
+     * Add a subscriber to the configured default devotion group.
+     */
+    protected function attachToDefaultDevotionGroup(
+        EmailSubscriber $subscriber
+    ): void {
+        $settings =
+            EmailSetting::current();
+
+        if (
+            $settings
+                ->default_recipient_scope
+            !== EmailCampaign::RECIPIENT_SCOPE_GROUP
+        ) {
+            return;
+        }
+
+        if (
+            blank(
+                $settings
+                    ->email_subscriber_group_id
+            )
+        ) {
+            return;
+        }
+
+        if (
+            ! $settings
+                ->subscriberGroup()
+                ->exists()
+        ) {
+            return;
+        }
+
+        $subscriber
+            ->groups()
+            ->syncWithoutDetaching([
+                $settings
+                    ->email_subscriber_group_id,
+            ]);
     }
 
     /**
@@ -375,17 +594,25 @@ class EmailSubscriberController extends Controller
     protected function splitName(
         string $fullName
     ): array {
-        $nameParts = preg_split(
-            '/\s+/',
-            $fullName,
-            2
-        );
+        $nameParts =
+            preg_split(
+                '/\s+/',
+                $fullName,
+                2
+            );
 
-        $firstName = $nameParts[0] ?? $fullName;
+        $firstName =
+            $nameParts[0]
+            ?? $fullName;
 
-        $lastName = isset($nameParts[1])
-            ? trim($nameParts[1])
-            : null;
+        $lastName =
+            isset(
+                $nameParts[1]
+            )
+                ? trim(
+                    $nameParts[1]
+                )
+                : null;
 
         return [
             $firstName,

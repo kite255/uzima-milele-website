@@ -39,6 +39,17 @@ class EmailSubscriber extends Model
         static::creating(function (EmailSubscriber $subscriber) {
             /*
             |--------------------------------------------------------------------------
+            | Normalize Email
+            |--------------------------------------------------------------------------
+            */
+            if (filled($subscriber->email)) {
+                $subscriber->email = Str::lower(
+                    trim($subscriber->email)
+                );
+            }
+
+            /*
+            |--------------------------------------------------------------------------
             | Full Name
             |--------------------------------------------------------------------------
             */
@@ -102,6 +113,17 @@ class EmailSubscriber extends Model
         });
 
         static::updating(function (EmailSubscriber $subscriber) {
+            /*
+            |--------------------------------------------------------------------------
+            | Normalize Email
+            |--------------------------------------------------------------------------
+            */
+            if (filled($subscriber->email)) {
+                $subscriber->email = Str::lower(
+                    trim($subscriber->email)
+                );
+            }
+
             /*
             |--------------------------------------------------------------------------
             | Keep Full Name Synchronized
