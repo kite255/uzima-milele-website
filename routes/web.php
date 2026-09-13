@@ -65,11 +65,43 @@ Route::get(
 | Email Subscription
 |--------------------------------------------------------------------------
 */
+
+/*
+|--------------------------------------------------------------------------
+| Public Subscription Page
+|--------------------------------------------------------------------------
+*/
 Route::view(
     '/jiandikishe-tafakari',
     'subscriptions.create'
 )->name('subscriptions.create');
 
+/*
+|--------------------------------------------------------------------------
+| Direct Browser Visit To /jiandikishe
+|--------------------------------------------------------------------------
+|
+| /jiandikishe is primarily the POST endpoint used by the subscription
+| form. If somebody opens the URL directly in a browser, the browser sends
+| a GET request. Instead of returning a 405 Method Not Allowed error, send
+| them to the public subscription page.
+|
+*/
+Route::get(
+    '/jiandikishe',
+    function () {
+        return redirect(
+            route('subscriptions.create')
+            . '#subscription-section'
+        );
+    }
+)->name('email-subscribers.redirect');
+
+/*
+|--------------------------------------------------------------------------
+| Store Email Subscription
+|--------------------------------------------------------------------------
+*/
 Route::post(
     '/jiandikishe',
     [EmailSubscriberController::class, 'store']
