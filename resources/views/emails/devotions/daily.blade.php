@@ -968,34 +968,34 @@
                                 "
                             >
 
-                               <a
-    href="{{ $unsubscribeUrl }}"
-    style="
-        color:#0083CB;
-        text-decoration:underline;
-    "
->
-    Jiondoe kwenye orodha ya barua pepe / Unsubscribe
-</a>
+                                <a
+                                    href="{{ $unsubscribeUrl }}"
+                                    style="
+                                        color:#0083CB;
+                                        text-decoration:underline;
+                                    "
+                                >
+                                    Jiondoe kwenye orodha ya barua pepe / Unsubscribe
+                                </a>
 
-<span
-    style="
-        padding:0 8px;
-        color:#aeb8bc;
-    "
->
-    |
-</span>
+                                <span
+                                    style="
+                                        padding:0 8px;
+                                        color:#aeb8bc;
+                                    "
+                                >
+                                    |
+                                </span>
 
-<a
-    href="{{ $preferencesUrl }}"
-    style="
-        color:#0083CB;
-        text-decoration:underline;
-    "
->
-    Badili mapendeleo / Manage preferences
-</a>
+                                <a
+                                    href="{{ $preferencesUrl }}"
+                                    style="
+                                        color:#0083CB;
+                                        text-decoration:underline;
+                                    "
+                                >
+                                    Badili mapendeleo / Manage preferences
+                                </a>
 
                             </div>
                         @endif
@@ -1008,6 +1008,31 @@
         </td>
     </tr>
 </table>
+
+
+{{-- EMAIL OPEN TRACKING PIXEL --}}
+@if (
+    isset($campaignRecipient) &&
+    filled($campaignRecipient?->tracking_token)
+)
+    <img
+        src="{{ route(
+            'email-campaigns.open',
+            $campaignRecipient->tracking_token
+        ) }}"
+        width="1"
+        height="1"
+        alt=""
+        style="
+            display:block;
+            width:1px;
+            height:1px;
+            border:0;
+            margin:0;
+            padding:0;
+        "
+    >
+@endif
 
 </body>
 </html>

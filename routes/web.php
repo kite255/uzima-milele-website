@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
+use App\Http\Controllers\EmailCampaignTrackingController;
 use App\Http\Controllers\EmailSubscriberController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
@@ -126,6 +127,23 @@ Route::patch(
 )->name(
     'email-subscribers.preferences.update'
 );
+
+/*
+|--------------------------------------------------------------------------
+| Email Campaign Open Tracking
+|--------------------------------------------------------------------------
+|
+| Public 1x1 tracking pixel used by campaign emails.
+|
+*/
+Route::get(
+    '/email/open/{token}.gif',
+    [
+        EmailCampaignTrackingController::class,
+        'open',
+    ]
+)->name('email-campaigns.open');
+
 
 /*
 |--------------------------------------------------------------------------

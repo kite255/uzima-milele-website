@@ -268,4 +268,65 @@ class EmailCampaign extends Model
 
         return $this->scheduled_at->lte(now());
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Open Tracking Statistics
+    |--------------------------------------------------------------------------
+    */
+
+    public function openedRecipientsCount(): int
+    {
+        return $this->recipients()
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_SENT
+            )
+            ->whereNotNull(
+                'first_opened_at'
+            )
+            ->count();
+    }
+
+    public function unopenedRecipientsCount(): int
+    {
+        return $this->recipients()
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_SENT
+            )
+            ->whereNull(
+                'first_opened_at'
+            )
+            ->count();
+    }
+
+    public function openRate(): float
+    {
+        $sentRecipients = $this->recipients()
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_SENT
+            )
+            ->count();
+
+        if ($sentRecipients === 0) {
+            return 0.0;
+        }
+
+        $openedRecipients = $this->recipients()
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_SENT
+            )
+            ->whereNotNull(
+                'first_opened_at'
+            )
+            ->count();
+
+        return round(
+            ($openedRecipients / $sentRecipients) * 100,
+            1
+        );
+    }
 }

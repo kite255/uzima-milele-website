@@ -175,6 +175,30 @@
         </tr>
     </table>
 
+    {{-- EMAIL OPEN TRACKING PIXEL --}}
+    @if (
+        isset($recipient) &&
+        filled($recipient?->tracking_token)
+    )
+        <img
+            src="{{ route(
+                'email-campaigns.open',
+                $recipient->tracking_token
+            ) }}"
+            width="1"
+            height="1"
+            alt=""
+            style="
+                display:block;
+                width:1px;
+                height:1px;
+                border:0;
+                margin:0;
+                padding:0;
+            "
+        >
+    @endif
+
 </body>
 
 </html>

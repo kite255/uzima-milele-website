@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class EmailCampaignRecipient extends Model
 {
@@ -34,9 +36,15 @@ class EmailCampaignRecipient extends Model
         'name',
         'email',
         'status',
+
         'sent_at',
         'failed_at',
         'error_message',
+
+        'tracking_token',
+        'first_opened_at',
+        'last_opened_at',
+        'open_count',
     ];
 
     /*
@@ -48,9 +56,51 @@ class EmailCampaignRecipient extends Model
     protected function casts(): array
     {
         return [
-            'sent_at' => 'datetime',
-            'failed_at' => 'datetime',
+            'sent_at' =>
+                'datetime',
+
+            'failed_at' =>
+                'datetime',
+
+            'first_opened_at' =>
+                'datetime',
+
+            'last_opened_at' =>
+                'datetime',
+
+            'open_count' =>
+                'integer',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Model Events
+    |--------------------------------------------------------------------------
+    */
+
+    protected static function booted(): void
+    {
+        static::creating(
+            function (
+                EmailCampaignRecipient $recipient
+            ): void {
+                if (
+                    blank(
+                        $recipient->tracking_token
+                    )
+                ) {
+                    $recipient->tracking_token =
+                        (string) Str::uuid();
+                }
+
+                if (
+                    $recipient->open_count === null
+                ) {
+                    $recipient->open_count = 0;
+                }
+            }
+        );
     }
 
     /*
@@ -77,45 +127,102 @@ class EmailCampaignRecipient extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | Delivery Helpers
     |--------------------------------------------------------------------------
     */
 
     public function isPending(): bool
     {
-        return $this->status === self::STATUS_PENDING;
+        return $this->status
+            === self::STATUS_PENDING;
     }
 
     public function isSent(): bool
     {
-        return $this->status === self::STATUS_SENT;
+        return $this->status
+            === self::STATUS_SENT;
     }
 
     public function isFailed(): bool
     {
-        return $this->status === self::STATUS_FAILED;
+        return $this->status
+            === self::STATUS_FAILED;
     }
 
     public function markAsSent(): void
     {
         $this->update([
-            'status' => self::STATUS_SENT,
-            'sent_at' => now(),
-            'failed_at' => null,
-            'error_message' => null,
+            'status' =>
+                self::STATUS_SENT,
+
+            'sent_at' =>
+                now(),
+
+            'failed_at' =>
+                null,
+
+            'error_message' =>
+                null,
         ]);
     }
 
-    public function markAsFailed(string $message): void
-    {
+    public function markAsFailed(
+        string $message
+    ): void {
         $this->update([
-            'status' => self::STATUS_FAILED,
-            'failed_at' => now(),
-            'error_message' => mb_substr(
-                $message,
-                0,
-                65535
-            ),
+            'status' =>
+                self::STATUS_FAILED,
+
+            'failed_at' =>
+                now(),
+
+            'error_message' =>
+                mb_substr(
+                    $message,
+                    0,
+                    65535
+                ),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Open Tracking Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function wasOpened(): bool
+    {
+        return $this->first_opened_at !== null;
+    }
+
+    public function markAsOpened(): void
+    {
+        DB::transaction(
+            function (): void {
+                $recipient =
+                    self::query()
+                        ->lockForUpdate()
+                        ->findOrFail(
+                            $this->getKey()
+                        );
+
+                $openedAt = now();
+
+                $recipient->update([
+                    'first_opened_at' =>
+                        $recipient->first_opened_at
+                            ?? $openedAt,
+
+                    'last_opened_at' =>
+                        $openedAt,
+
+                    'open_count' =>
+                        $recipient->open_count + 1,
+                ]);
+            }
+        );
+
+        $this->refresh();
     }
 }

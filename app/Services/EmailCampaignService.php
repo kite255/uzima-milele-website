@@ -9,6 +9,7 @@ use App\Models\EmailSubscriber;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class EmailCampaignService
@@ -49,19 +50,7 @@ class EmailCampaignService
 
             $this->validateCampaign($campaign);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Remove stale snapshots
-            |--------------------------------------------------------------------------
-            */
-
             $campaign->recipients()->delete();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Snapshot campaign audience
-            |--------------------------------------------------------------------------
-            */
 
             $totalRecipients = $this->snapshotRecipients(
                 $campaign
@@ -73,12 +62,6 @@ class EmailCampaignService
                         $this->emptyAudienceMessage($campaign),
                 ]);
             }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Move campaign to queue
-            |--------------------------------------------------------------------------
-            */
 
             $campaign->update([
                 'status' =>
@@ -117,12 +100,6 @@ class EmailCampaignService
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Schedule a campaign for a future date and time.
-     *
-     * Recipient snapshots are created at scheduling time.
-     * This preserves the exact audience that existed when scheduled.
-     */
     public function scheduleCampaign(
         EmailCampaign $campaign,
         mixed $scheduledAt
@@ -161,20 +138,8 @@ class EmailCampaignService
                     ]);
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Remove previous snapshots
-                |--------------------------------------------------------------------------
-                */
-
                 $campaign->recipients()
                     ->delete();
-
-                /*
-                |--------------------------------------------------------------------------
-                | Snapshot campaign audience
-                |--------------------------------------------------------------------------
-                */
 
                 $totalRecipients =
                     $this->snapshotRecipients(
@@ -189,12 +154,6 @@ class EmailCampaignService
                             ),
                     ]);
                 }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Mark scheduled
-                |--------------------------------------------------------------------------
-                */
 
                 $campaign->update([
                     'status' =>
@@ -358,12 +317,6 @@ class EmailCampaignService
                     return false;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Ensure snapshot still exists
-                |--------------------------------------------------------------------------
-                */
-
                 $pendingCount =
                     $campaign
                         ->recipients()
@@ -441,30 +394,12 @@ class EmailCampaignService
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Build the recipient query based on campaign audience.
-     *
-     * subscribed:
-     * All active subscribers.
-     *
-     * selected:
-     * Only explicitly selected active subscribers.
-     *
-     * group:
-     * Only active subscribers belonging to the selected group.
-     */
     protected function recipientQuery(
         EmailCampaign $campaign
     ): Builder {
         $query =
             EmailSubscriber::query()
                 ->subscribed();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Selected Subscribers
-        |--------------------------------------------------------------------------
-        */
 
         if (
             $campaign
@@ -493,12 +428,6 @@ class EmailCampaignService
 
             return $query;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Subscriber Group
-        |--------------------------------------------------------------------------
-        */
 
         if (
             $campaign
@@ -618,6 +547,23 @@ class EmailCampaignService
                             'status' =>
                                 EmailCampaignRecipient::STATUS_PENDING,
 
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Open Tracking
+                            |--------------------------------------------------------------------------
+                            */
+                            'tracking_token' =>
+                                (string) Str::uuid(),
+
+                            'first_opened_at' =>
+                                null,
+
+                            'last_opened_at' =>
+                                null,
+
+                            'open_count' =>
+                                0,
+
                             'sent_at' =>
                                 null,
 
@@ -730,12 +676,6 @@ class EmailCampaignService
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Recipient Scope
-        |--------------------------------------------------------------------------
-        */
-
         if (
             ! in_array(
                 $campaign->recipient_scope,
@@ -753,12 +693,6 @@ class EmailCampaignService
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Selected Subscribers
-        |--------------------------------------------------------------------------
-        */
-
         if (
             $campaign
                 ->sendsToSelectedSubscribers()
@@ -775,12 +709,6 @@ class EmailCampaignService
                     'Chagua angalau msajili mmoja hai wa kupokea kampeni hii.',
             ]);
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Subscriber Group
-        |--------------------------------------------------------------------------
-        */
 
         if (
             $campaign
@@ -809,12 +737,6 @@ class EmailCampaignService
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Devotion Campaign
-        |--------------------------------------------------------------------------
-        */
-
         if ($campaign->isDevotion()) {
             if (
                 blank(
@@ -841,12 +763,6 @@ class EmailCampaignService
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Custom Campaign
-        |--------------------------------------------------------------------------
-        */
-
         if ($campaign->isCustom()) {
             if (
                 blank(
@@ -861,12 +777,6 @@ class EmailCampaignService
 
             return;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Unknown Campaign Type
-        |--------------------------------------------------------------------------
-        */
 
         throw ValidationException::withMessages([
             'type' =>
