@@ -39,6 +39,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Tumaini Katika Mungu',
             'slug' => 'tumaini-katika-mungu',
+            'content' => '<p>Tumaini katika Mungu kila siku.</p>',
             'published_at' => now()
                 ->addDays(2)
                 ->toDateString(),
