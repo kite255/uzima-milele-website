@@ -55,6 +55,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Tumaini Katika Mungu',
             'slug' => 'tumaini-katika-mungu',
+            'content' => '<p>Maudhui ya tafakari kwa ajili ya jaribio.</p>',
             'content' => '<p>Tumaini katika Mungu kila siku.</p>',
             'published_at' => now()
                 ->addDays(2)
@@ -119,6 +120,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Nguvu ya Maombi',
             'slug' => 'nguvu-ya-maombi',
+            'content' => '<p>Maudhui ya tafakari kwa ajili ya jaribio.</p>',
             'published_at' => now()
                 ->addDays(3)
                 ->toDateString(),
@@ -163,6 +165,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Amani ya Kristo',
             'slug' => 'amani-ya-kristo',
+            'content' => '<p>Maudhui ya tafakari kwa ajili ya jaribio.</p>',
             'published_at' => now()
                 ->addDays(4)
                 ->toDateString(),
@@ -254,6 +257,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Neema ya Mungu',
             'slug' => 'neema-ya-mungu',
+            'content' => '<p>Maudhui ya tafakari kwa ajili ya jaribio.</p>',
             'published_at' => now()
                 ->addDays(2)
                 ->toDateString(),
@@ -308,6 +312,7 @@ class DevotionEmailAutomationTest extends TestCase
         $devotion = Devotion::query()->create([
             'title' => 'Mungu Ni Mwaminifu',
             'slug' => 'mungu-ni-mwaminifu',
+            'content' => '<p>Maudhui ya tafakari kwa ajili ya jaribio.</p>',
             'published_at' => now()
                 ->addDays(2)
                 ->toDateString(),
