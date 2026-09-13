@@ -94,4 +94,26 @@ class EmailSettingsPageTest extends TestCase
             $settings->email_subscriber_group_id
         );
     }
+
+    public function test_admin_can_see_public_subscription_page_link(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(
+            EmailSettings::class
+        )
+            ->assertSee(
+                route('subscriptions.create')
+            )
+            ->assertSee(
+                'Fungua Ukurasa'
+            )
+            ->assertSee(
+                'Nakili Kiungo'
+            );
+    }
 }
