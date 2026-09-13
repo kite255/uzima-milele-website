@@ -12,6 +12,14 @@ class Devotion extends Model
         'title',
         'slug',
         'content',
+
+        'feature_text',
+        'lesson',
+        'scripture_reference',
+        'scripture_text',
+        'ellen_white_quote',
+        'ellen_white_reference',
+
         'image',
         'published_at',
         'email_send_time',
