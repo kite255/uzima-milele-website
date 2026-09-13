@@ -292,12 +292,6 @@ class EmailCampaignResource extends Resource
                             ->label('Muhtasari wa Wapokeaji')
                             ->content(
                                 function (Get $get): string {
-                                    /*
-                                    |--------------------------------------------------------------------------
-                                    | Selected subscribers
-                                    |--------------------------------------------------------------------------
-                                    */
-
                                     if (
                                         $get('recipient_scope')
                                         === EmailCampaign::RECIPIENT_SCOPE_SELECTED
@@ -317,12 +311,6 @@ class EmailCampaignResource extends Resource
                                         return number_format($count)
                                             . ' wasajili wamechaguliwa kupokea kampeni hii.';
                                     }
-
-                                    /*
-                                    |--------------------------------------------------------------------------
-                                    | Subscriber group
-                                    |--------------------------------------------------------------------------
-                                    */
 
                                     if (
                                         $get('recipient_scope')
@@ -360,12 +348,6 @@ class EmailCampaignResource extends Resource
                                             . $group->name
                                             . '” watapokea kampeni hii.';
                                     }
-
-                                    /*
-                                    |--------------------------------------------------------------------------
-                                    | All subscribers
-                                    |--------------------------------------------------------------------------
-                                    */
 
                                     $count = app(
                                         EmailCampaignService::class
@@ -666,7 +648,7 @@ class EmailCampaignResource extends Resource
                     'Matokeo ya Uwasilishaji'
                 )
                     ->description(
-                        'Muhtasari wa barua pepe zilizotumwa na zilizoshindwa.'
+                        'Muhtasari wa uwasilishaji na ufunguaji wa barua pepe.'
                     )
                     ->icon('heroicon-o-chart-bar')
                     ->schema([
@@ -706,6 +688,98 @@ class EmailCampaignResource extends Resource
                                         ? 'danger'
                                         : 'gray'
                             ),
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | OPEN TRACKING
+                        |--------------------------------------------------------------------------
+                        */
+
+                        Infolists\Components\TextEntry::make(
+                            'opened_recipients'
+                        )
+                            ->label('Zimefunguliwa')
+                            ->state(
+                                fn (
+                                    EmailCampaign $record
+                                ): int =>
+                                    $record
+                                        ->openedRecipientsCount()
+                            )
+                            ->numeric()
+                            ->weight('bold')
+                            ->color('success')
+                            ->icon(
+                                'heroicon-o-envelope-open'
+                            ),
+
+                        Infolists\Components\TextEntry::make(
+                            'unopened_recipients'
+                        )
+                            ->label('Hazijafunguliwa')
+                            ->state(
+                                fn (
+                                    EmailCampaign $record
+                                ): int =>
+                                    $record
+                                        ->unopenedRecipientsCount()
+                            )
+                            ->numeric()
+                            ->weight('bold')
+                            ->color('gray')
+                            ->icon(
+                                'heroicon-o-envelope'
+                            ),
+
+                        Infolists\Components\TextEntry::make(
+                            'open_rate'
+                        )
+                            ->label(
+                                'Kiwango cha Kufunguliwa'
+                            )
+                            ->state(
+                                fn (
+                                    EmailCampaign $record
+                                ): string =>
+                                    number_format(
+                                        $record->openRate(),
+                                        1
+                                    ) . '%'
+                            )
+                            ->weight('bold')
+                            ->icon(
+                                'heroicon-o-chart-bar-square'
+                            )
+                            ->color(
+                                function (
+                                    EmailCampaign $record
+                                ): string {
+                                    $percentage =
+                                        $record->openRate();
+
+                                    if (
+                                        $percentage >= 50
+                                    ) {
+                                        return 'success';
+                                    }
+
+                                    if (
+                                        $percentage >= 25
+                                    ) {
+                                        return 'warning';
+                                    }
+
+                                    return $percentage > 0
+                                        ? 'danger'
+                                        : 'gray';
+                                }
+                            ),
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | DELIVERY RATE
+                        |--------------------------------------------------------------------------
+                        */
 
                         Infolists\Components\TextEntry::make(
                             'delivery_rate'
@@ -964,6 +1038,66 @@ class EmailCampaignResource extends Resource
                     ->numeric()
                     ->color('success')
                     ->sortable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | OPEN TRACKING COLUMNS
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Columns\TextColumn::make(
+                    'opened_count'
+                )
+                    ->label('Zimefunguliwa')
+                    ->state(
+                        fn (
+                            EmailCampaign $record
+                        ): int =>
+                            $record
+                                ->openedRecipientsCount()
+                    )
+                    ->numeric()
+                    ->color('success')
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make(
+                    'open_rate'
+                )
+                    ->label('Open Rate')
+                    ->state(
+                        fn (
+                            EmailCampaign $record
+                        ): string =>
+                            number_format(
+                                $record->openRate(),
+                                1
+                            ) . '%'
+                    )
+                    ->color(
+                        function (
+                            EmailCampaign $record
+                        ): string {
+                            $percentage =
+                                $record->openRate();
+
+                            if (
+                                $percentage >= 50
+                            ) {
+                                return 'success';
+                            }
+
+                            if (
+                                $percentage >= 25
+                            ) {
+                                return 'warning';
+                            }
+
+                            return $percentage > 0
+                                ? 'danger'
+                                : 'gray';
+                        }
+                    )
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make(
                     'failed_count'

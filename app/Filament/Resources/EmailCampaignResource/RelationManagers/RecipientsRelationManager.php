@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -73,6 +74,61 @@ class RecipientsRelationManager extends RelationManager
                     )
                     ->sortable(),
 
+                /*
+                |--------------------------------------------------------------------------
+                | OPEN TRACKING
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Columns\TextColumn::make('first_opened_at')
+                    ->label('Imefunguliwa')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (
+                            mixed $state,
+                            EmailCampaignRecipient $record
+                        ): string =>
+                            $record->wasOpened()
+                                ? 'Ndiyo'
+                                : 'Hapana'
+                    )
+                    ->color(
+                        fn (
+                            mixed $state,
+                            EmailCampaignRecipient $record
+                        ): string =>
+                            $record->wasOpened()
+                                ? 'success'
+                                : 'gray'
+                    )
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('first_opened_at')
+                    ->label('Mara ya Kwanza')
+                    ->dateTime('d M Y H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('last_opened_at')
+                    ->label('Mara ya Mwisho')
+                    ->dateTime('d M Y H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('open_count')
+                    ->label('Idadi ya Kufunguliwa')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | DELIVERY INFORMATION
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\TextColumn::make('sent_at')
                     ->label('Ilitumwa')
                     ->dateTime('d M Y H:i')
@@ -114,6 +170,41 @@ class RecipientsRelationManager extends RelationManager
                         EmailCampaignRecipient::STATUS_SENT => 'Imetumwa',
                         EmailCampaignRecipient::STATUS_FAILED => 'Imeshindwa',
                     ]),
+
+                Tables\Filters\SelectFilter::make('open_status')
+                    ->label('Hali ya Kufunguliwa')
+                    ->options([
+                        'opened' => 'Imefunguliwa',
+                        'unopened' => 'Haijafunguliwa',
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            return match (
+                                $data['value'] ?? null
+                            ) {
+                                'opened' =>
+                                    $query->whereNotNull(
+                                        'first_opened_at'
+                                    ),
+
+                                'unopened' =>
+                                    $query
+                                        ->where(
+                                            'status',
+                                            EmailCampaignRecipient::STATUS_SENT
+                                        )
+                                        ->whereNull(
+                                            'first_opened_at'
+                                        ),
+
+                                default =>
+                                    $query,
+                            };
+                        }
+                    ),
             ])
 
             /*
@@ -163,9 +254,12 @@ class RecipientsRelationManager extends RelationManager
                                         $recipient->update([
                                             'status' =>
                                                 EmailCampaignRecipient::STATUS_PENDING,
-                                            'sent_at' => null,
-                                            'failed_at' => null,
-                                            'error_message' => null,
+                                            'sent_at' =>
+                                                null,
+                                            'failed_at' =>
+                                                null,
+                                            'error_message' =>
+                                                null,
                                         ]);
                                     }
 
@@ -194,10 +288,18 @@ class RecipientsRelationManager extends RelationManager
                                     $campaign->update([
                                         'status' =>
                                             EmailCampaign::STATUS_QUEUED,
-                                        'sent_count' => $sentCount,
-                                        'failed_count' => 0,
-                                        'sent_at' => null,
-                                        'queued_at' => now(),
+
+                                        'sent_count' =>
+                                            $sentCount,
+
+                                        'failed_count' =>
+                                            0,
+
+                                        'sent_at' =>
+                                            null,
+
+                                        'queued_at' =>
+                                            now(),
                                     ]);
 
                                     if ($pendingCount > 0) {
@@ -209,7 +311,9 @@ class RecipientsRelationManager extends RelationManager
                             );
 
                             Notification::make()
-                                ->title('Barua zilizoshindwa zimewekwa tena kwenye foleni')
+                                ->title(
+                                    'Barua zilizoshindwa zimewekwa tena kwenye foleni'
+                                )
                                 ->body(
                                     'Mfumo utajaribu kutuma tena barua pepe zilizoshindwa tu.'
                                 )
@@ -219,8 +323,12 @@ class RecipientsRelationManager extends RelationManager
                             report($exception);
 
                             Notification::make()
-                                ->title('Jaribio la kutuma tena limeshindwa')
-                                ->body($exception->getMessage())
+                                ->title(
+                                    'Jaribio la kutuma tena limeshindwa'
+                                )
+                                ->body(
+                                    $exception->getMessage()
+                                )
                                 ->danger()
                                 ->persistent()
                                 ->send();
@@ -234,11 +342,6 @@ class RecipientsRelationManager extends RelationManager
             |--------------------------------------------------------------------------
             */
             ->actions([
-                /*
-                |--------------------------------------------------------------------------
-                | VIEW ERROR
-                |--------------------------------------------------------------------------
-                */
                 Tables\Actions\Action::make('view_error')
                     ->label('Tazama Sababu')
                     ->icon('heroicon-o-exclamation-triangle')
@@ -268,11 +371,6 @@ class RecipientsRelationManager extends RelationManager
                             )
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | RETRY SINGLE RECIPIENT
-                |--------------------------------------------------------------------------
-                */
                 Tables\Actions\Action::make('retry')
                     ->label('Jaribu Tena')
                     ->icon('heroicon-o-arrow-path')
@@ -296,18 +394,20 @@ class RecipientsRelationManager extends RelationManager
                             EmailCampaignRecipient $record
                         ): void {
                             try {
-                                $campaign = $this->getOwnerRecord();
+                                $campaign =
+                                    $this->getOwnerRecord();
 
                                 DB::transaction(
                                     function () use (
                                         $campaign,
                                         $record
                                     ): void {
-                                        $recipient = EmailCampaignRecipient::query()
-                                            ->lockForUpdate()
-                                            ->findOrFail(
-                                                $record->id
-                                            );
+                                        $recipient =
+                                            EmailCampaignRecipient::query()
+                                                ->lockForUpdate()
+                                                ->findOrFail(
+                                                    $record->id
+                                                );
 
                                         if (
                                             $recipient->status
@@ -321,40 +421,56 @@ class RecipientsRelationManager extends RelationManager
                                         $recipient->update([
                                             'status' =>
                                                 EmailCampaignRecipient::STATUS_PENDING,
-                                            'sent_at' => null,
-                                            'failed_at' => null,
-                                            'error_message' => null,
+
+                                            'sent_at' =>
+                                                null,
+
+                                            'failed_at' =>
+                                                null,
+
+                                            'error_message' =>
+                                                null,
                                         ]);
 
-                                        $sentCount = EmailCampaignRecipient::query()
-                                            ->where(
-                                                'email_campaign_id',
-                                                $campaign->id
-                                            )
-                                            ->where(
-                                                'status',
-                                                EmailCampaignRecipient::STATUS_SENT
-                                            )
-                                            ->count();
+                                        $sentCount =
+                                            EmailCampaignRecipient::query()
+                                                ->where(
+                                                    'email_campaign_id',
+                                                    $campaign->id
+                                                )
+                                                ->where(
+                                                    'status',
+                                                    EmailCampaignRecipient::STATUS_SENT
+                                                )
+                                                ->count();
 
-                                        $failedCount = EmailCampaignRecipient::query()
-                                            ->where(
-                                                'email_campaign_id',
-                                                $campaign->id
-                                            )
-                                            ->where(
-                                                'status',
-                                                EmailCampaignRecipient::STATUS_FAILED
-                                            )
-                                            ->count();
+                                        $failedCount =
+                                            EmailCampaignRecipient::query()
+                                                ->where(
+                                                    'email_campaign_id',
+                                                    $campaign->id
+                                                )
+                                                ->where(
+                                                    'status',
+                                                    EmailCampaignRecipient::STATUS_FAILED
+                                                )
+                                                ->count();
 
                                         $campaign->update([
                                             'status' =>
                                                 EmailCampaign::STATUS_QUEUED,
-                                            'sent_count' => $sentCount,
-                                            'failed_count' => $failedCount,
-                                            'sent_at' => null,
-                                            'queued_at' => now(),
+
+                                            'sent_count' =>
+                                                $sentCount,
+
+                                            'failed_count' =>
+                                                $failedCount,
+
+                                            'sent_at' =>
+                                                null,
+
+                                            'queued_at' =>
+                                                now(),
                                         ]);
 
                                         SendEmailCampaign::dispatch(
