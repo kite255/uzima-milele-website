@@ -1536,76 +1536,26 @@ class EmailCampaignResource extends Resource
                             ->default(today())
                             ->required(),
 
-                        Forms\Components\Grid::make(
-                            2
+                        Forms\Components\TimePicker::make(
+                            'scheduled_time'
                         )
-                            ->schema([
-                                Forms\Components\Select::make(
-                                    'scheduled_hour'
-                                )
-                                    ->label('Saa')
-                                    ->placeholder(
-                                        'Chagua saa'
-                                    )
-                                    ->prefixIcon(
-                                        'heroicon-o-clock'
-                                    )
-                                    ->options(
-                                        collect(
-                                            range(
-                                                0,
-                                                23
-                                            )
-                                        )
-                                            ->mapWithKeys(
-                                                function (
-                                                    int $hour
-                                                ): array {
-                                                    $formatted =
-                                                        str_pad(
-                                                            (string) $hour,
-                                                            2,
-                                                            '0',
-                                                            STR_PAD_LEFT
-                                                        );
-
-                                                    return [
-                                                        $formatted =>
-                                                            $formatted,
-                                                    ];
-                                                }
-                                            )
-                                            ->all()
-                                    )
-                                    ->native(false)
-                                    ->required(),
-
-                                Forms\Components\Select::make(
-                                    'scheduled_minute'
-                                )
-                                    ->label(
-                                        'Dakika'
-                                    )
-                                    ->placeholder(
-                                        'Chagua dakika'
-                                    )
-                                    ->options([
-                                        '00' => '00',
-                                        '05' => '05',
-                                        '10' => '10',
-                                        '15' => '15',
-                                        '20' => '20',
-                                        '25' => '25',
-                                        '30' => '30',
-                                        '35' => '35',
-                                        '40' => '40',
-                                        '45' => '45',
-                                        '50' => '50',
-                                        '55' => '55',
-                                    ])
-                                    ->native(false)
-                                    ->required(),
-                            ]),
+                            ->label(
+                                'Muda wa Kutuma'
+                            )
+                            ->prefixIcon(
+                                'heroicon-o-clock'
+                            )
+                            ->seconds(false)
+                            ->format('H:i')
+                            ->displayFormat('H:i')
+                            ->native(true)
+                            ->required()
+                            ->rules([
+                                'date_format:H:i',
+                            ])
+                            ->helperText(
+                                'Andika muda moja kwa moja au tumia time picker, mfano 06:17, 13:07 au 20:43.'
+                            ),
 
                         Forms\Components\Placeholder::make(
                             'timezone_information'
@@ -1625,7 +1575,7 @@ class EmailCampaignResource extends Resource
                         'Panga Kampeni Kutumwa'
                     )
                     ->modalDescription(
-                        'Chagua tarehe, saa na dakika ambazo kampeni hii itaanza kutumwa.'
+                        'Chagua tarehe na muda ambao kampeni hii itaanza kutumwa.'
                     )
                     ->modalSubmitActionLabel(
                         'Hifadhi Ratiba'
@@ -1643,11 +1593,7 @@ class EmailCampaignResource extends Resource
                                     ]
                                     . ' '
                                     . $data[
-                                        'scheduled_hour'
-                                    ]
-                                    . ':'
-                                    . $data[
-                                        'scheduled_minute'
+                                        'scheduled_time'
                                     ];
 
                                 $campaign = app(

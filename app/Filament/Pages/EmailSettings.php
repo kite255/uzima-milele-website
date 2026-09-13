@@ -5,15 +5,14 @@ namespace App\Filament\Pages;
 use App\Models\EmailCampaign;
 use App\Models\EmailSetting;
 use App\Models\EmailSubscriberGroup;
-use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -72,7 +71,7 @@ class EmailSettings extends Page implements HasForms
                 $settings->auto_schedule_devotions,
 
             'default_devotion_send_time' =>
-                $settings->default_devotion_send_time,
+                $settings->devotionSendTime(),
 
             'default_recipient_scope' =>
                 $settings->default_recipient_scope,
@@ -118,11 +117,18 @@ class EmailSettings extends Page implements HasForms
                                 'Muda wa Kawaida wa Kutuma'
                             )
                             ->seconds(false)
-                            ->native(false)
+                            ->format('H:i')
+                            ->displayFormat('H:i')
+                            ->native(true)
                             ->required()
-                            ->default('06:00')
+                            ->default(
+                                EmailSetting::DEFAULT_DEVOTION_SEND_TIME
+                            )
+                            ->rules([
+                                'date_format:H:i',
+                            ])
                             ->helperText(
-                                'Muda huu utajazwa kiotomatiki unapounda tafakari mpya. Unaweza kuubadilisha kwenye tafakari husika.'
+                                'Andika muda moja kwa moja au tumia time picker, mfano 06:17, 13:07 au 20:43.'
                             ),
 
                         Select::make(
@@ -202,7 +208,7 @@ class EmailSettings extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Clear irrelevant group selection
+        | Clear Irrelevant Group Selection
         |--------------------------------------------------------------------------
         */
 
@@ -213,6 +219,12 @@ class EmailSettings extends Page implements HasForms
             $data['email_subscriber_group_id'] =
                 null;
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Settings
+        |--------------------------------------------------------------------------
+        */
 
         $settings = EmailSetting::current();
 
@@ -241,7 +253,7 @@ class EmailSettings extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Refresh form from saved settings
+        | Refresh Form From Saved Settings
         |--------------------------------------------------------------------------
         */
 
@@ -254,7 +266,7 @@ class EmailSettings extends Page implements HasForms
 
             'default_devotion_send_time' =>
                 $settings
-                    ->default_devotion_send_time,
+                    ->devotionSendTime(),
 
             'default_recipient_scope' =>
                 $settings
@@ -264,6 +276,12 @@ class EmailSettings extends Page implements HasForms
                 $settings
                     ->email_subscriber_group_id,
         ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Success Notification
+        |--------------------------------------------------------------------------
+        */
 
         Notification::make()
             ->title(
