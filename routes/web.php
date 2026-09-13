@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
+use App\Http\Controllers\EmailSubscriberController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
 use App\Http\Controllers\InstructorStudentController;
@@ -27,12 +28,19 @@ use Illuminate\Support\Facades\Route;
 | Home
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
-    $today = now('Africa/Dar_es_Salaam')->toDateString();
+    $today = now(
+        'Africa/Dar_es_Salaam'
+    )->toDateString();
 
     $latestDevotions = Devotion::query()
         ->whereNotNull('published_at')
-        ->whereDate('published_at', '<=', $today)
+        ->whereDate(
+            'published_at',
+            '<=',
+            $today
+        )
         ->orderByDesc('published_at')
         ->take(6)
         ->get();
@@ -48,6 +56,7 @@ Route::get('/', function () {
 | Google Login
 |--------------------------------------------------------------------------
 */
+
 Route::get(
     '/auth/google',
     [GoogleAuthController::class, 'redirect']
@@ -57,6 +66,66 @@ Route::get(
     '/auth/google/callback',
     [GoogleAuthController::class, 'callback']
 )->name('google.callback');
+
+/*
+|--------------------------------------------------------------------------
+| Email Subscription
+|--------------------------------------------------------------------------
+|
+| Public page for subscribing to Uzima Milele email messages.
+|
+*/
+
+Route::view(
+    '/jiandikishe-tafakari',
+    'subscriptions.create'
+)->name('subscriptions.create');
+
+Route::post(
+    '/jiandikishe',
+    [
+        EmailSubscriberController::class,
+        'store',
+    ]
+)->name('email-subscribers.store');
+
+/*
+|--------------------------------------------------------------------------
+| Email Unsubscribe
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/email/unsubscribe/{token}',
+    [
+        EmailSubscriberController::class,
+        'unsubscribe',
+    ]
+)->name('email-subscribers.unsubscribe');
+
+/*
+|--------------------------------------------------------------------------
+| Email Preferences
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/email/preferences/{token}',
+    [
+        EmailSubscriberController::class,
+        'preferences',
+    ]
+)->name('email-subscribers.preferences');
+
+Route::patch(
+    '/email/preferences/{token}',
+    [
+        EmailSubscriberController::class,
+        'updatePreferences',
+    ]
+)->name(
+    'email-subscribers.preferences.update'
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -73,6 +142,7 @@ Route::get(
 | - Goes to the Student Dashboard.
 |
 */
+
 Route::get('/dashboard', function () {
     $user = auth()->user();
 
@@ -102,6 +172,7 @@ Route::get('/dashboard', function () {
 | Static Pages
 |--------------------------------------------------------------------------
 */
+
 Route::view(
     '/about',
     'about'
@@ -122,19 +193,29 @@ Route::view(
 | Maombi na Ushuhuda
 |--------------------------------------------------------------------------
 */
+
 Route::get(
     '/maombi-na-ushuhuda',
-    [PrayerTestimonyController::class, 'index']
+    [
+        PrayerTestimonyController::class,
+        'index',
+    ]
 )->name('prayers.testimonies');
 
 Route::post(
     '/maombi',
-    [PrayerRequestController::class, 'store']
+    [
+        PrayerRequestController::class,
+        'store',
+    ]
 )->name('prayers.store');
 
 Route::post(
     '/ushuhuda',
-    [TestimonialController::class, 'store']
+    [
+        TestimonialController::class,
+        'store',
+    ]
 )->name('testimonials.store');
 
 /*
@@ -142,9 +223,13 @@ Route::post(
 | Public Certificate Verification
 |--------------------------------------------------------------------------
 */
+
 Route::get(
     '/certificates/verify/{certificateNumber}',
-    [CertificateController::class, 'verify']
+    [
+        CertificateController::class,
+        'verify',
+    ]
 )->name('certificates.verify');
 
 /*
@@ -152,18 +237,25 @@ Route::get(
 | Lessons
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('lessons')
     ->name('lessons.')
     ->group(function () {
 
         Route::get(
             '/',
-            [LessonController::class, 'index']
+            [
+                LessonController::class,
+                'index',
+            ]
         )->name('index');
 
         Route::get(
             '/{lesson:slug}',
-            [LessonController::class, 'show']
+            [
+                LessonController::class,
+                'show',
+            ]
         )->name('show');
 
         Route::middleware('auth')
@@ -171,37 +263,58 @@ Route::prefix('lessons')
 
                 Route::get(
                     '/{lesson:slug}/learn',
-                    [LessonController::class, 'learn']
+                    [
+                        LessonController::class,
+                        'learn',
+                    ]
                 )->name('learn');
 
                 Route::post(
                     '/{lesson:slug}/enroll',
-                    [LessonController::class, 'enroll']
+                    [
+                        LessonController::class,
+                        'enroll',
+                    ]
                 )->name('enroll');
 
                 Route::post(
                     '/{lesson:slug}/questions',
-                    [LessonQuestionController::class, 'store']
+                    [
+                        LessonQuestionController::class,
+                        'store',
+                    ]
                 )->name('questions.store');
 
                 Route::post(
                     '/{lesson:slug}/progress',
-                    [LessonController::class, 'markProgress']
+                    [
+                        LessonController::class,
+                        'markProgress',
+                    ]
                 )->name('progress');
 
                 Route::patch(
                     '/{lesson:slug}/schedule',
-                    [LessonController::class, 'resetSchedule']
+                    [
+                        LessonController::class,
+                        'resetSchedule',
+                    ]
                 )->name('schedule.reset');
 
                 Route::get(
                     '/{lesson:slug}/topics/{topic:slug}',
-                    [LessonTopicController::class, 'show']
+                    [
+                        LessonTopicController::class,
+                        'show',
+                    ]
                 )->name('topics.show');
 
                 Route::post(
                     '/{lesson:slug}/topics/{topic:slug}/complete',
-                    [LessonTopicController::class, 'complete']
+                    [
+                        LessonTopicController::class,
+                        'complete',
+                    ]
                 )->name('topics.complete');
             });
     });
@@ -211,23 +324,33 @@ Route::prefix('lessons')
 | Children / Watoto
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('children')
     ->name('children.')
     ->group(function () {
 
         Route::get(
             '/',
-            [WatotoController::class, 'index']
+            [
+                WatotoController::class,
+                'index',
+            ]
         )->name('index');
 
         Route::get(
             '/{slug}',
-            [WatotoController::class, 'show']
+            [
+                WatotoController::class,
+                'show',
+            ]
         )->name('show');
 
         Route::post(
             '/{slug}/quiz',
-            [WatotoController::class, 'submitQuiz']
+            [
+                WatotoController::class,
+                'submitQuiz',
+            ]
         )->name('quiz.submit');
     });
 
@@ -236,18 +359,25 @@ Route::prefix('children')
 | Devotions
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('devotions')
     ->name('devotions.')
     ->group(function () {
 
         Route::get(
             '/',
-            [DevotionController::class, 'index']
+            [
+                DevotionController::class,
+                'index',
+            ]
         )->name('index');
 
         Route::get(
             '/{slug}',
-            [DevotionController::class, 'show']
+            [
+                DevotionController::class,
+                'show',
+            ]
         )->name('show');
     });
 
@@ -256,6 +386,7 @@ Route::prefix('devotions')
 | Authenticated Routes
 |--------------------------------------------------------------------------
 */
+
 Route::middleware('auth')
     ->group(function () {
 
@@ -268,9 +399,13 @@ Route::middleware('auth')
         | Controller is responsible for restricting this page to admins.
         |
         */
+
         Route::get(
             '/admin-center/dashboard',
-            [AdminCenterDashboardController::class, 'index']
+            [
+                AdminCenterDashboardController::class,
+                'index',
+            ]
         )->name('admin.center.dashboard');
 
         /*
@@ -278,9 +413,13 @@ Route::middleware('auth')
         | Student Dashboard
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/student/dashboard',
-            [StudentDashboardController::class, 'index']
+            [
+                StudentDashboardController::class,
+                'index',
+            ]
         )->name('student.dashboard');
 
         /*
@@ -291,9 +430,13 @@ Route::middleware('auth')
         | This remains the full instructor dashboard used by Instructor Hub.
         |
         */
+
         Route::get(
             '/instructor/dashboard',
-            [InstructorDashboardController::class, 'index']
+            [
+                InstructorDashboardController::class,
+                'index',
+            ]
         )->name('instructor.dashboard');
 
         /*
@@ -305,9 +448,13 @@ Route::middleware('auth')
         | assigned to that instructor for the selected lesson.
         |
         */
+
         Route::get(
             '/instructor/team/{lesson}/{instructor}/students',
-            [InstructorDashboardController::class, 'teamStudents']
+            [
+                InstructorDashboardController::class,
+                'teamStudents',
+            ]
         )->name('instructor.team.students');
 
         /*
@@ -315,14 +462,21 @@ Route::middleware('auth')
         | Instructor Student Detail
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/instructor/students/{enrollment}',
-            [InstructorStudentController::class, 'show']
+            [
+                InstructorStudentController::class,
+                'show',
+            ]
         )->name('instructor.students.show');
 
         Route::post(
             '/instructor/students/{enrollment}/follow-ups',
-            [InstructorStudentController::class, 'storeFollowUp']
+            [
+                InstructorStudentController::class,
+                'storeFollowUp',
+            ]
         )->name(
             'instructor.students.follow-ups.store'
         );
@@ -332,19 +486,29 @@ Route::middleware('auth')
         | Instructor Questions
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/instructor/questions',
-            [InstructorQuestionController::class, 'index']
+            [
+                InstructorQuestionController::class,
+                'index',
+            ]
         )->name('instructor.questions.index');
 
         Route::get(
             '/instructor/questions/{question}',
-            [InstructorQuestionController::class, 'show']
+            [
+                InstructorQuestionController::class,
+                'show',
+            ]
         )->name('instructor.questions.show');
 
         Route::put(
             '/instructor/questions/{question}',
-            [InstructorQuestionController::class, 'update']
+            [
+                InstructorQuestionController::class,
+                'update',
+            ]
         )->name('instructor.questions.update');
 
         /*
@@ -352,19 +516,29 @@ Route::middleware('auth')
         | Notifications
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/notifications',
-            [NotificationController::class, 'index']
+            [
+                NotificationController::class,
+                'index',
+            ]
         )->name('notifications.index');
 
         Route::get(
             '/notifications/{notification}/read',
-            [NotificationController::class, 'read']
+            [
+                NotificationController::class,
+                'read',
+            ]
         )->name('notifications.read');
 
         Route::post(
             '/notifications/mark-all-read',
-            [NotificationController::class, 'markAllAsRead']
+            [
+                NotificationController::class,
+                'markAllAsRead',
+            ]
         )->name('notifications.markAllRead');
 
         /*
@@ -372,14 +546,21 @@ Route::middleware('auth')
         | Quizzes
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/quiz/{quiz}',
-            [QuizController::class, 'show']
+            [
+                QuizController::class,
+                'show',
+            ]
         )->name('quiz.show');
 
         Route::post(
             '/quiz/{quiz}/submit',
-            [QuizController::class, 'submit']
+            [
+                QuizController::class,
+                'submit',
+            ]
         )->name('quiz.submit');
 
         /*
@@ -387,19 +568,29 @@ Route::middleware('auth')
         | Certificates
         |--------------------------------------------------------------------------
         */
+
         Route::post(
             '/lessons/{lesson}/certificate',
-            [CertificateController::class, 'issue']
+            [
+                CertificateController::class,
+                'issue',
+            ]
         )->name('certificates.issue');
 
         Route::get(
             '/certificates/{certificateNumber}',
-            [CertificateController::class, 'show']
+            [
+                CertificateController::class,
+                'show',
+            ]
         )->name('certificates.show');
 
         Route::get(
             '/certificates/{certificateNumber}/download',
-            [CertificateController::class, 'download']
+            [
+                CertificateController::class,
+                'download',
+            ]
         )->name('certificates.download');
 
         Route::get(
@@ -426,26 +617,38 @@ Route::middleware('auth')
                     compact('certificate')
                 );
             }
-        )->name('certificates.print-preview');
+        )->name(
+            'certificates.print-preview'
+        );
 
         /*
         |--------------------------------------------------------------------------
         | Profile
         |--------------------------------------------------------------------------
         */
+
         Route::get(
             '/profile',
-            [ProfileController::class, 'edit']
+            [
+                ProfileController::class,
+                'edit',
+            ]
         )->name('profile.edit');
 
         Route::patch(
             '/profile',
-            [ProfileController::class, 'update']
+            [
+                ProfileController::class,
+                'update',
+            ]
         )->name('profile.update');
 
         Route::delete(
             '/profile',
-            [ProfileController::class, 'destroy']
+            [
+                ProfileController::class,
+                'destroy',
+            ]
         )->name('profile.destroy');
     });
 

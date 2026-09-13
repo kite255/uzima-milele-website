@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Devotion extends Model
 {
@@ -19,13 +20,45 @@ class Devotion extends Model
         'published_at' => 'date',
     ];
 
-    public function scopePublished(Builder $query): Builder
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    public function emailCampaigns(): HasMany
     {
-        return $query->whereDate('published_at', '<=', today());
+        return $this->hasMany(
+            EmailCampaign::class
+        );
     }
 
-    public function scopeForToday(Builder $query): Builder
-    {
-        return $query->whereDate('published_at', today());
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopePublished(
+        Builder $query
+    ): Builder {
+        return $query
+            ->whereNotNull('published_at')
+            ->whereDate(
+                'published_at',
+                '<=',
+                today()
+            );
+    }
+
+    public function scopeForToday(
+        Builder $query
+    ): Builder {
+        return $query
+            ->whereNotNull('published_at')
+            ->whereDate(
+                'published_at',
+                today()
+            );
     }
 }
