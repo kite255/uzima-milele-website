@@ -23,3 +23,8 @@ yarn-error.log
 
 vendor.zip
 .env.testing
+
+# Local review/test artifacts
+uzima-milele-review.zip
+subscribers-test.csv
+*:Zone.Identifier

@@ -4,6 +4,8 @@ use App\Http\Controllers\AdminCenterDashboardController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DevotionController;
+use App\Http\Controllers\EmailCampaignTrackingController;
+use App\Http\Controllers\EmailSubscriberController;
 use App\Http\Controllers\InstructorDashboardController;
 use App\Http\Controllers\InstructorQuestionController;
 use App\Http\Controllers\InstructorStudentController;
@@ -60,18 +62,90 @@ Route::get(
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard Redirect
+| Email Subscription
+|--------------------------------------------------------------------------
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Public Subscription Page
+|--------------------------------------------------------------------------
+*/
+Route::view(
+    '/jiandikishe-tafakari',
+    'subscriptions.create'
+)->name('subscriptions.create');
+
+/*
+|--------------------------------------------------------------------------
+| Direct Browser Visit To /jiandikishe
 |--------------------------------------------------------------------------
 |
-| Admin:
-| - Goes to the Filament panel.
+| /jiandikishe is primarily the POST endpoint used by the subscription
+| form. If somebody opens the URL directly in a browser, the browser sends
+| a GET request. Instead of returning a 405 Method Not Allowed error, send
+| them to the public subscription page.
 |
-| Instructor:
-| - Goes to the existing full Instructor Dashboard.
-|
-| Student:
-| - Goes to the Student Dashboard.
-|
+*/
+Route::get(
+    '/jiandikishe',
+    function () {
+        return redirect(
+            route('subscriptions.create')
+            . '#subscription-section'
+        );
+    }
+)->name('email-subscribers.redirect');
+
+/*
+|--------------------------------------------------------------------------
+| Store Email Subscription
+|--------------------------------------------------------------------------
+*/
+Route::post(
+    '/jiandikishe',
+    [EmailSubscriberController::class, 'store']
+)->name('email-subscribers.store');
+
+/*
+|--------------------------------------------------------------------------
+| Email Unsubscribe
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/email/unsubscribe/{token}',
+    [EmailSubscriberController::class, 'unsubscribe']
+)->name('email-subscribers.unsubscribe');
+
+/*
+|--------------------------------------------------------------------------
+| Email Preferences
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/email/preferences/{token}',
+    [EmailSubscriberController::class, 'preferences']
+)->name('email-subscribers.preferences');
+
+Route::patch(
+    '/email/preferences/{token}',
+    [EmailSubscriberController::class, 'updatePreferences']
+)->name('email-subscribers.preferences.update');
+
+/*
+|--------------------------------------------------------------------------
+| Email Campaign Open Tracking
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/email/open/{token}.gif',
+    [EmailCampaignTrackingController::class, 'open']
+)->name('email-campaigns.open');
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Redirect
+|--------------------------------------------------------------------------
 */
 Route::get('/dashboard', function () {
     $user = auth()->user();
@@ -233,10 +307,10 @@ Route::prefix('children')
 
 /*
 |--------------------------------------------------------------------------
-| Devotions
+| Devotions / Tafakari
 |--------------------------------------------------------------------------
 */
-Route::prefix('devotions')
+Route::prefix('tafakari')
     ->name('devotions.')
     ->group(function () {
 
@@ -263,10 +337,6 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         | Admin Center Dashboard
         |--------------------------------------------------------------------------
-        |
-        | Full Uzima Milele-style admin dashboard.
-        | Controller is responsible for restricting this page to admins.
-        |
         */
         Route::get(
             '/admin-center/dashboard',
@@ -287,9 +357,6 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         | Instructor Dashboard
         |--------------------------------------------------------------------------
-        |
-        | This remains the full instructor dashboard used by Instructor Hub.
-        |
         */
         Route::get(
             '/instructor/dashboard',
@@ -300,10 +367,6 @@ Route::middleware('auth')
         |--------------------------------------------------------------------------
         | Lead Instructor Team Students
         |--------------------------------------------------------------------------
-        |
-        | Lead instructor can open a follow-up instructor and see the students
-        | assigned to that instructor for the selected lesson.
-        |
         */
         Route::get(
             '/instructor/team/{lesson}/{instructor}/students',
