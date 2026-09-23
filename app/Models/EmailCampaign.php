@@ -12,51 +12,22 @@ class EmailCampaign extends Model
 {
     use HasFactory;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Campaign Types
-    |--------------------------------------------------------------------------
-    */
-
     public const TYPE_DEVOTION = 'devotion';
-
     public const TYPE_CUSTOM = 'custom';
 
-    /*
-    |--------------------------------------------------------------------------
-    | Recipient Scopes
-    |--------------------------------------------------------------------------
-    */
-
     public const RECIPIENT_SCOPE_SUBSCRIBED = 'subscribed';
-
     public const RECIPIENT_SCOPE_SELECTED = 'selected';
-
     public const RECIPIENT_SCOPE_GROUP = 'group';
 
-    /*
-    |--------------------------------------------------------------------------
-    | Campaign Statuses
-    |--------------------------------------------------------------------------
-    */
-
     public const STATUS_DRAFT = 'draft';
-
     public const STATUS_SCHEDULED = 'scheduled';
-
     public const STATUS_QUEUED = 'queued';
-
     public const STATUS_SENDING = 'sending';
-
+    public const STATUS_PAUSED = 'paused';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_SENT = 'sent';
-
     public const STATUS_FAILED = 'failed';
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mass Assignment
-    |--------------------------------------------------------------------------
-    */
 
     protected $fillable = [
         'name',
@@ -67,23 +38,22 @@ class EmailCampaign extends Model
         'recipient_scope',
         'email_subscriber_group_id',
         'status',
-
         'total_recipients',
         'sent_count',
         'failed_count',
-
         'scheduled_at',
         'queued_at',
         'sent_at',
-
+        'paused_at',
+        'cancelled_at',
+        'completed_at',
+        'parent_campaign_id',
+        'audience_filter_type',
+        'audience_filter_value',
+        'template_id',
+        'last_batch_sent_at',
         'created_by',
     ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | Casts
-    |--------------------------------------------------------------------------
-    */
 
     protected function casts(): array
     {
@@ -91,48 +61,34 @@ class EmailCampaign extends Model
             'total_recipients' => 'integer',
             'sent_count' => 'integer',
             'failed_count' => 'integer',
-
             'scheduled_at' => 'datetime',
             'queued_at' => 'datetime',
             'sent_at' => 'datetime',
+            'paused_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'last_batch_sent_at' => 'datetime',
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
-
     public function devotion(): BelongsTo
     {
-        return $this->belongsTo(
-            Devotion::class
-        );
+        return $this->belongsTo(Devotion::class);
     }
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'created_by'
-        );
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function recipients(): HasMany
     {
-        return $this->hasMany(
-            EmailCampaignRecipient::class
-        );
+        return $this->hasMany(EmailCampaignRecipient::class);
     }
 
     public function pendingRecipients(): HasMany
     {
-        return $this->recipients()
-            ->where(
-                'status',
-                EmailCampaignRecipient::STATUS_PENDING
-            );
+        return $this->recipients()->where('status', EmailCampaignRecipient::STATUS_PENDING);
     }
 
     public function targetSubscribers(): BelongsToMany
@@ -147,17 +103,33 @@ class EmailCampaign extends Model
 
     public function subscriberGroup(): BelongsTo
     {
-        return $this->belongsTo(
-            EmailSubscriberGroup::class,
-            'email_subscriber_group_id'
-        );
+        return $this->belongsTo(EmailSubscriberGroup::class, 'email_subscriber_group_id');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Campaign Type Helpers
-    |--------------------------------------------------------------------------
-    */
+    public function parentCampaign(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_campaign_id');
+    }
+
+    public function childCampaigns(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_campaign_id');
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(EmailCampaignTemplate::class, 'template_id');
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(EmailCampaignActivityLog::class);
+    }
+
+    public function clicks(): HasMany
+    {
+        return $this->hasMany(EmailCampaignClick::class);
+    }
 
     public function isDevotion(): bool
     {
@@ -169,35 +141,20 @@ class EmailCampaign extends Model
         return $this->type === self::TYPE_CUSTOM;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Recipient Scope Helpers
-    |--------------------------------------------------------------------------
-    */
-
     public function sendsToAllSubscribers(): bool
     {
-        return $this->recipient_scope
-            === self::RECIPIENT_SCOPE_SUBSCRIBED;
+        return $this->recipient_scope === self::RECIPIENT_SCOPE_SUBSCRIBED;
     }
 
     public function sendsToSelectedSubscribers(): bool
     {
-        return $this->recipient_scope
-            === self::RECIPIENT_SCOPE_SELECTED;
+        return $this->recipient_scope === self::RECIPIENT_SCOPE_SELECTED;
     }
 
     public function sendsToSubscriberGroup(): bool
     {
-        return $this->recipient_scope
-            === self::RECIPIENT_SCOPE_GROUP;
+        return $this->recipient_scope === self::RECIPIENT_SCOPE_GROUP;
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Campaign Status Helpers
-    |--------------------------------------------------------------------------
-    */
 
     public function isDraft(): bool
     {
@@ -219,6 +176,21 @@ class EmailCampaign extends Model
         return $this->status === self::STATUS_SENDING;
     }
 
+    public function isPaused(): bool
+    {
+        return $this->status === self::STATUS_PAUSED;
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
     public function isSent(): bool
     {
         return $this->status === self::STATUS_SENT;
@@ -229,11 +201,10 @@ class EmailCampaign extends Model
         return $this->status === self::STATUS_FAILED;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Sending Rules
-    |--------------------------------------------------------------------------
-    */
+    public function isCompletedHistory(): bool
+    {
+        return in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_SENT], true);
+    }
 
     public function canSend(): bool
     {
@@ -250,64 +221,35 @@ class EmailCampaign extends Model
         return $this->status === self::STATUS_SCHEDULED;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Scheduled Campaign
-    |--------------------------------------------------------------------------
-    */
-
     public function isDueForSending(): bool
     {
-        if (! $this->isScheduled()) {
-            return false;
-        }
-
-        if (! $this->scheduled_at) {
+        if (! $this->isScheduled() || ! $this->scheduled_at) {
             return false;
         }
 
         return $this->scheduled_at->lte(now());
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Open Tracking Statistics
-    |--------------------------------------------------------------------------
-    */
-
     public function openedRecipientsCount(): int
     {
         return $this->recipients()
-            ->where(
-                'status',
-                EmailCampaignRecipient::STATUS_SENT
-            )
-            ->whereNotNull(
-                'first_opened_at'
-            )
+            ->where('status', EmailCampaignRecipient::STATUS_SENT)
+            ->whereNotNull('first_opened_at')
             ->count();
     }
 
     public function unopenedRecipientsCount(): int
     {
         return $this->recipients()
-            ->where(
-                'status',
-                EmailCampaignRecipient::STATUS_SENT
-            )
-            ->whereNull(
-                'first_opened_at'
-            )
+            ->where('status', EmailCampaignRecipient::STATUS_SENT)
+            ->whereNull('first_opened_at')
             ->count();
     }
 
     public function openRate(): float
     {
         $sentRecipients = $this->recipients()
-            ->where(
-                'status',
-                EmailCampaignRecipient::STATUS_SENT
-            )
+            ->where('status', EmailCampaignRecipient::STATUS_SENT)
             ->count();
 
         if ($sentRecipients === 0) {
@@ -315,18 +257,10 @@ class EmailCampaign extends Model
         }
 
         $openedRecipients = $this->recipients()
-            ->where(
-                'status',
-                EmailCampaignRecipient::STATUS_SENT
-            )
-            ->whereNotNull(
-                'first_opened_at'
-            )
+            ->where('status', EmailCampaignRecipient::STATUS_SENT)
+            ->whereNotNull('first_opened_at')
             ->count();
 
-        return round(
-            ($openedRecipients / $sentRecipients) * 100,
-            1
-        );
+        return round(($openedRecipients / $sentRecipients) * 100, 1);
     }
 }
