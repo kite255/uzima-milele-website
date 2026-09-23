@@ -37,130 +37,59 @@ class EmailSubscriber extends Model
     protected static function booted(): void
     {
         static::creating(function (EmailSubscriber $subscriber) {
-            /*
-            |--------------------------------------------------------------------------
-            | Normalize Email
-            |--------------------------------------------------------------------------
-            */
             if (filled($subscriber->email)) {
-                $subscriber->email = Str::lower(
-                    trim($subscriber->email)
-                );
+                $subscriber->email = Str::lower(trim($subscriber->email));
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Full Name
-            |--------------------------------------------------------------------------
-            */
-            if (
-                blank($subscriber->name) &&
-                (
-                    filled($subscriber->first_name) ||
-                    filled($subscriber->last_name)
-                )
-            ) {
+            if (blank($subscriber->name) && (filled($subscriber->first_name) || filled($subscriber->last_name))) {
                 $subscriber->name = static::buildFullName(
                     $subscriber->first_name,
                     $subscriber->last_name
                 );
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Unsubscribe Token
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->unsubscribe_token)) {
                 $subscriber->unsubscribe_token = Str::random(64);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Subscription Date
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->subscribed_at)) {
                 $subscriber->subscribed_at = now();
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Default Status
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->status)) {
                 $subscriber->status = 'subscribed';
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Default Source
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->source)) {
                 $subscriber->source = 'website';
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Default Language
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->language)) {
                 $subscriber->language = 'sw';
             }
         });
 
         static::updating(function (EmailSubscriber $subscriber) {
-            /*
-            |--------------------------------------------------------------------------
-            | Normalize Email
-            |--------------------------------------------------------------------------
-            */
             if (filled($subscriber->email)) {
-                $subscriber->email = Str::lower(
-                    trim($subscriber->email)
-                );
+                $subscriber->email = Str::lower(trim($subscriber->email));
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Keep Full Name Synchronized
-            |--------------------------------------------------------------------------
-            */
-            if (
-                $subscriber->isDirty('first_name') ||
-                $subscriber->isDirty('last_name')
-            ) {
+            if ($subscriber->isDirty('first_name') || $subscriber->isDirty('last_name')) {
                 $subscriber->name = static::buildFullName(
                     $subscriber->first_name,
                     $subscriber->last_name
                 );
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Protect Unsubscribe Token
-            |--------------------------------------------------------------------------
-            */
             if (blank($subscriber->unsubscribe_token)) {
                 $subscriber->unsubscribe_token = Str::random(64);
             }
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
-
     public function campaignRecipients(): HasMany
     {
-        return $this->hasMany(
-            EmailCampaignRecipient::class
-        );
+        return $this->hasMany(EmailCampaignRecipient::class);
     }
 
     public function groups(): BelongsToMany
@@ -173,46 +102,26 @@ class EmailSubscriber extends Model
         )->withTimestamps();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
+    public function suppressions(): HasMany
+    {
+        return $this->hasMany(EmailSuppression::class, 'email', 'email');
+    }
 
     public function scopeSubscribed($query)
     {
-        return $query->where(
-            'status',
-            'subscribed'
-        );
+        return $query->where('status', 'subscribed');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Accessors / Helpers
-    |--------------------------------------------------------------------------
-    */
 
     public function getFullNameAttribute(): string
     {
-        return static::buildFullName(
-            $this->first_name,
-            $this->last_name
-        );
+        return static::buildFullName($this->first_name, $this->last_name);
     }
 
-    protected static function buildFullName(
-        ?string $firstName,
-        ?string $lastName
-    ): string {
+    protected static function buildFullName(?string $firstName, ?string $lastName): string
+    {
         return trim(
-            collect([
-                $firstName,
-                $lastName,
-            ])
-                ->filter(
-                    fn ($value) => filled($value)
-                )
+            collect([$firstName, $lastName])
+                ->filter(fn ($value) => filled($value))
                 ->implode(' ')
         );
     }
