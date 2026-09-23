@@ -23,7 +23,16 @@ class CustomCampaignMail extends Mailable
     public function build(): self
     {
         $subscriber = $this->recipient->subscriber;
-        $renderedContent = app(CampaignPersonalizationService::class)->render(
+        $personalization = app(CampaignPersonalizationService::class);
+
+        $renderedSubject = $personalization->render(
+            (string) $this->campaign->subject,
+            $this->campaign,
+            $this->recipient,
+            $subscriber
+        );
+
+        $renderedContent = $personalization->render(
             (string) $this->campaign->content,
             $this->campaign,
             $this->recipient,
@@ -31,7 +40,7 @@ class CustomCampaignMail extends Mailable
         );
 
         return $this
-            ->subject($this->campaign->subject)
+            ->subject($renderedSubject)
             ->view('emails.campaigns.custom')
             ->with([
                 'campaign' => $this->campaign,
