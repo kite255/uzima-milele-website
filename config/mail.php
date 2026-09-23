@@ -6,14 +6,27 @@ return [
     |--------------------------------------------------------------------------
     | Default Mailer
     |--------------------------------------------------------------------------
-    |
-    | This option controls the default mailer that is used to send all email
-    | messages unless another mailer is explicitly specified when sending
-    | the message.
-    |
     */
 
     'default' => env('MAIL_MAILER', 'log'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Campaign Sending Throttle
+    |--------------------------------------------------------------------------
+    |
+    | cPanel mail servers can temporarily reject or discard mail when too many
+    | failures/deferrals happen in a short period. Campaigns are therefore sent
+    | in conservative batches with a pause between each batch.
+    |
+    */
+
+    'campaign_batch_size' => (int) env('MAIL_CAMPAIGN_BATCH_SIZE', 20),
+
+    'campaign_batch_delay_minutes' => (int) env(
+        'MAIL_CAMPAIGN_BATCH_DELAY_MINUTES',
+        10
+    ),
 
     /*
     |--------------------------------------------------------------------------
@@ -87,9 +100,6 @@ return [
     |--------------------------------------------------------------------------
     | Global "From" Address
     |--------------------------------------------------------------------------
-    |
-    | This is the default sender address for all system emails.
-    |
     */
 
     'from' => [
@@ -101,9 +111,6 @@ return [
     |--------------------------------------------------------------------------
     | Uzima Milele System Email Addresses
     |--------------------------------------------------------------------------
-    |
-    | These addresses are used by the system for specific notification flows.
-    |
     */
 
     'system_address' => env('SYSTEM_EMAIL', 'no-reply@uzimamilele.or.tz'),
@@ -114,11 +121,6 @@ return [
     |--------------------------------------------------------------------------
     | Prayer Request Email Addresses
     |--------------------------------------------------------------------------
-    |
-    | Add one or many emails in .env like this:
-    |
-    | PRAYER_REQUEST_EMAILS=maombi@uzimamilele.or.tz,info@uzimamilele.or.tz
-    |
     */
 
     'prayer_addresses' => array_values(array_filter(array_map(
