@@ -108,7 +108,7 @@ class PublicEmailSuppressionIntegrationTest extends TestCase
             $subscriber->unsubscribe_token
         );
 
-        $this->put($route, [
+        $this->patch($route, [
             'name' => 'Preference Subscriber',
             'email' => 'preferences@example.com',
             'language' => 'sw',
@@ -120,7 +120,7 @@ class PublicEmailSuppressionIntegrationTest extends TestCase
             'reason' => EmailSuppression::REASON_UNSUBSCRIBED,
         ]);
 
-        $this->put($route, [
+        $this->patch($route, [
             'name' => 'Preference Subscriber',
             'email' => 'preferences@example.com',
             'language' => 'sw',
