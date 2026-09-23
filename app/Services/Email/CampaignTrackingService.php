@@ -30,6 +30,44 @@ class CampaignTrackingService
         );
     }
 
+    public function rewriteLinks(
+        string $html,
+        EmailCampaignRecipient $recipient
+    ): string {
+        $rewritten = preg_replace_callback(
+            '~(<a\b[^>]*\bhref\s*=\s*)(["\'])(.*?)\2~is',
+            function (array $matches) use ($recipient): string {
+                $destination = html_entity_decode(
+                    $matches[3],
+                    ENT_QUOTES | ENT_HTML5,
+                    'UTF-8'
+                );
+
+                if (! $this->isSafeDestination($destination)) {
+                    return $matches[0];
+                }
+
+                if ($this->isAlreadyTracked($destination)) {
+                    return $matches[0];
+                }
+
+                $trackedUrl = $this->trackableUrl($recipient, $destination);
+
+                return $matches[1]
+                    .$matches[2]
+                    .htmlspecialchars(
+                        $trackedUrl,
+                        ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5,
+                        'UTF-8'
+                    )
+                    .$matches[2];
+            },
+            $html
+        );
+
+        return $rewritten ?? $html;
+    }
+
     public function recordClick(
         EmailCampaignRecipient $recipient,
         string $destination,
@@ -88,6 +126,13 @@ class CampaignTrackingService
         }
 
         return filled(parse_url($destination, PHP_URL_HOST));
+    }
+
+    protected function isAlreadyTracked(string $destination): bool
+    {
+        $path = (string) parse_url($destination, PHP_URL_PATH);
+
+        return str_starts_with($path, '/email/click/');
     }
 
     protected function validateDestination(string $destination): void
