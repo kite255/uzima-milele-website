@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\EmailCampaignClickController;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Route::get(
+            '/email/click/{token}',
+            EmailCampaignClickController::class
+        )->name('email-campaigns.click');
     }
 }
