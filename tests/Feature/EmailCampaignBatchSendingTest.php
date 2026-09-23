@@ -5,14 +5,14 @@ namespace Tests\Feature;
 use App\Jobs\SendEmailCampaign;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class EmailCampaignBatchSendingTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_campaign_sends_only_configured_batch_and_queues_next_batch(): void
     {
@@ -50,13 +50,19 @@ class EmailCampaignBatchSendingTest extends TestCase
 
         $this->assertSame(30, $campaign->sent_count);
         $this->assertSame(0, $campaign->failed_count);
-        $this->assertSame(EmailCampaign::STATUS_SENDING, $campaign->status);
+        $this->assertSame(
+            EmailCampaign::STATUS_SENDING,
+            $campaign->status
+        );
 
         $this->assertSame(
             5,
             EmailCampaignRecipient::query()
                 ->where('email_campaign_id', $campaign->id)
-                ->where('status', EmailCampaignRecipient::STATUS_PENDING)
+                ->where(
+                    'status',
+                    EmailCampaignRecipient::STATUS_PENDING
+                )
                 ->count()
         );
 
@@ -104,9 +110,14 @@ class EmailCampaignBatchSendingTest extends TestCase
 
         $this->assertSame(5, $campaign->sent_count);
         $this->assertSame(0, $campaign->failed_count);
-        $this->assertSame(EmailCampaign::STATUS_SENT, $campaign->status);
+        $this->assertSame(
+            EmailCampaign::STATUS_SENT,
+            $campaign->status
+        );
         $this->assertNotNull($campaign->sent_at);
 
-        Queue::assertNotPushed(SendEmailCampaign::class);
+        Queue::assertNotPushed(
+            SendEmailCampaign::class
+        );
     }
 }
