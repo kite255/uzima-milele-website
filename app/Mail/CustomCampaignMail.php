@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Services\Email\CampaignPersonalizationService;
+use App\Services\Email\CampaignTrackingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -24,6 +25,7 @@ class CustomCampaignMail extends Mailable
     {
         $subscriber = $this->recipient->subscriber;
         $personalization = app(CampaignPersonalizationService::class);
+        $tracking = app(CampaignTrackingService::class);
 
         $renderedSubject = $personalization->render(
             (string) $this->campaign->subject,
@@ -37,6 +39,11 @@ class CustomCampaignMail extends Mailable
             $this->campaign,
             $this->recipient,
             $subscriber
+        );
+
+        $renderedContent = $tracking->rewriteLinks(
+            $renderedContent,
+            $this->recipient
         );
 
         return $this
