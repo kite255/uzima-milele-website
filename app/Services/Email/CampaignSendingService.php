@@ -16,7 +16,8 @@ use Throwable;
 class CampaignSendingService
 {
     public function __construct(
-        protected CampaignSuppressionService $suppressionService
+        protected CampaignSuppressionService $suppressionService,
+        protected CampaignAuditService $auditService
     ) {}
 
     public function queue(EmailCampaign $campaign): void
@@ -52,6 +53,8 @@ class CampaignSendingService
                 $campaign->update([
                     'status' => EmailCampaign::STATUS_SENDING,
                 ]);
+
+                $this->audit($campaign, 'started');
             }
 
             $batchSize = max(
@@ -181,7 +184,9 @@ class CampaignSendingService
             $retry->targetSubscribers()->sync($eligibleSubscriberIds);
         }
 
-        $this->audit($campaign, 'retry_failed');
+        $this->audit($campaign, 'retry_failed', [
+            'retry_campaign_id' => $retry->id,
+        ]);
 
         return $retry->fresh();
     }
@@ -307,7 +312,10 @@ class CampaignSendingService
                 'last_batch_sent_at' => now(),
             ]);
 
-            $this->audit($campaign, 'completed');
+            $this->audit($campaign, 'completed', [
+                'sent_count' => $sentCount,
+                'failed_count' => $failedCount,
+            ]);
 
             return;
         }
@@ -322,7 +330,11 @@ class CampaignSendingService
         SendEmailCampaign::dispatch($campaign->id)
             ->delay(now()->addMinutes($batchDelayMinutes));
 
-        $this->audit($campaign, 'batch_processed');
+        $this->audit($campaign, 'batch_processed', [
+            'sent_count' => $sentCount,
+            'failed_count' => $failedCount,
+            'pending_count' => $pendingCount,
+        ]);
     }
 
     protected function audit(
@@ -330,6 +342,12 @@ class CampaignSendingService
         string $action,
         array $metadata = []
     ): void {
-        // Intentionally no-op until CampaignAuditService is added in Task 8.
+        $this->auditService->record(
+            $campaign,
+            $action,
+            null,
+            $metadata,
+            auth()->id()
+        );
     }
 }
