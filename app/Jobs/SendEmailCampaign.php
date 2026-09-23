@@ -34,11 +34,6 @@ class SendEmailCampaign implements ShouldQueue
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Only queued/sending campaigns may be processed
-        |--------------------------------------------------------------------------
-        */
         if (! in_array($campaign->status, [
             EmailCampaign::STATUS_QUEUED,
             EmailCampaign::STATUS_SENDING,
@@ -46,43 +41,36 @@ class SendEmailCampaign implements ShouldQueue
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Mark Campaign As Sending
-        |--------------------------------------------------------------------------
-        */
         if ($campaign->status === EmailCampaign::STATUS_QUEUED) {
             $campaign->update([
                 'status' => EmailCampaign::STATUS_SENDING,
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Process Pending Recipients
-        |--------------------------------------------------------------------------
-        */
-        EmailCampaignRecipient::query()
+        $batchSize = max(
+            1,
+            (int) config('mail.campaign_batch_size', 20)
+        );
+
+        $batchDelayMinutes = max(
+            1,
+            (int) config('mail.campaign_batch_delay_minutes', 10)
+        );
+
+        $recipients = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
             ->where('status', EmailCampaignRecipient::STATUS_PENDING)
             ->orderBy('id')
-            ->chunkById(
-                100,
-                function ($recipients) use ($campaign): void {
-                    foreach ($recipients as $recipient) {
-                        $this->sendToRecipient(
-                            $campaign,
-                            $recipient
-                        );
-                    }
-                }
-            );
+            ->limit($batchSize)
+            ->get();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Refresh Final Statistics
-        |--------------------------------------------------------------------------
-        */
+        foreach ($recipients as $recipient) {
+            $this->sendToRecipient(
+                $campaign,
+                $recipient
+            );
+        }
+
         $sentCount = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
             ->where('status', EmailCampaignRecipient::STATUS_SENT)
@@ -98,11 +86,6 @@ class SendEmailCampaign implements ShouldQueue
             ->where('status', EmailCampaignRecipient::STATUS_PENDING)
             ->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Complete Campaign
-        |--------------------------------------------------------------------------
-        */
         if ($pendingCount === 0) {
             $campaign->update([
                 'status' => EmailCampaign::STATUS_SENT,
@@ -114,15 +97,14 @@ class SendEmailCampaign implements ShouldQueue
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Keep Campaign Sending
-        |--------------------------------------------------------------------------
-        */
         $campaign->update([
+            'status' => EmailCampaign::STATUS_SENDING,
             'sent_count' => $sentCount,
             'failed_count' => $failedCount,
         ]);
+
+        self::dispatch($campaign->id)
+            ->delay(now()->addMinutes($batchDelayMinutes));
     }
 
     protected function sendToRecipient(
@@ -130,11 +112,6 @@ class SendEmailCampaign implements ShouldQueue
         EmailCampaignRecipient $recipient
     ): void {
         try {
-            /*
-            |--------------------------------------------------------------------------
-            | Devotion Campaign
-            |--------------------------------------------------------------------------
-            */
             if ($campaign->isDevotion()) {
                 Mail::to($recipient->email)
                     ->send(
@@ -143,14 +120,7 @@ class SendEmailCampaign implements ShouldQueue
                             recipient: $recipient,
                         )
                     );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Custom Campaign
-            |--------------------------------------------------------------------------
-            */
-            elseif ($campaign->isCustom()) {
+            } elseif ($campaign->isCustom()) {
                 Mail::to($recipient->email)
                     ->send(
                         new CustomCampaignMail(
@@ -164,22 +134,11 @@ class SendEmailCampaign implements ShouldQueue
                 );
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Mark Recipient Sent
-            |--------------------------------------------------------------------------
-            */
             $recipient->markAsSent();
-
             $campaign->increment('sent_count');
         } catch (Throwable $exception) {
             report($exception);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Mark Recipient Failed
-            |--------------------------------------------------------------------------
-            */
             $recipient->markAsFailed(
                 $exception->getMessage()
             );
@@ -188,9 +147,6 @@ class SendEmailCampaign implements ShouldQueue
         }
     }
 
-    /**
-     * Called after all queue retry attempts fail.
-     */
     public function failed(?Throwable $exception): void
     {
         $campaign = EmailCampaign::query()
