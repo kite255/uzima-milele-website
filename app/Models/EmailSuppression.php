@@ -11,6 +11,18 @@ class EmailSuppression extends Model
 {
     use HasFactory;
 
+    public const REASON_UNSUBSCRIBED = 'unsubscribed';
+
+    public const REASON_MANUAL = 'manual';
+
+    public const REASON_INVALID_ADDRESS = 'invalid_address';
+
+    public const REASON_REPEATED_FAILURE = 'repeated_failure';
+
+    public const REASON_BOUNCE = 'bounce';
+
+    public const REASON_COMPLAINT = 'complaint';
+
     protected $fillable = [
         'email',
         'reason',
