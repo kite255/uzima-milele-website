@@ -27,9 +27,9 @@ class CampaignSuppressionService
         return EmailSuppression::query()->updateOrCreate(
             [
                 'email' => $normalizedEmail,
+                'reason' => $reason,
             ],
             [
-                'reason' => $reason,
                 'source' => $source,
                 'notes' => $notes,
                 'suppressed_at' => now(),
