@@ -9,6 +9,7 @@ use App\Models\EmailCampaignRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Throwable;
 
 class SendEmailCampaign implements ShouldQueue
@@ -34,10 +35,14 @@ class SendEmailCampaign implements ShouldQueue
             return;
         }
 
-        if (! in_array($campaign->status, [
-            EmailCampaign::STATUS_QUEUED,
-            EmailCampaign::STATUS_SENDING,
-        ], true)) {
+        if (! in_array(
+            $campaign->status,
+            [
+                EmailCampaign::STATUS_QUEUED,
+                EmailCampaign::STATUS_SENDING,
+            ],
+            true
+        )) {
             return;
         }
 
@@ -59,7 +64,10 @@ class SendEmailCampaign implements ShouldQueue
 
         $recipients = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
-            ->where('status', EmailCampaignRecipient::STATUS_PENDING)
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_PENDING
+            )
             ->orderBy('id')
             ->limit($batchSize)
             ->get();
@@ -73,17 +81,26 @@ class SendEmailCampaign implements ShouldQueue
 
         $sentCount = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
-            ->where('status', EmailCampaignRecipient::STATUS_SENT)
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_SENT
+            )
             ->count();
 
         $failedCount = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
-            ->where('status', EmailCampaignRecipient::STATUS_FAILED)
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_FAILED
+            )
             ->count();
 
         $pendingCount = EmailCampaignRecipient::query()
             ->where('email_campaign_id', $campaign->id)
-            ->where('status', EmailCampaignRecipient::STATUS_PENDING)
+            ->where(
+                'status',
+                EmailCampaignRecipient::STATUS_PENDING
+            )
             ->count();
 
         if ($pendingCount === 0) {
@@ -104,7 +121,9 @@ class SendEmailCampaign implements ShouldQueue
         ]);
 
         self::dispatch($campaign->id)
-            ->delay(now()->addMinutes($batchDelayMinutes));
+            ->delay(
+                now()->addMinutes($batchDelayMinutes)
+            );
     }
 
     protected function sendToRecipient(
@@ -129,26 +148,24 @@ class SendEmailCampaign implements ShouldQueue
                         )
                     );
             } else {
-                throw new \RuntimeException(
+                throw new RuntimeException(
                     'Unknown email campaign type.'
                 );
             }
 
             $recipient->markAsSent();
-            $campaign->increment('sent_count');
         } catch (Throwable $exception) {
             report($exception);
 
             $recipient->markAsFailed(
                 $exception->getMessage()
             );
-
-            $campaign->increment('failed_count');
         }
     }
 
-    public function failed(?Throwable $exception): void
-    {
+    public function failed(
+        ?Throwable $exception
+    ): void {
         $campaign = EmailCampaign::query()
             ->find($this->campaignId);
 
