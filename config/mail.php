@@ -15,13 +15,16 @@ return [
     | Campaign Sending Throttle
     |--------------------------------------------------------------------------
     |
-    | cPanel mail servers can temporarily reject or discard mail when too many
-    | failures/deferrals happen in a short period. Campaigns are therefore sent
-    | in conservative batches with a pause between each batch.
+    | Campaign emails are sent in controlled batches to reduce the risk of
+    | hitting hosting-provider mail limits, defer thresholds, or temporary
+    | SMTP rejection limits.
     |
     */
 
-    'campaign_batch_size' => (int) env('MAIL_CAMPAIGN_BATCH_SIZE', 20),
+    'campaign_batch_size' => (int) env(
+        'MAIL_CAMPAIGN_BATCH_SIZE',
+        20
+    ),
 
     'campaign_batch_delay_minutes' => (int) env(
         'MAIL_CAMPAIGN_BATCH_DELAY_MINUTES',
@@ -40,14 +43,30 @@ return [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
             'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', '127.0.0.1'),
-            'port' => env('MAIL_PORT', 2525),
-            'username' => env('MAIL_USERNAME'),
-            'password' => env('MAIL_PASSWORD'),
+            'host' => env(
+                'MAIL_HOST',
+                '127.0.0.1'
+            ),
+            'port' => env(
+                'MAIL_PORT',
+                2525
+            ),
+            'username' => env(
+                'MAIL_USERNAME'
+            ),
+            'password' => env(
+                'MAIL_PASSWORD'
+            ),
             'timeout' => null,
             'local_domain' => env(
                 'MAIL_EHLO_DOMAIN',
-                parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)
+                parse_url(
+                    (string) env(
+                        'APP_URL',
+                        'http://localhost'
+                    ),
+                    PHP_URL_HOST
+                )
             ),
         ],
 
@@ -66,12 +85,17 @@ return [
 
         'sendmail' => [
             'transport' => 'sendmail',
-            'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
+            'path' => env(
+                'MAIL_SENDMAIL_PATH',
+                '/usr/sbin/sendmail -bs -i'
+            ),
         ],
 
         'log' => [
             'transport' => 'log',
-            'channel' => env('MAIL_LOG_CHANNEL'),
+            'channel' => env(
+                'MAIL_LOG_CHANNEL'
+            ),
         ],
 
         'array' => [
@@ -84,6 +108,7 @@ return [
                 'smtp',
                 'log',
             ],
+            'retry_after' => 60,
         ],
 
         'roundrobin' => [
@@ -92,6 +117,7 @@ return [
                 'ses',
                 'postmark',
             ],
+            'retry_after' => 60,
         ],
 
     ],
@@ -103,8 +129,14 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@uzimamilele.or.tz'),
-        'name' => env('MAIL_FROM_NAME', 'Uzima Milele Ministry'),
+        'address' => env(
+            'MAIL_FROM_ADDRESS',
+            'no-reply@uzimamilele.or.tz'
+        ),
+        'name' => env(
+            'MAIL_FROM_NAME',
+            'Uzima Milele Ministry'
+        ),
     ],
 
     /*
@@ -113,9 +145,15 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'system_address' => env('SYSTEM_EMAIL', 'no-reply@uzimamilele.or.tz'),
+    'system_address' => env(
+        'SYSTEM_EMAIL',
+        'no-reply@uzimamilele.or.tz'
+    ),
 
-    'support_address' => env('SUPPORT_EMAIL', 'info@uzimamilele.or.tz'),
+    'support_address' => env(
+        'SUPPORT_EMAIL',
+        'info@uzimamilele.or.tz'
+    ),
 
     /*
     |--------------------------------------------------------------------------
@@ -123,11 +161,25 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'prayer_addresses' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', env('PRAYER_REQUEST_EMAILS', 'maombi@uzimamilele.or.tz'))
-    ), function ($email) {
-        return filter_var($email, FILTER_VALIDATE_EMAIL);
-    })),
+    'prayer_addresses' => array_values(
+        array_filter(
+            array_map(
+                'trim',
+                explode(
+                    ',',
+                    env(
+                        'PRAYER_REQUEST_EMAILS',
+                        'maombi@uzimamilele.or.tz'
+                    )
+                )
+            ),
+            function ($email) {
+                return filter_var(
+                    $email,
+                    FILTER_VALIDATE_EMAIL
+                );
+            }
+        )
+    ),
 
 ];
