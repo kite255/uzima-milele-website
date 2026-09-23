@@ -64,25 +64,34 @@ class EmailSuppressionTest extends TestCase
         $service = app(CampaignSuppressionService::class);
 
         $service->suppress(
-            'unsubscribe@example.com',
+            'person@example.com',
             EmailSuppression::REASON_UNSUBSCRIBED,
             'public_unsubscribe'
         );
 
         $service->suppress(
-            'manual@example.com',
+            'person@example.com',
             EmailSuppression::REASON_MANUAL,
             'admin'
         );
 
-        $service->removeUnsubscribeSuppression('unsubscribe@example.com');
-        $service->removeUnsubscribeSuppression('manual@example.com');
+        $service->removeUnsubscribeSuppression('person@example.com');
 
-        $this->assertFalse($service->isSuppressed('unsubscribe@example.com'));
-        $this->assertTrue($service->isSuppressed('manual@example.com'));
+        $this->assertDatabaseMissing('email_suppressions', [
+            'email' => 'person@example.com',
+            'reason' => EmailSuppression::REASON_UNSUBSCRIBED,
+        ]);
+
+        $this->assertDatabaseHas('email_suppressions', [
+            'email' => 'person@example.com',
+            'reason' => EmailSuppression::REASON_MANUAL,
+            'source' => 'admin',
+        ]);
+
+        $this->assertTrue($service->isSuppressed('person@example.com'));
     }
 
-    public function test_suppression_upsert_normalizes_email_and_updates_reason(): void
+    public function test_same_email_can_have_multiple_suppression_reasons_without_overwriting_existing_reason(): void
     {
         $service = app(CampaignSuppressionService::class);
 
@@ -99,12 +108,18 @@ class EmailSuppressionTest extends TestCase
             'admin'
         );
 
-        $this->assertSame(1, EmailSuppression::query()->count());
+        $this->assertSame(2, EmailSuppression::query()->count());
 
-        $suppression = EmailSuppression::query()->firstOrFail();
+        $this->assertDatabaseHas('email_suppressions', [
+            'email' => 'person@example.com',
+            'reason' => EmailSuppression::REASON_REPEATED_FAILURE,
+            'source' => 'campaign_send',
+        ]);
 
-        $this->assertSame('person@example.com', $suppression->email);
-        $this->assertSame(EmailSuppression::REASON_MANUAL, $suppression->reason);
-        $this->assertSame('admin', $suppression->source);
+        $this->assertDatabaseHas('email_suppressions', [
+            'email' => 'person@example.com',
+            'reason' => EmailSuppression::REASON_MANUAL,
+            'source' => 'admin',
+        ]);
     }
 }
