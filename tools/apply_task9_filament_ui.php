@@ -14,16 +14,10 @@ function replaceOnce(string $path, string $search, string $replace): void
         throw new RuntimeException("Expected source fragment not found in {$path}");
     }
 
-    $updated = preg_replace(
-        '/'.preg_quote($search, '/').'/',
-        str_replace('\\', '\\\\', $replace),
-        $contents,
-        1,
-        $count
-    );
+    $updated = str_replace($search, $replace, $contents, $count);
 
-    if ($updated === null || $count !== 1) {
-        throw new RuntimeException("Unable to update {$path}");
+    if ($count !== 1) {
+        throw new RuntimeException("Expected exactly one source replacement in {$path}; got {$count}");
     }
 
     file_put_contents($path, $updated);
@@ -188,24 +182,37 @@ replaceOnce(
     "use App\\Models\\EmailSubscriber;\nuse App\\Services\\Email\\EmailAddressHygieneService;\n"
 );
 
+$emailFieldBefore = <<<'PHP'
+                        Forms\Components\TextInput::make('email')
+                            ->label('Barua Pepe')
+                            ->email()
+                            ->required()
+PHP;
+
+$emailFieldAfter = <<<'PHP'
+                        Forms\Components\TextInput::make('email')
+                            ->label('Barua Pepe')
+                            ->email()
+                            ->required()
+                            ->live(onBlur: true)
+                            ->helperText(function (?string $state): ?string {
+                                if (blank($state)) {
+                                    return null;
+                                }
+
+                                $suggestion = app(EmailAddressHygieneService::class)
+                                    ->suggestion($state);
+
+                                return $suggestion
+                                    ? 'Huenda ulimaanisha: '.$suggestion
+                                    : null;
+                            })
+PHP;
+
 replaceOnce(
     $subscriber,
-    "                        Forms\\Components\\TextInput::make('email')\n                            ->label('Barua Pepe')\n                            ->email()\n                            ->required()\n",
-    "                        Forms\\Components\\TextInput::make('email')\n"
-    ."                            ->label('Barua Pepe')\n"
-    ."                            ->email()\n"
-    ."                            ->required()\n"
-    ."                            ->live(onBlur: true)\n"
-    ."                            ->helperText(function (?string \\$state): ?string {\n"
-    ."                                if (blank(\\$state)) {\n"
-    ."                                    return null;\n"
-    ."                                }\n\n"
-    ."                                \\$suggestion = app(EmailAddressHygieneService::class)\n"
-    ."                                    ->suggestion(\\$state);\n\n"
-    ."                                return \\$suggestion\n"
-    ."                                    ? 'Huenda ulimaanisha: '.\\$suggestion\n"
-    ."                                    : null;\n"
-    ."                            })\n"
+    $emailFieldBefore,
+    $emailFieldAfter
 );
 
 echo "Task 9 Filament UI patch applied successfully.\n";
