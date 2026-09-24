@@ -18,6 +18,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Campaign Sending Throttle
+    |--------------------------------------------------------------------------
+    |
+    | Campaign emails are sent in controlled batches to reduce the risk of
+    | hitting hosting-provider mail limits, defer thresholds, or temporary
+    | SMTP rejection limits.
+    |
+    */
+
+    'campaign_batch_size' => (int) env(
+        'MAIL_CAMPAIGN_BATCH_SIZE',
+        20
+    ),
+
+    'campaign_batch_delay_minutes' => (int) env(
+        'MAIL_CAMPAIGN_BATCH_DELAY_MINUTES',
+        10
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |
