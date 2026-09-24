@@ -44,7 +44,10 @@ class EmailCampaignBatchSendingTest extends TestCase
             ]);
         }
 
-        (new SendEmailCampaign($campaign->id))->handle();
+        app()->call([
+            new SendEmailCampaign($campaign->id),
+            'handle',
+        ]);
 
         $campaign->refresh();
 
@@ -104,7 +107,10 @@ class EmailCampaignBatchSendingTest extends TestCase
             ]);
         }
 
-        (new SendEmailCampaign($campaign->id))->handle();
+        app()->call([
+            new SendEmailCampaign($campaign->id),
+            'handle',
+        ]);
 
         $campaign->refresh();
 

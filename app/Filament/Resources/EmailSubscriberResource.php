@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EmailSubscriberResource\Pages;
 use App\Models\EmailSubscriber;
+use App\Services\Email\EmailAddressHygieneService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -44,6 +45,19 @@ class EmailSubscriberResource extends Resource
                             ->label('Barua Pepe')
                             ->email()
                             ->required()
+                            ->live(onBlur: true)
+                            ->helperText(function (?string $state): ?string {
+                                if (blank($state)) {
+                                    return null;
+                                }
+
+                                $suggestion = app(EmailAddressHygieneService::class)
+                                    ->suggestion($state);
+
+                                return $suggestion
+                                    ? 'Huenda ulimaanisha: '.$suggestion
+                                    : null;
+                            })
                             ->unique(
                                 table: EmailSubscriber::class,
                                 column: 'email',
