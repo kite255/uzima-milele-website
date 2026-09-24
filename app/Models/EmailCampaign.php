@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Email\CampaignAuditService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,6 +55,43 @@ class EmailCampaign extends Model
         'last_batch_sent_at',
         'created_by',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (EmailCampaign $campaign): void {
+            app(CampaignAuditService::class)->record(
+                $campaign,
+                'created',
+                null,
+                [],
+                auth()->id()
+            );
+        });
+
+        static::updated(function (EmailCampaign $campaign): void {
+            if (! $campaign->wasChanged('status')) {
+                return;
+            }
+
+            $action = match ($campaign->status) {
+                self::STATUS_QUEUED => 'queued',
+                self::STATUS_SCHEDULED => 'scheduled',
+                default => null,
+            };
+
+            if ($action === null) {
+                return;
+            }
+
+            app(CampaignAuditService::class)->record(
+                $campaign,
+                $action,
+                null,
+                [],
+                auth()->id()
+            );
+        });
+    }
 
     protected function casts(): array
     {
