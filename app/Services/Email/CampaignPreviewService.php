@@ -11,7 +11,8 @@ use Illuminate\Validation\ValidationException;
 class CampaignPreviewService
 {
     public function __construct(
-        protected CampaignPersonalizationService $personalizationService
+        protected CampaignPersonalizationService $personalizationService,
+        protected CampaignAuditService $auditService
     ) {}
 
     public function render(EmailCampaign $campaign): string
@@ -75,5 +76,16 @@ class CampaignPreviewService
                 )
             );
         }
+
+        $this->auditService->record(
+            $campaign,
+            'test_email_sent',
+            null,
+            [
+                'emails' => $validatedEmails->all(),
+                'count' => $validatedEmails->count(),
+            ],
+            auth()->id()
+        );
     }
 }
