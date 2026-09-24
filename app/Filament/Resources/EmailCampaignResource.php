@@ -9,6 +9,9 @@ use App\Mail\DevotionCampaignMail;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailSubscriber;
+use App\Services\Email\CampaignCloneService;
+use App\Services\Email\CampaignExportService;
+use App\Services\Email\CampaignSendingService;
 use App\Services\EmailCampaignService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -1712,6 +1715,136 @@ class EmailCampaignResource extends Resource
                         }
                     ),
 
+                /*
+                |--------------------------------------------------------------------------
+                | ADVANCED LIFECYCLE ACTIONS
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Actions\Action::make('pause')
+                    ->label('Sitisha kwa Muda')
+                    ->icon('heroicon-o-pause')
+                    ->color('warning')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('pause', self::availableActionsFor($record), true)
+                    )
+                    ->requiresConfirmation()
+                    ->action(function (EmailCampaign $record): void {
+                        app(CampaignSendingService::class)->pause($record);
+
+                        Notification::make()
+                            ->title('Kampeni imesitishwa kwa muda')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('resume')
+                    ->label('Endelea Kutuma')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('resume', self::availableActionsFor($record), true)
+                    )
+                    ->requiresConfirmation()
+                    ->action(function (EmailCampaign $record): void {
+                        app(CampaignSendingService::class)->resume($record);
+
+                        Notification::make()
+                            ->title('Kampeni imeendelea kutumwa')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('cancel')
+                    ->label('Ghairi Kampeni')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('cancel', self::availableActionsFor($record), true)
+                    )
+                    ->requiresConfirmation()
+                    ->action(function (EmailCampaign $record): void {
+                        app(CampaignSendingService::class)->cancel($record);
+
+                        Notification::make()
+                            ->title('Kampeni imeghairiwa')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('duplicate')
+                    ->label('Nakili Kampeni')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('duplicate', self::availableActionsFor($record), true)
+                    )
+                    ->action(function (EmailCampaign $record): void {
+                        $duplicate = app(CampaignCloneService::class)
+                            ->duplicate($record, auth()->id());
+
+                        Notification::make()
+                            ->title('Nakala ya kampeni imeundwa')
+                            ->body('Rasimu mpya: '.$duplicate->name)
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('resend_non_openers')
+                    ->label('Tuma Tena kwa Wasiofungua')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('resend_non_openers', self::availableActionsFor($record), true)
+                    )
+                    ->requiresConfirmation()
+                    ->action(function (EmailCampaign $record): void {
+                        $resend = app(CampaignCloneService::class)
+                            ->resendToNonOpeners($record, auth()->id());
+
+                        Notification::make()
+                            ->title('Rasimu ya kutuma tena imeundwa')
+                            ->body('Hariri kichwa au maudhui kabla ya kutuma: '.$resend->name)
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('retry_failed')
+                    ->label('Jaribu Tena Zilizoshindwa')
+                    ->icon('heroicon-o-arrow-path-rounded-square')
+                    ->color('danger')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('retry_failed', self::availableActionsFor($record), true)
+                    )
+                    ->action(function (EmailCampaign $record): void {
+                        $retry = app(CampaignCloneService::class)
+                            ->retryFailed($record, auth()->id());
+
+                        Notification::make()
+                            ->title('Rasimu ya kujaribu tena imeundwa')
+                            ->body($retry->name)
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('export')
+                    ->label('Pakua CSV')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->visible(
+                        fn (EmailCampaign $record): bool =>
+                            in_array('export', self::availableActionsFor($record), true)
+                    )
+                    ->action(
+                        fn (EmailCampaign $record) =>
+                            app(CampaignExportService::class)->csv($record)
+                    ),
                 /*
                 |--------------------------------------------------------------------------
                 | DELETE

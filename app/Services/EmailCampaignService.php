@@ -6,14 +6,17 @@ use App\Jobs\SendEmailCampaign;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailSubscriber;
+use App\Services\Email\CampaignAudienceService;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class EmailCampaignService
 {
+    public function __construct(
+        protected CampaignAudienceService $audienceService
+    ) {}
+
     /**
      * Number of subscribers currently eligible
      * to receive email campaigns.
@@ -390,77 +393,6 @@ class EmailCampaignService
 
     /*
     |--------------------------------------------------------------------------
-    | RECIPIENT QUERY
-    |--------------------------------------------------------------------------
-    */
-
-    protected function recipientQuery(
-        EmailCampaign $campaign
-    ): Builder {
-        $query =
-            EmailSubscriber::query()
-                ->subscribed();
-
-        if (
-            $campaign
-                ->sendsToSelectedSubscribers()
-        ) {
-            $query->whereIn(
-                'email_subscribers.id',
-                function (
-                    $subQuery
-                ) use (
-                    $campaign
-                ): void {
-                    $subQuery
-                        ->select(
-                            'email_subscriber_id'
-                        )
-                        ->from(
-                            'email_campaign_targets'
-                        )
-                        ->where(
-                            'email_campaign_id',
-                            $campaign->id
-                        );
-                }
-            );
-
-            return $query;
-        }
-
-        if (
-            $campaign
-                ->sendsToSubscriberGroup()
-        ) {
-            $query->whereIn(
-                'email_subscribers.id',
-                function (
-                    $subQuery
-                ) use (
-                    $campaign
-                ): void {
-                    $subQuery
-                        ->select(
-                            'email_subscriber_id'
-                        )
-                        ->from(
-                            'email_subscriber_group_members'
-                        )
-                        ->where(
-                            'email_subscriber_group_id',
-                            $campaign
-                                ->email_subscriber_group_id
-                        );
-                }
-            );
-        }
-
-        return $query;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | RECIPIENT SNAPSHOT
     |--------------------------------------------------------------------------
     */
@@ -468,138 +400,7 @@ class EmailCampaignService
     protected function snapshotRecipients(
         EmailCampaign $campaign
     ): int {
-        $total = 0;
-
-        $this->recipientQuery(
-            $campaign
-        )
-            ->select([
-                'email_subscribers.id',
-                'email_subscribers.name',
-                'email_subscribers.first_name',
-                'email_subscribers.last_name',
-                'email_subscribers.email',
-            ])
-            ->orderBy(
-                'email_subscribers.id'
-            )
-            ->chunkById(
-                500,
-                function (
-                    $subscribers
-                ) use (
-                    $campaign,
-                    &$total
-                ): void {
-                    $now = now();
-
-                    $rows = [];
-
-                    foreach (
-                        $subscribers as $subscriber
-                    ) {
-                        $email = strtolower(
-                            trim(
-                                (string)
-                                $subscriber->email
-                            )
-                        );
-
-                        if (
-                            blank($email)
-                            || ! filter_var(
-                                $email,
-                                FILTER_VALIDATE_EMAIL
-                            )
-                        ) {
-                            continue;
-                        }
-
-                        $name =
-                            $subscriber->name
-                            ?: trim(
-                                (
-                                    $subscriber->first_name
-                                    ?? ''
-                                )
-                                . ' '
-                                . (
-                                    $subscriber->last_name
-                                    ?? ''
-                                )
-                            );
-
-                        $rows[] = [
-                            'email_campaign_id' =>
-                                $campaign->id,
-
-                            'email_subscriber_id' =>
-                                $subscriber->id,
-
-                            'name' =>
-                                $name !== ''
-                                    ? $name
-                                    : null,
-
-                            'email' =>
-                                $email,
-
-                            'status' =>
-                                EmailCampaignRecipient::STATUS_PENDING,
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | Open Tracking
-                            |--------------------------------------------------------------------------
-                            */
-                            'tracking_token' =>
-                                (string) Str::uuid(),
-
-                            'first_opened_at' =>
-                                null,
-
-                            'last_opened_at' =>
-                                null,
-
-                            'open_count' =>
-                                0,
-
-                            'sent_at' =>
-                                null,
-
-                            'failed_at' =>
-                                null,
-
-                            'error_message' =>
-                                null,
-
-                            'created_at' =>
-                                $now,
-
-                            'updated_at' =>
-                                $now,
-                        ];
-                    }
-
-                    if ($rows === []) {
-                        return;
-                    }
-
-                    $inserted =
-                        DB::table(
-                            'email_campaign_recipients'
-                        )->insertOrIgnore(
-                            $rows
-                        );
-
-                    $total +=
-                        $inserted;
-                },
-                'email_subscribers.id',
-                'id'
-            );
-
-        return $total;
+        return $this->audienceService->snapshot($campaign);
     }
 
     /*

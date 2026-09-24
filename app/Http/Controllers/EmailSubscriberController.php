@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\EmailCampaign;
 use App\Models\EmailSetting;
 use App\Models\EmailSubscriber;
+use App\Models\EmailSuppression;
+use App\Services\Email\CampaignSuppressionService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,10 @@ use Illuminate\View\View;
 
 class EmailSubscriberController extends Controller
 {
+    public function __construct(
+        protected CampaignSuppressionService $suppressionService
+    ) {}
+
     /**
      * Store a new subscriber, confirm an existing subscription,
      * or reactivate an unsubscribed subscriber.
@@ -295,6 +301,13 @@ class EmailSubscriberController extends Controller
                 ?: 'sw',
         ]);
 
+        if ($wasUnsubscribed) {
+            $this->suppressionService
+                ->removeUnsubscribeSuppression(
+                    $email
+                );
+        }
+
         /*
         |--------------------------------------------------------------------------
         | Ensure Default Group Membership
@@ -372,6 +385,12 @@ class EmailSubscriberController extends Controller
                     now(),
             ]);
         }
+
+        $this->suppressionService->suppress(
+            $subscriber->email,
+            EmailSuppression::REASON_UNSUBSCRIBED,
+            'public_unsubscribe'
+        );
 
         return view(
             'subscriptions.unsubscribed',
@@ -614,6 +633,19 @@ class EmailSubscriberController extends Controller
             'unsubscribed_at' =>
                 $unsubscribedAt,
         ]);
+
+        if ($status === 'subscribed') {
+            $this->suppressionService
+                ->removeUnsubscribeSuppression(
+                    $email
+                );
+        } else {
+            $this->suppressionService->suppress(
+                $email,
+                EmailSuppression::REASON_UNSUBSCRIBED,
+                'preferences_unsubscribe'
+            );
+        }
 
         /*
         |--------------------------------------------------------------------------
