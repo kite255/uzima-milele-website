@@ -12,7 +12,8 @@ class CampaignCloneService
 {
     public function __construct(
         protected CampaignSuppressionService $suppressionService,
-        protected CampaignSendingService $sendingService
+        protected CampaignSendingService $sendingService,
+        protected CampaignAuditService $auditService
     ) {}
 
     public function duplicate(
@@ -53,6 +54,14 @@ class CampaignCloneService
                     $source->targetSubscribers()->pluck('email_subscribers.id')->all()
                 );
             }
+
+            $this->auditService->record(
+                $source,
+                'duplicated',
+                null,
+                ['duplicate_campaign_id' => $duplicate->id],
+                $createdBy ?? auth()->id()
+            );
 
             return $duplicate->fresh();
         });
@@ -97,6 +106,17 @@ class CampaignCloneService
             );
 
             $resend->targetSubscribers()->sync($eligibleIds);
+
+            $this->auditService->record(
+                $source,
+                'resend_non_openers',
+                null,
+                [
+                    'resend_campaign_id' => $resend->id,
+                    'recipient_count' => count($eligibleIds),
+                ],
+                $createdBy ?? auth()->id()
+            );
 
             return $resend->fresh();
         });
