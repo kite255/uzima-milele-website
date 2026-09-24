@@ -3,9 +3,7 @@
 namespace App\Providers;
 
 use App\Filament\Resources\EmailCampaignResource;
-use App\Http\Controllers\EmailCampaignClickController;
 use App\Models\EmailCampaign;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,11 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Route::get(
-            '/email/click/{token}',
-            EmailCampaignClickController::class
-        )->name('email-campaigns.click');
-
         EmailCampaignResource::macro(
             'availableActionsFor',
             function (EmailCampaign $campaign): array {
