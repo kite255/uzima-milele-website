@@ -53,23 +53,28 @@ class Devotion extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function getImageUrlAttribute(): ?string
+    public function getImageAttribute($value): ?string
     {
-        if (blank($this->image)) {
+        if (blank($value)) {
             return null;
         }
 
-        $path = ltrim((string) $this->image, '/');
+        $path = ltrim((string) $value, '/');
 
         if (str_starts_with($path, 'storage/')) {
             $path = substr($path, strlen('storage/'));
         }
 
-        if (! Storage::disk('public')->exists($path)) {
-            return null;
-        }
+        return Storage::disk('public')->exists($path)
+            ? $path
+            : null;
+    }
 
-        return Storage::disk('public')->url($path);
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image
+            ? Storage::disk('public')->url($this->image)
+            : null;
     }
 
     /*
