@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Devotion extends Model
 {
@@ -29,6 +30,10 @@ class Devotion extends Model
         'published_at' => 'date',
     ];
 
+    protected $appends = [
+        'image_url',
+    ];
+
     /*
     |--------------------------------------------------------------------------
     | Relationships
@@ -42,6 +47,35 @@ class Devotion extends Model
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Image
+    |--------------------------------------------------------------------------
+    */
+
+    public function getImageAttribute($value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $path = ltrim((string) $value, '/');
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return Storage::disk('public')->exists($path)
+            ? $path
+            : null;
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image
+            ? Storage::disk('public')->url($this->image)
+            : null;
+    }
 
     /*
     |--------------------------------------------------------------------------
