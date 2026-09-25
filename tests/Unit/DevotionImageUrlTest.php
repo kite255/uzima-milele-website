@@ -17,13 +17,14 @@ class DevotionImageUrlTest extends TestCase
             'image' => 'devotions/finch.jpg',
         ]);
 
+        $this->assertSame('devotions/finch.jpg', $devotion->image);
         $this->assertSame(
             Storage::disk('public')->url('devotions/finch.jpg'),
             $devotion->image_url
         );
     }
 
-    public function test_it_returns_null_when_the_stored_devotion_image_is_missing(): void
+    public function test_it_hides_a_missing_devotion_image_from_views(): void
     {
         Storage::fake('public');
 
@@ -31,6 +32,23 @@ class DevotionImageUrlTest extends TestCase
             'image' => 'devotions/missing.jpg',
         ]);
 
+        $this->assertNull($devotion->image);
         $this->assertNull($devotion->image_url);
+    }
+
+    public function test_it_normalizes_legacy_storage_prefixes(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('devotions/finch.jpg', 'image-bytes');
+
+        $devotion = new Devotion([
+            'image' => '/storage/devotions/finch.jpg',
+        ]);
+
+        $this->assertSame('devotions/finch.jpg', $devotion->image);
+        $this->assertSame(
+            Storage::disk('public')->url('devotions/finch.jpg'),
+            $devotion->image_url
+        );
     }
 }
