@@ -16,7 +16,8 @@ Artisan::command('inspire', function () {
 |--------------------------------------------------------------------------
 | cPanel installations may have public_html outside Laravel's application
 | directory and may not permit the normal public/storage symbolic link.
-| This command safely mirrors storage/app/public into that web directory.
+| Laravel storage/app/public remains the source of truth; this command
+| mirrors it into the real web-visible directory.
 */
 Artisan::command('storage:sync-public {--dry-run : Validate configuration without copying files}', function () {
     $source = storage_path('app/public');
@@ -39,11 +40,20 @@ Artisan::command('storage:sync-public {--dry-run : Validate configuration withou
     }
 
     File::ensureDirectoryExists($destination, 0755, true);
-    File::copyDirectory($source, $destination);
+
+    if (! File::copyDirectory($source, $destination)) {
+        $this->error("Unable to synchronize public storage to {$destination}");
+        return self::FAILURE;
+    }
 
     $this->info("Public storage synchronized to {$destination}");
     return self::SUCCESS;
 })->purpose('Mirror Laravel public storage to the web-visible storage directory');
+
+// Keep cPanel's web-visible storage current without relying on symlinks.
+Schedule::command('storage:sync-public')
+    ->everyMinute()
+    ->withoutOverlapping();
 
 /* Automatic Lesson Reminders */
 Schedule::command('lessons:send-automatic-reminders')
