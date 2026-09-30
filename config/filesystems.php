@@ -2,31 +2,7 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Default Filesystem Disk
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
-    */
-
     'default' => env('FILESYSTEM_DISK', 'local'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Filesystem Disks
-    |--------------------------------------------------------------------------
-    |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
-    |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
-    |
-    */
 
     'disks' => [
 
@@ -39,13 +15,13 @@ return [
         ],
 
         'public' => [
-    'driver' => 'local',
-    'root' => public_path('storage'),
-    'url' => env('APP_URL').'/storage',
-    'visibility' => 'public',
-    'throw' => false,
-    'report' => false,
-    ],
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'url' => env('APP_URL').'/storage',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
 
         's3' => [
             'driver' => 's3',
@@ -63,15 +39,11 @@ return [
     ],
 
     /*
-    |--------------------------------------------------------------------------
-    | Symbolic Links
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
+    | The real web-visible storage directory. On cPanel, public_html is
+    | outside Laravel's application directory, so symlinks may be blocked.
+    | Set PUBLIC_WEB_STORAGE_PATH in production to the absolute public path.
     */
+    'public_web_root' => env('PUBLIC_WEB_STORAGE_PATH'),
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
