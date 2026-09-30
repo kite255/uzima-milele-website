@@ -16,8 +16,9 @@ Artisan::command('inspire', function () {
 |--------------------------------------------------------------------------
 | cPanel installations may have public_html outside Laravel's application
 | directory and may not permit the normal public/storage symbolic link.
-| Laravel storage/app/public remains the source of truth; this command
-| mirrors it into the real web-visible directory.
+| Laravel storage/app/public remains the source of truth. Copy individual
+| files into the web-visible directory instead of recursively mirroring the
+| whole tree, which is unreliable on some jailed cPanel filesystems.
 */
 Artisan::command('storage:sync-public {--dry-run : Validate configuration without copying files}', function () {
     $source = storage_path('app/public');
@@ -39,16 +40,55 @@ Artisan::command('storage:sync-public {--dry-run : Validate configuration withou
         return self::SUCCESS;
     }
 
-    File::ensureDirectoryExists($destination, 0755, true);
+    try {
+        if (! is_dir($destination)) {
+            File::makeDirectory($destination, 0755, true);
+        }
 
-    if (! File::copyDirectory($source, $destination)) {
-        $this->error("Unable to synchronize public storage to {$destination}");
+        $copied = 0;
+        $skipped = 0;
+
+        foreach (File::allFiles($source) as $file) {
+            $relativePath = str_replace('\\', '/', $file->getRelativePathname());
+
+            // Livewire temporary uploads must never be published.
+            if ($relativePath === 'livewire-tmp' || str_starts_with($relativePath, 'livewire-tmp/')) {
+                $skipped++;
+                continue;
+            }
+
+            $target = rtrim($destination, DIRECTORY_SEPARATOR)
+                .DIRECTORY_SEPARATOR
+                .str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+            $targetDirectory = dirname($target);
+
+            if (! is_dir($targetDirectory)) {
+                File::makeDirectory($targetDirectory, 0755, true);
+            }
+
+            $shouldCopy = ! is_file($target)
+                || $file->getSize() !== filesize($target)
+                || $file->getMTime() > filemtime($target);
+
+            if (! $shouldCopy) {
+                $skipped++;
+                continue;
+            }
+
+            if (! File::copy($file->getPathname(), $target)) {
+                throw new RuntimeException("Unable to copy {$relativePath} to {$target}");
+            }
+
+            $copied++;
+        }
+
+        $this->info("Public storage synchronized to {$destination} ({$copied} copied, {$skipped} skipped).");
+        return self::SUCCESS;
+    } catch (Throwable $exception) {
+        $this->error('Public storage synchronization failed: '.$exception->getMessage());
         return self::FAILURE;
     }
-
-    $this->info("Public storage synchronized to {$destination}");
-    return self::SUCCESS;
-})->purpose('Mirror Laravel public storage to the web-visible storage directory');
+})->purpose('Copy Laravel public files to the web-visible storage directory');
 
 // Keep cPanel's web-visible storage current without relying on symlinks.
 Schedule::command('storage:sync-public')
