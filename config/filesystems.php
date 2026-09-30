@@ -16,8 +16,11 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // On cPanel, write public uploads directly into the web-visible
+            // storage directory. Local/dev environments keep Laravel's
+            // conventional storage/app/public location by default.
+            'root' => env('PUBLIC_WEB_STORAGE_PATH', storage_path('app/public')),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -38,15 +41,10 @@ return [
 
     ],
 
-    /*
-    | The real web-visible storage directory. On cPanel, public_html is
-    | outside Laravel's application directory, so symlinks may be blocked.
-    | Set PUBLIC_WEB_STORAGE_PATH in production to the absolute public path.
-    */
     'public_web_root' => env('PUBLIC_WEB_STORAGE_PATH'),
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        public_path('storage') => env('PUBLIC_WEB_STORAGE_PATH', storage_path('app/public')),
     ],
 
 ];
