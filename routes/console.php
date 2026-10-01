@@ -51,7 +51,6 @@ Artisan::command('storage:sync-public {--dry-run : Validate configuration withou
         foreach (File::allFiles($source) as $file) {
             $relativePath = str_replace('\\', '/', $file->getRelativePathname());
 
-            // Livewire temporary uploads must never be published.
             if ($relativePath === 'livewire-tmp' || str_starts_with($relativePath, 'livewire-tmp/')) {
                 $skipped++;
                 continue;
@@ -90,17 +89,18 @@ Artisan::command('storage:sync-public {--dry-run : Validate configuration withou
     }
 })->purpose('Copy Laravel public files to the web-visible storage directory');
 
-// Keep cPanel's web-visible storage current without relying on symlinks.
 Schedule::command('storage:sync-public')
     ->everyMinute()
     ->withoutOverlapping();
 
-/* Automatic Lesson Reminders */
 Schedule::command('lessons:send-automatic-reminders')
     ->dailyAt('09:00')
     ->withoutOverlapping();
 
-/* Scheduled Email Campaigns */
+Schedule::command('lessons:send-question-escalations')
+    ->hourly()
+    ->withoutOverlapping();
+
 Schedule::call(function (): void {
     app(EmailCampaignService::class)->releaseDueCampaigns();
 })
