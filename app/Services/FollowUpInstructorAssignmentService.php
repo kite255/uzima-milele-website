@@ -106,6 +106,62 @@ class FollowUpInstructorAssignmentService
             'followUpInstructor',
         ]);
 
+        $this->assertInstructorEligibleForEnrollment(
+            $enrollment,
+            $instructor
+        );
+
+        return $this->persistAssignment(
+            $enrollment,
+            $instructor
+        );
+    }
+
+    public function assignManyManually(
+        Collection $enrollments,
+        User $instructor
+    ): int {
+        $enrollments = $enrollments
+            ->filter(
+                fn ($enrollment) => $enrollment instanceof LessonEnrollment
+            )
+            ->values();
+
+        foreach ($enrollments as $enrollment) {
+            $enrollment->loadMissing([
+                'lesson',
+                'user',
+                'followUpInstructor',
+            ]);
+
+            $this->assertInstructorEligibleForEnrollment(
+                $enrollment,
+                $instructor
+            );
+        }
+
+        $changed = 0;
+
+        foreach ($enrollments as $enrollment) {
+            if ($enrollment->follow_up_instructor_id === $instructor->id) {
+                continue;
+            }
+
+            $this->persistAssignment(
+                $enrollment,
+                $instructor
+            );
+
+            $changed++;
+        }
+
+        return $changed;
+    }
+
+    private function assertInstructorEligibleForEnrollment(
+        LessonEnrollment $enrollment,
+        User $instructor
+    ): void {
         $lesson = $enrollment->lesson;
 
         if (! $lesson) {
@@ -122,14 +178,9 @@ class FollowUpInstructorAssignmentService
 
         if (! $isEligible) {
             throw new InvalidArgumentException(
-                'The selected instructor is not eligible for this lesson.'
+                'The selected instructor is not eligible for one or more selected students.'
             );
         }
-
-        return $this->persistAssignment(
-            $enrollment,
-            $instructor
-        );
     }
 
     private function persistAssignment(
