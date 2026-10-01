@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\User;
+use App\Notifications\FollowUpInstructorAssignedToStudentNotification;
+use App\Notifications\NewStudentAssignedToInstructorNotification;
 use Illuminate\Support\Collection;
 
 class FollowUpInstructorAssignmentService
@@ -34,7 +36,15 @@ class FollowUpInstructorAssignmentService
     public function assign(
         LessonEnrollment $enrollment
     ): ?User {
-        $enrollment->loadMissing('lesson');
+        $enrollment->loadMissing([
+            'lesson',
+            'user',
+            'followUpInstructor',
+        ]);
+
+        if ($enrollment->followUpInstructor) {
+            return $enrollment->followUpInstructor;
+        }
 
         $lesson = $enrollment->lesson;
 
@@ -88,6 +98,22 @@ class FollowUpInstructorAssignmentService
             'instructor_assigned_at' =>
                 now(),
         ])->save();
+
+        if ($enrollment->user) {
+            $enrollment->user->notify(
+                new FollowUpInstructorAssignedToStudentNotification(
+                    $enrollment,
+                    $selectedInstructor
+                )
+            );
+        }
+
+        $selectedInstructor->notify(
+            new NewStudentAssignedToInstructorNotification(
+                $enrollment,
+                $enrollment->user
+            )
+        );
 
         return $selectedInstructor;
     }
