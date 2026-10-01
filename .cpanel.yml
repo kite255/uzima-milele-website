@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/uzimamil/live_uzimamilele/
+    - export DEPLOYPATH=/home/uzimamil/public_html/sub_uzimamilele/
 
     - /bin/mkdir -p $DEPLOYPATH
 
