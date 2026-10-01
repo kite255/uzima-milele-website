@@ -145,9 +145,12 @@ class LessonQuestionEmailWorkflowTest extends TestCase
             'status' => LessonQuestion::STATUS_PENDING,
             'visibility' => LessonQuestion::VISIBILITY_PRIVATE,
             'is_published' => true,
+        ]);
+
+        $question->forceFill([
             'created_at' => now()->subHours(25),
             'updated_at' => now()->subHours(25),
-        ]);
+        ])->saveQuietly();
 
         $this->artisan('lessons:send-question-escalations')->assertSuccessful();
 
