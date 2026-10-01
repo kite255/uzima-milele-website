@@ -6,8 +6,11 @@ use App\Filament\Resources\LessonEnrollmentResource\Pages;
 use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
+use App\Models\User;
+use App\Services\FollowUpInstructorAssignmentService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -50,7 +53,7 @@ class LessonEnrollmentResource extends Resource
                             ->required(),
 
                         Forms\Components\Select::make('follow_up_instructor_id')
-                            ->label('Follow-up Instructor')
+                            ->label('Current Follow-up Instructor')
                             ->options(
                                 fn (Forms\Get $get): array =>
                                     static::eligibleInstructorOptions(
@@ -63,12 +66,14 @@ class LessonEnrollmentResource extends Resource
                             ->preload()
                             ->nullable()
                             ->placeholder('Unassigned')
+                            ->disabled()
+                            ->dehydrated(false)
                             ->visible(
                                 fn (): bool =>
                                     auth()->user()?->role === 'admin'
                             )
                             ->helperText(
-                                'Admin can manually assign or reassign the student to an eligible instructor.'
+                                'Use the Assign / Reassign Instructor action to choose Automatic or Manual assignment.'
                             ),
 
                         Forms\Components\DateTimePicker::make('enrolled_at')
@@ -107,16 +112,6 @@ class LessonEnrollmentResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Learning Progress
-                |--------------------------------------------------------------------------
-                |
-                | This is topic progress only.
-                | It does NOT automatically mean that the whole lesson
-                | is complete.
-                |
-                */
                 Tables\Columns\TextColumn::make('progress')
                     ->label('Learning Progress')
                     ->state(function (LessonEnrollment $record): string {
@@ -134,20 +129,6 @@ class LessonEnrollmentResource extends Resource
                         };
                     }),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Completion Status
-                |--------------------------------------------------------------------------
-                |
-                | This is now the real lesson completion state.
-                |
-                | It can show:
-                | - In Progress
-                | - Module Quiz Pending
-                | - Final Quiz Pending
-                | - Completed
-                |
-                */
                 Tables\Columns\TextColumn::make('completion_status_display')
                     ->label('Status')
                     ->state(function (LessonEnrollment $record): string {
@@ -172,11 +153,6 @@ class LessonEnrollmentResource extends Resource
                         };
                     }),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Modules
-                |--------------------------------------------------------------------------
-                */
                 Tables\Columns\TextColumn::make('modules_progress')
                     ->label('Modules')
                     ->state(function (LessonEnrollment $record): string {
@@ -198,11 +174,6 @@ class LessonEnrollmentResource extends Resource
                     })
                     ->toggleable(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Quiz Pending
-                |--------------------------------------------------------------------------
-                */
                 Tables\Columns\TextColumn::make('quiz_status')
                     ->label('Quiz Status')
                     ->state(function (LessonEnrollment $record): string {
@@ -238,11 +209,6 @@ class LessonEnrollmentResource extends Resource
                     })
                     ->toggleable(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Certificate
-                |--------------------------------------------------------------------------
-                */
                 Tables\Columns\TextColumn::make('certificate_status')
                     ->label('Certificate')
                     ->state(function (LessonEnrollment $record): string {
@@ -279,11 +245,6 @@ class LessonEnrollmentResource extends Resource
                         return 'gray';
                     }),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Schedule Status
-                |--------------------------------------------------------------------------
-                */
                 Tables\Columns\TextColumn::make('schedule_status_label')
                     ->label('Schedule')
                     ->badge()
@@ -337,10 +298,7 @@ class LessonEnrollmentResource extends Resource
                         'followUpInstructor',
                         'name',
                         modifyQueryUsing: fn (Builder $query) =>
-                            $query->where(
-                                'role',
-                                'instructor'
-                            )
+                            $query->where('role', 'instructor')
                     )
                     ->searchable()
                     ->preload(),
@@ -348,9 +306,9 @@ class LessonEnrollmentResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
 
-                Tables\Actions\Action::make('reassignInstructor')
-                    ->label('Reassign Instructor')
-                    ->icon('heroicon-o-arrow-path')
+                Tables\Actions\Action::make('assignInstructor')
+                    ->label('Assign / Reassign Instructor')
+                    ->icon('heroicon-o-user-plus')
                     ->color('warning')
                     ->visible(
                         fn (): bool =>
@@ -358,6 +316,16 @@ class LessonEnrollmentResource extends Resource
                     )
                     ->form(
                         fn (LessonEnrollment $record): array => [
+                            Forms\Components\Select::make('assignment_mode')
+                                ->label('Assignment Mode')
+                                ->options([
+                                    'automatic' => 'Automatic — choose the least-loaded eligible instructor',
+                                    'manual' => 'Manual — choose an instructor yourself',
+                                ])
+                                ->default('automatic')
+                                ->required()
+                                ->live(),
+
                             Forms\Components\Select::make(
                                 'follow_up_instructor_id'
                             )
@@ -369,10 +337,17 @@ class LessonEnrollmentResource extends Resource
                                 )
                                 ->searchable()
                                 ->preload()
-                                ->nullable()
-                                ->placeholder('Unassigned')
+                                ->placeholder('Choose an instructor')
                                 ->default(
                                     $record->follow_up_instructor_id
+                                )
+                                ->visible(
+                                    fn (Forms\Get $get): bool =>
+                                        $get('assignment_mode') === 'manual'
+                                )
+                                ->required(
+                                    fn (Forms\Get $get): bool =>
+                                        $get('assignment_mode') === 'manual'
                                 ),
                         ]
                     )
@@ -381,18 +356,49 @@ class LessonEnrollmentResource extends Resource
                             LessonEnrollment $record,
                             array $data
                         ): void {
-                            $instructorId =
-                                $data['follow_up_instructor_id']
-                                ?? null;
+                            $service = app(
+                                FollowUpInstructorAssignmentService::class
+                            );
 
-                            $record->forceFill([
-                                'follow_up_instructor_id' =>
-                                    $instructorId,
-                                'instructor_assigned_at' =>
-                                    $instructorId
-                                        ? now()
-                                        : null,
-                            ])->save();
+                            if (
+                                ($data['assignment_mode'] ?? 'automatic')
+                                === 'automatic'
+                            ) {
+                                $assigned = $service
+                                    ->assignAutomatically(
+                                        $record,
+                                        reassign: true
+                                    );
+                            } else {
+                                $instructor = User::query()->findOrFail(
+                                    (int) $data['follow_up_instructor_id']
+                                );
+
+                                $assigned = $service->assignManually(
+                                    $record,
+                                    $instructor
+                                );
+                            }
+
+                            if (! $assigned) {
+                                Notification::make()
+                                    ->title('No eligible instructor available')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('Follow-up instructor assigned')
+                                ->body(
+                                    $record->user?->name
+                                    . ' is assigned to '
+                                    . $assigned->name
+                                    . '.'
+                                )
+                                ->success()
+                                ->send();
                         }
                     ),
 
@@ -431,10 +437,7 @@ class LessonEnrollmentResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort(
-                'enrolled_at',
-                'desc'
-            );
+            ->defaultSort('enrolled_at', 'desc');
     }
 
     public static function getEloquentQuery(): Builder
@@ -452,10 +455,7 @@ class LessonEnrollmentResource extends Resource
 
         $user = auth()->user();
 
-        if (
-            $user
-            && $user->role === 'instructor'
-        ) {
+        if ($user && $user->role === 'instructor') {
             return $query->where(
                 function (Builder $enrollmentQuery) use ($user) {
                     $enrollmentQuery
@@ -479,12 +479,8 @@ class LessonEnrollmentResource extends Resource
                                         'instructor_id',
                                         $user->id
                                     )
-                                    ->whereNull(
-                                        'lead_instructor_id'
-                                    )
-                                    ->whereDoesntHave(
-                                        'followUpInstructors'
-                                    );
+                                    ->whereNull('lead_instructor_id')
+                                    ->whereDoesntHave('followUpInstructors');
                             }
                         );
                 }
@@ -512,22 +508,8 @@ class LessonEnrollmentResource extends Resource
             return [];
         }
 
-        $instructors = $lesson
-            ->followUpInstructors
-            ->where('role', 'instructor');
-
-        if (
-            $lesson->lead_can_receive_students
-            && $lesson->leadInstructor
-            && $lesson->leadInstructor->role === 'instructor'
-        ) {
-            $instructors = $instructors->push(
-                $lesson->leadInstructor
-            );
-        }
-
-        return $instructors
-            ->unique('id')
+        return app(FollowUpInstructorAssignmentService::class)
+            ->eligibleInstructors($lesson)
             ->sortBy('name')
             ->pluck('name', 'id')
             ->toArray();
