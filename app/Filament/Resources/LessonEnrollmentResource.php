@@ -15,6 +15,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class LessonEnrollmentResource extends Resource
 {
@@ -434,6 +436,71 @@ class LessonEnrollmentResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('assignStudentsToInstructor')
+                        ->label('Assign Students to Instructor')
+                        ->icon('heroicon-o-user-group')
+                        ->color('warning')
+                        ->visible(
+                            fn (): bool =>
+                                auth()->user()?->role === 'admin'
+                        )
+                        ->form([
+                            Forms\Components\Select::make(
+                                'follow_up_instructor_id'
+                            )
+                                ->label('Follow-up Instructor')
+                                ->options(
+                                    fn (Collection $records): array =>
+                                        static::eligibleInstructorOptionsForEnrollments(
+                                            $records
+                                        )
+                                )
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->helperText(
+                                    'Only instructors eligible for every selected student are shown.'
+                                ),
+                        ])
+                        ->action(
+                            function (
+                                Collection $records,
+                                array $data
+                            ): void {
+                                $instructor = User::query()->findOrFail(
+                                    (int) $data['follow_up_instructor_id']
+                                );
+
+                                try {
+                                    $changed = app(
+                                        FollowUpInstructorAssignmentService::class
+                                    )->assignManyManually(
+                                        $records,
+                                        $instructor
+                                    );
+                                } catch (InvalidArgumentException $exception) {
+                                    Notification::make()
+                                        ->title('Students could not be assigned')
+                                        ->body($exception->getMessage())
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                Notification::make()
+                                    ->title('Students assigned successfully')
+                                    ->body(
+                                        $changed === 1
+                                            ? '1 student was assigned to ' . $instructor->name . '.'
+                                            : $changed . ' students were assigned to ' . $instructor->name . '.'
+                                    )
+                                    ->success()
+                                    ->send();
+                            }
+                        )
+                        ->deselectRecordsAfterCompletion(),
+
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
@@ -512,6 +579,58 @@ class LessonEnrollmentResource extends Resource
             ->eligibleInstructors($lesson)
             ->sortBy('name')
             ->pluck('name', 'id')
+            ->toArray();
+    }
+
+    public static function eligibleInstructorOptionsForEnrollments(
+        Collection $enrollments
+    ): array {
+        $lessonIds = $enrollments
+            ->pluck('lesson_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($lessonIds->isEmpty()) {
+            return [];
+        }
+
+        $service = app(FollowUpInstructorAssignmentService::class);
+        $eligibleIds = null;
+        $instructorsById = collect();
+
+        foreach ($lessonIds as $lessonId) {
+            $lesson = Lesson::query()->find($lessonId);
+
+            if (! $lesson) {
+                return [];
+            }
+
+            $eligible = $service->eligibleInstructors($lesson);
+            $ids = $eligible->pluck('id');
+
+            $eligibleIds = $eligibleIds === null
+                ? $ids
+                : $eligibleIds->intersect($ids)->values();
+
+            $instructorsById = $instructorsById->merge(
+                $eligible->keyBy('id')
+            );
+        }
+
+        if (! $eligibleIds || $eligibleIds->isEmpty()) {
+            return [];
+        }
+
+        return $eligibleIds
+            ->mapWithKeys(function ($id) use ($instructorsById): array {
+                $instructor = $instructorsById->get($id);
+
+                return $instructor
+                    ? [$id => $instructor->name]
+                    : [];
+            })
+            ->sort()
             ->toArray();
     }
 
