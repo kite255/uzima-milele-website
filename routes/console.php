@@ -60,6 +60,10 @@ Schedule::command('lessons:send-automatic-reminders')
     ->dailyAt('09:00')
     ->withoutOverlapping();
 
+Schedule::command('lessons:send-question-escalations')
+    ->hourly()
+    ->withoutOverlapping();
+
 /* Scheduled Email Campaigns */
 Schedule::call(function (): void {
     app(EmailCampaignService::class)->releaseDueCampaigns();
