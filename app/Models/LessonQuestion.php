@@ -27,18 +27,18 @@ class LessonQuestion extends Model
         'status',
         'visibility',
         'is_published',
+        'instructor_reminded_at',
+        'lead_escalated_at',
+        'admin_escalated_at',
     ];
 
     protected $casts = [
         'answered_at' => 'datetime',
+        'instructor_reminded_at' => 'datetime',
+        'lead_escalated_at' => 'datetime',
+        'admin_escalated_at' => 'datetime',
         'is_published' => 'boolean',
     ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
 
     public function lesson(): BelongsTo
     {
@@ -50,13 +50,6 @@ class LessonQuestion extends Model
         return $this->belongsTo(LessonTopic::class, 'lesson_topic_id');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Alias relationship
-    |--------------------------------------------------------------------------
-    | Some admin/instructor files may use topic instead of lessonTopic.
-    |--------------------------------------------------------------------------
-    */
     public function topic(): BelongsTo
     {
         return $this->belongsTo(LessonTopic::class, 'lesson_topic_id');
@@ -67,13 +60,6 @@ class LessonQuestion extends Model
         return $this->belongsTo(User::class);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Alias relationship
-    |--------------------------------------------------------------------------
-    | Useful if some views call student instead of user.
-    |--------------------------------------------------------------------------
-    */
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -83,12 +69,6 @@ class LessonQuestion extends Model
     {
         return $this->belongsTo(User::class, 'answered_by');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
 
     public function scopeAnswered(Builder $query): Builder
     {
@@ -123,21 +103,13 @@ class LessonQuestion extends Model
                 if ($userId) {
                     $query->where('user_id', $userId)
                         ->orWhere(function (Builder $query) {
-                            $query->answered()
-                                ->public();
+                            $query->answered()->public();
                         });
                 } else {
-                    $query->answered()
-                        ->public();
+                    $query->answered()->public();
                 }
             });
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
 
     public function isPending(): bool
     {
