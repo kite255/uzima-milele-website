@@ -444,24 +444,25 @@ class LessonEnrollmentResource extends Resource
                             fn (): bool =>
                                 auth()->user()?->role === 'admin'
                         )
-                        ->form([
-                            Forms\Components\Select::make(
-                                'follow_up_instructor_id'
-                            )
-                                ->label('Follow-up Instructor')
-                                ->options(
-                                    fn (Collection $records): array =>
+                        ->form(
+                            fn (Collection $records): array => [
+                                Forms\Components\Select::make(
+                                    'follow_up_instructor_id'
+                                )
+                                    ->label('Follow-up Instructor')
+                                    ->options(
                                         static::eligibleInstructorOptionsForEnrollments(
                                             $records
                                         )
-                                )
-                                ->searchable()
-                                ->preload()
-                                ->required()
-                                ->helperText(
-                                    'Only instructors eligible for every selected student are shown.'
-                                ),
-                        ])
+                                    )
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->helperText(
+                                        'Only instructors eligible for every selected student are shown.'
+                                    ),
+                            ]
+                        )
                         ->action(
                             function (
                                 Collection $records,
