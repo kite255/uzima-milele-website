@@ -84,13 +84,13 @@ class LessonEnrollmentBulkAssignmentUiTest extends TestCase
             app_path('Filament/Resources/LessonEnrollmentResource.php')
         );
 
-        $this->assertStringContainsString(
-            "->form(\n                            fn (Collection \\$records): array => [",
+        $this->assertMatchesRegularExpression(
+            '/->form\(\s*fn \(Collection \$records\): array => \[/m',
             $source
         );
 
-        $this->assertStringNotContainsString(
-            "->options(\n                                    fn (Collection \\$records): array =>",
+        $this->assertDoesNotMatchRegularExpression(
+            '/->options\(\s*fn \(Collection \$records\): array =>/m',
             $source
         );
     }
