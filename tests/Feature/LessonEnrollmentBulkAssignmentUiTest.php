@@ -77,4 +77,21 @@ class LessonEnrollmentBulkAssignmentUiTest extends TestCase
         $this->assertArrayHasKey($instructor->id, $options);
         $this->assertSame('KISJA JAMES MOLYA', $options[$instructor->id]);
     }
+
+    public function test_bulk_assignment_form_is_built_from_selected_records(): void
+    {
+        $source = file_get_contents(
+            app_path('Filament/Resources/LessonEnrollmentResource.php')
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/->form\(\s*fn \(Collection \$records\): array => \[/m',
+            $source
+        );
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/->options\(\s*fn \(Collection \$records\): array =>/m',
+            $source
+        );
+    }
 }
