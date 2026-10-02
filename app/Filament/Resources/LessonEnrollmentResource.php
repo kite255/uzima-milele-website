@@ -613,7 +613,7 @@ class LessonEnrollmentResource extends Resource
                 ? $ids
                 : $eligibleIds->intersect($ids)->values();
 
-            $instructorsById = $instructorsById->merge(
+            $instructorsById = $instructorsById->union(
                 $eligible->keyBy('id')
             );
         }
