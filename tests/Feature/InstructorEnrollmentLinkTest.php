@@ -7,6 +7,7 @@ use App\Models\LessonEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class InstructorEnrollmentLinkTest extends TestCase
@@ -36,15 +37,19 @@ class InstructorEnrollmentLinkTest extends TestCase
 
         $lesson->followUpInstructors()->attach($instructor->id);
 
-        $joinResponse = $this
-            ->actingAs($student)
-            ->get(
-                '/lessons/' . $lesson->slug . '/join/' . $instructor->id
-            );
-
-        $joinResponse->assertRedirect(
-            route('lessons.show', ['lesson' => $lesson->slug])
+        $joinUrl = URL::signedRoute(
+            'lessons.instructor-join',
+            [
+                'lesson' => $lesson->slug,
+                'instructor' => $instructor->id,
+            ]
         );
+
+        $this
+            ->get($joinUrl)
+            ->assertRedirect(
+                route('lessons.show', ['lesson' => $lesson->slug])
+            );
 
         $this
             ->actingAs($student)
@@ -67,5 +72,72 @@ class InstructorEnrollmentLinkTest extends TestCase
             $instructor->id,
             $enrollment->follow_up_instructor_id
         );
+    }
+
+    public function test_ineligible_instructor_cannot_claim_student_with_signed_link(): void
+    {
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+        ]);
+
+        $lesson = Lesson::query()->create([
+            'title' => 'Protected Instructor Link Lesson',
+            'slug' => 'protected-instructor-link-lesson',
+            'description' => 'Lesson used to test instructor eligibility.',
+            'is_published' => true,
+            'recommended_study_pace' => Lesson::PACE_REGULAR,
+            'lead_can_receive_students' => false,
+        ]);
+
+        $joinUrl = URL::signedRoute(
+            'lessons.instructor-join',
+            [
+                'lesson' => $lesson->slug,
+                'instructor' => $instructor->id,
+            ]
+        );
+
+        $this->get($joinUrl)->assertNotFound();
+    }
+
+    public function test_tampered_instructor_join_link_is_rejected(): void
+    {
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+        ]);
+
+        $otherInstructor = User::factory()->create([
+            'role' => 'instructor',
+        ]);
+
+        $lesson = Lesson::query()->create([
+            'title' => 'Signed Instructor Link Lesson',
+            'slug' => 'signed-instructor-link-lesson',
+            'description' => 'Lesson used to test signed links.',
+            'is_published' => true,
+            'recommended_study_pace' => Lesson::PACE_REGULAR,
+            'lead_can_receive_students' => false,
+        ]);
+
+        $lesson->followUpInstructors()->attach([
+            $instructor->id,
+            $otherInstructor->id,
+        ]);
+
+        $joinUrl = URL::signedRoute(
+            'lessons.instructor-join',
+            [
+                'lesson' => $lesson->slug,
+                'instructor' => $instructor->id,
+            ]
+        );
+
+        $tamperedUrl = str_replace(
+            '/join/' . $instructor->id,
+            '/join/' . $otherInstructor->id,
+            $joinUrl
+        );
+
+        $this->get($tamperedUrl)->assertForbidden();
     }
 }
