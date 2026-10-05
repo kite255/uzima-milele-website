@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\InstructorEnrollmentLink;
 use App\Models\Lesson;
 use App\Models\User;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class InstructorEnrollmentReferralService
 {
@@ -24,19 +25,25 @@ class InstructorEnrollmentReferralService
             );
     }
 
-    public function signedUrl(Lesson $lesson, User $instructor): ?string
+    public function shortUrl(Lesson $lesson, User $instructor): ?string
     {
         if (! $lesson->is_published || ! $this->isEligible($lesson, $instructor)) {
             return null;
         }
 
-        return URL::signedRoute(
-            'lessons.instructor-join',
+        $link = InstructorEnrollmentLink::query()->firstOrCreate(
             [
-                'lesson' => $lesson->slug,
-                'instructor' => $instructor->id,
+                'lesson_id' => $lesson->id,
+                'instructor_id' => $instructor->id,
+            ],
+            [
+                'code' => $this->generateUniqueCode(),
             ]
         );
+
+        return route('lessons.instructor-join', [
+            'code' => $link->code,
+        ]);
     }
 
     public function remember(Lesson $lesson, User $instructor): void
@@ -87,6 +94,19 @@ class InstructorEnrollmentReferralService
         unset($this->pendingAssignments[$key]);
 
         return $instructor;
+    }
+
+    private function generateUniqueCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(6));
+        } while (
+            InstructorEnrollmentLink::query()
+                ->where('code', $code)
+                ->exists()
+        );
+
+        return $code;
     }
 
     private function sessionKey(Lesson $lesson): string

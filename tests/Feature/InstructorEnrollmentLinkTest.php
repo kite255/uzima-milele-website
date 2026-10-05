@@ -2,19 +2,44 @@
 
 namespace Tests\Feature;
 
+use App\Models\InstructorEnrollmentLink;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\User;
+use App\Services\InstructorEnrollmentReferralService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class InstructorEnrollmentLinkTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_student_joining_through_instructor_link_is_assigned_to_that_instructor(): void
+    public function test_service_creates_short_reusable_link_for_eligible_instructor(): void
+    {
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+        ]);
+
+        $lesson = $this->publishedLesson('short-link-lesson');
+        $lesson->followUpInstructors()->attach($instructor->id);
+
+        $service = app(InstructorEnrollmentReferralService::class);
+
+        $firstUrl = $service->shortUrl($lesson, $instructor);
+        $secondUrl = $service->shortUrl($lesson, $instructor);
+
+        $link = InstructorEnrollmentLink::query()->firstOrFail();
+
+        $this->assertSame($firstUrl, $secondUrl);
+        $this->assertStringEndsWith('/join/' . $link->code, $firstUrl);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{6}$/', $link->code);
+        $this->assertSame($lesson->id, $link->lesson_id);
+        $this->assertSame($instructor->id, $link->instructor_id);
+        $this->assertSame(1, InstructorEnrollmentLink::query()->count());
+    }
+
+    public function test_student_joining_through_short_code_is_assigned_to_that_instructor(): void
     {
         Notification::fake();
 
@@ -26,27 +51,17 @@ class InstructorEnrollmentLinkTest extends TestCase
             'role' => 'instructor',
         ]);
 
-        $lesson = Lesson::query()->create([
-            'title' => 'Instructor Link Lesson',
-            'slug' => 'instructor-link-lesson',
-            'description' => 'Lesson used to test instructor enrollment links.',
-            'is_published' => true,
-            'recommended_study_pace' => Lesson::PACE_REGULAR,
-            'lead_can_receive_students' => false,
-        ]);
-
+        $lesson = $this->publishedLesson('instructor-link-lesson');
         $lesson->followUpInstructors()->attach($instructor->id);
 
-        $joinUrl = URL::signedRoute(
-            'lessons.instructor-join',
-            [
-                'lesson' => $lesson->slug,
-                'instructor' => $instructor->id,
-            ]
-        );
+        $link = InstructorEnrollmentLink::query()->create([
+            'lesson_id' => $lesson->id,
+            'instructor_id' => $instructor->id,
+            'code' => 'AB7K2Q',
+        ]);
 
         $this
-            ->get($joinUrl)
+            ->get(route('lessons.instructor-join', ['code' => $link->code]))
             ->assertRedirect(
                 route('lessons.show', ['lesson' => $lesson->slug])
             );
@@ -74,70 +89,41 @@ class InstructorEnrollmentLinkTest extends TestCase
         );
     }
 
-    public function test_ineligible_instructor_cannot_claim_student_with_signed_link(): void
+    public function test_ineligible_instructor_short_link_is_rejected(): void
     {
         $instructor = User::factory()->create([
             'role' => 'instructor',
         ]);
 
-        $lesson = Lesson::query()->create([
-            'title' => 'Protected Instructor Link Lesson',
-            'slug' => 'protected-instructor-link-lesson',
-            'description' => 'Lesson used to test instructor eligibility.',
-            'is_published' => true,
-            'recommended_study_pace' => Lesson::PACE_REGULAR,
-            'lead_can_receive_students' => false,
+        $lesson = $this->publishedLesson('protected-short-link-lesson');
+
+        $link = InstructorEnrollmentLink::query()->create([
+            'lesson_id' => $lesson->id,
+            'instructor_id' => $instructor->id,
+            'code' => 'ZX9P4M',
         ]);
 
-        $joinUrl = URL::signedRoute(
-            'lessons.instructor-join',
-            [
-                'lesson' => $lesson->slug,
-                'instructor' => $instructor->id,
-            ]
-        );
-
-        $this->get($joinUrl)->assertNotFound();
+        $this
+            ->get(route('lessons.instructor-join', ['code' => $link->code]))
+            ->assertNotFound();
     }
 
-    public function test_tampered_instructor_join_link_is_rejected(): void
+    public function test_unknown_short_code_is_rejected(): void
     {
-        $instructor = User::factory()->create([
-            'role' => 'instructor',
-        ]);
+        $this
+            ->get(route('lessons.instructor-join', ['code' => 'NOPE99']))
+            ->assertNotFound();
+    }
 
-        $otherInstructor = User::factory()->create([
-            'role' => 'instructor',
-        ]);
-
-        $lesson = Lesson::query()->create([
-            'title' => 'Signed Instructor Link Lesson',
-            'slug' => 'signed-instructor-link-lesson',
-            'description' => 'Lesson used to test signed links.',
+    private function publishedLesson(string $slug): Lesson
+    {
+        return Lesson::query()->create([
+            'title' => ucwords(str_replace('-', ' ', $slug)),
+            'slug' => $slug,
+            'description' => 'Lesson used to test instructor enrollment links.',
             'is_published' => true,
             'recommended_study_pace' => Lesson::PACE_REGULAR,
             'lead_can_receive_students' => false,
         ]);
-
-        $lesson->followUpInstructors()->attach([
-            $instructor->id,
-            $otherInstructor->id,
-        ]);
-
-        $joinUrl = URL::signedRoute(
-            'lessons.instructor-join',
-            [
-                'lesson' => $lesson->slug,
-                'instructor' => $instructor->id,
-            ]
-        );
-
-        $tamperedUrl = str_replace(
-            '/join/' . $instructor->id,
-            '/join/' . $otherInstructor->id,
-            $joinUrl
-        );
-
-        $this->get($tamperedUrl)->assertForbidden();
     }
 }
