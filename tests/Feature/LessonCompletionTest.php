@@ -264,10 +264,10 @@ class LessonCompletionTest extends TestCase
         $this->assertTrue($secondLesson->fresh()->canBeStartedBy($user));
     }
 
-    public function test_student_can_open_later_module_even_when_previous_module_is_incomplete(): void
+    public function test_student_cannot_open_later_module_when_previous_module_is_incomplete(): void
     {
         $user = User::factory()->create();
-        $lesson = $this->createLesson('Open Module Navigation Lesson');
+        $lesson = $this->createLesson('Sequential Module Navigation Lesson');
         $moduleOne = $this->createModule($lesson, 'Module One', 1);
         $topicOne = $this->createTopic($moduleOne, 'Topic One', 1);
         $this->createRequiredModuleQuiz($lesson, $moduleOne, 'Module One Quiz');
@@ -281,20 +281,16 @@ class LessonCompletionTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(
-                route('lessons.learn', [
-                    'lesson' => $lesson->slug,
-                    'topic' => $topicTwo->id,
-                ])
-            );
+            ->get(route('lessons.learn', [
+                'lesson' => $lesson->slug,
+                'topic' => $topicTwo->id,
+            ]));
 
-        $response->assertOk();
-        $response->assertViewHas(
-            'currentTopic',
-            fn ($currentTopic) =>
-                $currentTopic
-                && $currentTopic->id === $topicTwo->id
-        );
+        $response->assertRedirect(route('lessons.learn', [
+            'lesson' => $lesson->slug,
+            'topic' => $topicOne->id,
+        ]));
+        $response->assertSessionHas('error');
     }
 
     public function test_final_quiz_is_blocked_until_all_modules_are_completed(): void
