@@ -33,14 +33,20 @@ class LessonEnrollmentNotificationTest extends TestCase
         $response = $this
             ->actingAs($student)
             ->post(
-                route('lessons.enroll', $lesson),
+                route(
+                    'lessons.enroll',
+                    ['lesson' => $lesson->slug]
+                ),
                 [
                     'study_pace' => Lesson::PACE_REGULAR,
                 ]
             );
 
         $response->assertRedirect(
-            route('lessons.learn', $lesson)
+            route(
+                'lessons.learn',
+                ['lesson' => $lesson->slug]
+            )
         );
 
         Notification::assertSentTo(
