@@ -8,6 +8,7 @@ use App\Models\LessonEnrollment;
 use App\Models\LessonProgress;
 use App\Models\LessonTopic;
 use App\Models\QuizResult;
+use App\Notifications\LessonEnrolledNotification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -584,6 +585,10 @@ class LessonController extends Controller
             lesson: $lesson,
             pace: $pace,
             customHours: $customHours
+        );
+
+        $user->notify(
+            new LessonEnrolledNotification($lesson)
         );
 
         return redirect()
