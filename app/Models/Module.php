@@ -19,12 +19,6 @@ class Module extends Model
         'is_published' => 'boolean',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
-
     public function lesson()
     {
         return $this->belongsTo(Lesson::class);
@@ -59,26 +53,6 @@ class Module extends Model
             ->where('is_published', true);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Completion Helpers
-    |--------------------------------------------------------------------------
-    |
-    | Important:
-    |
-    | - Module completion does NOT control access to another module.
-    | - A student may continue to later modules even if this module is incomplete.
-    | - A module becomes complete when:
-    |
-    |   1. All published topics are completed.
-    |   2. If there is a required published module quiz, the student has
-    |      attempted that quiz.
-    |
-    | A quiz does not have to be passed for module completion under the
-    | current rule. It only needs to have been taken.
-    |
-    */
-
     public function getPublishedTopicsCountAttribute(): int
     {
         return $this->publishedTopics()->count();
@@ -90,8 +64,7 @@ class Module extends Model
             return 0;
         }
 
-        $topicIds = $this->publishedTopics()
-            ->pluck('id');
+        $topicIds = $this->publishedTopics()->pluck('id');
 
         if ($topicIds->isEmpty()) {
             return 0;
@@ -112,30 +85,12 @@ class Module extends Model
 
         $totalTopics = $this->publishedTopics()->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Empty Module
-        |--------------------------------------------------------------------------
-        |
-        | Do not automatically mark an empty module as completed.
-        |
-        */
         if ($totalTopics === 0) {
             return false;
         }
 
         return $this->completedTopicsCountFor($user) >= $totalTopics;
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Required Module Quiz
-    |--------------------------------------------------------------------------
-    |
-    | A "module quiz" is attached to the module and is not attached directly
-    | to a lesson topic.
-    |
-    */
 
     public function requiredPublishedQuiz(): ?Quiz
     {
@@ -160,15 +115,6 @@ class Module extends Model
 
         $quiz = $this->requiredPublishedQuiz();
 
-        /*
-        |--------------------------------------------------------------------------
-        | No Required Quiz
-        |--------------------------------------------------------------------------
-        |
-        | If this module has no required quiz, there is no quiz requirement
-        | preventing module completion.
-        |
-        */
         if (! $quiz) {
             return true;
         }
@@ -198,24 +144,6 @@ class Module extends Model
             ->exists();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Module Completion
-    |--------------------------------------------------------------------------
-    |
-    | Current rule requested:
-    |
-    | All topics completed
-    | +
-    | Required module quiz ATTEMPTED
-    | =
-    | Module completed
-    |
-    | The student is still free to continue to another module while this
-    | module remains incomplete.
-    |
-    */
-
     public function isCompletedBy(?User $user): bool
     {
         if (! $user) {
@@ -226,14 +154,8 @@ class Module extends Model
             return false;
         }
 
-        return $this->hasRequiredQuizAttemptBy($user);
+        return $this->isRequiredQuizPassedBy($user);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Module Status
-    |--------------------------------------------------------------------------
-    */
 
     public function completionStatusFor(?User $user): string
     {
@@ -249,11 +171,14 @@ class Module extends Model
         }
 
         if ($totalTopics > 0 && $completedTopics >= $totalTopics) {
-            if (
-                $this->hasRequiredPublishedQuiz()
-                && ! $this->hasRequiredQuizAttemptBy($user)
-            ) {
-                return 'quiz_pending';
+            if ($this->hasRequiredPublishedQuiz()) {
+                if (! $this->hasRequiredQuizAttemptBy($user)) {
+                    return 'quiz_pending';
+                }
+
+                if (! $this->isRequiredQuizPassedBy($user)) {
+                    return 'quiz_failed';
+                }
             }
 
             return 'incomplete';
@@ -271,28 +196,12 @@ class Module extends Model
         return match ($this->completionStatusFor($user)) {
             'completed' => 'Imekamilika',
             'quiz_pending' => 'Quiz bado haijafanywa',
+            'quiz_failed' => 'Quiz haijafaulu',
             'in_progress' => 'Inaendelea',
             'incomplete' => 'Haijakamilika',
             default => 'Haijaanza',
         };
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Progress Percentage
-    |--------------------------------------------------------------------------
-    |
-    | This percentage represents topic learning progress only.
-    |
-    | Example:
-    |
-    | Topics: 100%
-    | Module status: Quiz pending
-    |
-    | This avoids pretending that a pending quiz means the topics themselves
-    | have not been studied.
-    |
-    */
 
     public function progressPercentageFor(?User $user): int
     {
