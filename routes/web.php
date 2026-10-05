@@ -250,6 +250,12 @@ Route::prefix('lessons')
             [LessonController::class, 'show']
         )->name('show');
 
+        Route::get(
+            '/{lesson:slug}/enroll',
+            fn (\App\Models\Lesson $lesson) => redirect()
+                ->route('lessons.show', ['lesson' => $lesson->slug])
+        )->name('enroll.redirect');
+
         Route::middleware('auth')
             ->group(function () {
 
