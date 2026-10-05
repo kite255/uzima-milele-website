@@ -39,6 +39,31 @@ class InstructorEnrollmentLinkTest extends TestCase
         $this->assertSame(1, InstructorEnrollmentLink::query()->count());
     }
 
+    public function test_short_code_landing_page_shows_lesson_and_instructor_name(): void
+    {
+        $instructor = User::factory()->create([
+            'role' => 'instructor',
+            'name' => 'John Instructor',
+        ]);
+
+        $lesson = $this->publishedLesson('landing-page-lesson');
+        $lesson->followUpInstructors()->attach($instructor->id);
+
+        $link = InstructorEnrollmentLink::query()->create([
+            'lesson_id' => $lesson->id,
+            'instructor_id' => $instructor->id,
+            'code' => 'LAND99',
+        ]);
+
+        $this
+            ->get(route('lessons.instructor-join', ['code' => $link->code]))
+            ->assertOk()
+            ->assertViewIs('instructor.enrollment-link-join')
+            ->assertSee($lesson->title)
+            ->assertSee($instructor->name)
+            ->assertSee(route('lessons.show', ['lesson' => $lesson->slug]));
+    }
+
     public function test_student_joining_through_short_code_is_assigned_to_that_instructor(): void
     {
         Notification::fake();
@@ -62,9 +87,9 @@ class InstructorEnrollmentLinkTest extends TestCase
 
         $this
             ->get(route('lessons.instructor-join', ['code' => $link->code]))
-            ->assertRedirect(
-                route('lessons.show', ['lesson' => $lesson->slug])
-            );
+            ->assertOk()
+            ->assertViewIs('instructor.enrollment-link-join')
+            ->assertSee($instructor->name);
 
         $this
             ->actingAs($student)

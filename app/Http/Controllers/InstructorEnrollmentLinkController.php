@@ -51,7 +51,7 @@ class InstructorEnrollmentLinkController extends Controller
     public function join(
         string $code,
         InstructorEnrollmentReferralService $referrals
-    ): RedirectResponse {
+    ): View|RedirectResponse {
         $link = InstructorEnrollmentLink::query()
             ->with([
                 'lesson',
@@ -87,11 +87,9 @@ class InstructorEnrollmentLinkController extends Controller
 
         $referrals->remember($lesson, $instructor);
 
-        return redirect()
-            ->route('lessons.show', $lesson->slug)
-            ->with(
-                'success',
-                'Umefungua kiungo cha mwalimu ' . $instructor->name . '. Ukiendelea kujiunga na somo hili, utapangiwa mwalimu huyu wa ufuatiliaji.'
-            );
+        return view(
+            'instructor.enrollment-link-join',
+            compact('lesson', 'instructor')
+        );
     }
 }
