@@ -21,12 +21,6 @@ class LessonCompletionTest extends TestCase
 {
     use RefreshDatabase;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Test Helpers
-    |--------------------------------------------------------------------------
-    */
-
     private function createLesson(
         string $title = 'Test Lesson',
         ?Lesson $prerequisite = null
@@ -112,6 +106,22 @@ class LessonCompletionTest extends TestCase
         ]);
     }
 
+    private function recordPassedQuizResult(
+        User $user,
+        Quiz $quiz
+    ): QuizResult {
+        return QuizResult::create([
+            'quiz_id' => $quiz->id,
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'lesson_topic_id' => null,
+            'score' => 80,
+            'correct' => 4,
+            'total' => 5,
+            'passed' => true,
+        ]);
+    }
+
     private function enrollUser(
         User $user,
         Lesson $lesson
@@ -126,100 +136,49 @@ class LessonCompletionTest extends TestCase
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Model Tests
-    |--------------------------------------------------------------------------
-    */
-
     public function test_module_without_required_quiz_completes_after_all_topics_are_completed(): void
     {
         $user = User::factory()->create();
-
         $lesson = $this->createLesson();
-
         $module = $this->createModule($lesson);
-
         $topic = $this->createTopic($module);
 
-        $this->assertFalse(
-            $module->isCompletedBy($user)
-        );
+        $this->assertFalse($module->isCompletedBy($user));
 
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->completeTopic($user, $lesson, $topic);
 
-        $this->assertTrue(
-            $module->fresh()->isCompletedBy($user)
-        );
+        $this->assertTrue($module->fresh()->isCompletedBy($user));
     }
 
-    public function test_module_with_required_quiz_stays_incomplete_until_quiz_is_attempted(): void
+    public function test_module_with_required_quiz_stays_incomplete_until_quiz_is_passed(): void
     {
         $user = User::factory()->create();
+        $lesson = $this->createLesson('Quiz Lesson');
+        $module = $this->createModule($lesson);
+        $topic = $this->createTopic($module);
+        $quiz = $this->createRequiredModuleQuiz($lesson, $module);
 
-        $lesson = $this->createLesson(
-            'Quiz Lesson'
-        );
+        $this->completeTopic($user, $lesson, $topic);
 
-        $module = $this->createModule(
-            $lesson
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
+        $this->assertSame('quiz_pending', $module->fresh()->completionStatusFor($user));
 
-        $topic = $this->createTopic(
-            $module
-        );
+        $this->attemptQuiz($user, $quiz, false);
 
-        $quiz = $this->createRequiredModuleQuiz(
-            $lesson,
-            $module
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
+        $this->assertSame('quiz_failed', $module->fresh()->completionStatusFor($user));
 
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->recordPassedQuizResult($user, $quiz);
 
-        $this->assertFalse(
-            $module->fresh()->isCompletedBy($user)
-        );
-
-        $this->assertSame(
-            'quiz_pending',
-            $module->fresh()->completionStatusFor($user)
-        );
-
-        $this->attemptQuiz(
-            $user,
-            $quiz,
-            false
-        );
-
-        $this->assertTrue(
-            $module->fresh()->isCompletedBy($user)
-        );
+        $this->assertTrue($module->fresh()->isCompletedBy($user));
     }
 
-    public function test_module_quiz_does_not_need_to_be_passed_for_module_completion(): void
+    public function test_module_quiz_must_be_passed_for_module_completion(): void
     {
         $user = User::factory()->create();
-
-        $lesson = $this->createLesson(
-            'Attempt Rule Lesson'
-        );
-
-        $module = $this->createModule(
-            $lesson
-        );
-
-        $topic = $this->createTopic(
-            $module
-        );
-
+        $lesson = $this->createLesson('Pass Rule Lesson');
+        $module = $this->createModule($lesson);
+        $topic = $this->createTopic($module);
         $quiz = $this->createRequiredModuleQuiz(
             $lesson,
             $module,
@@ -227,80 +186,39 @@ class LessonCompletionTest extends TestCase
             80
         );
 
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->completeTopic($user, $lesson, $topic);
+        $this->attemptQuiz($user, $quiz, false);
 
-        $this->attemptQuiz(
-            $user,
-            $quiz,
-            false
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
 
-        $this->assertTrue(
-            $module->fresh()->isCompletedBy($user)
-        );
+        $this->recordPassedQuizResult($user, $quiz);
+
+        $this->assertTrue($module->fresh()->isCompletedBy($user));
     }
 
-    public function test_lesson_stays_incomplete_when_a_required_module_quiz_has_not_been_attempted(): void
+    public function test_lesson_stays_incomplete_when_a_required_module_quiz_has_not_been_passed(): void
     {
         $user = User::factory()->create();
+        $lesson = $this->createLesson('Full Lesson');
+        $module = $this->createModule($lesson);
+        $topic = $this->createTopic($module);
+        $quiz = $this->createRequiredModuleQuiz($lesson, $module);
 
-        $lesson = $this->createLesson(
-            'Full Lesson'
-        );
+        $this->completeTopic($user, $lesson, $topic);
+        $this->attemptQuiz($user, $quiz, false);
 
-        $module = $this->createModule(
-            $lesson
-        );
-
-        $topic = $this->createTopic(
-            $module
-        );
-
-        $this->createRequiredModuleQuiz(
-            $lesson,
-            $module
-        );
-
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
-
-        $this->assertFalse(
-            $module->fresh()->isCompletedBy($user)
-        );
-
-        $this->assertFalse(
-            $lesson->fresh()->isCompletedBy($user)
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
+        $this->assertFalse($lesson->fresh()->isCompletedBy($user));
     }
 
     public function test_required_final_quiz_must_be_passed_before_lesson_is_completed(): void
     {
         $user = User::factory()->create();
+        $lesson = $this->createLesson('Final Quiz Lesson');
+        $module = $this->createModule($lesson);
+        $topic = $this->createTopic($module);
 
-        $lesson = $this->createLesson(
-            'Final Quiz Lesson'
-        );
-
-        $module = $this->createModule(
-            $lesson
-        );
-
-        $topic = $this->createTopic(
-            $module
-        );
-
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->completeTopic($user, $lesson, $topic);
 
         $finalQuiz = Quiz::create([
             'lesson_id' => $lesson->id,
@@ -313,9 +231,7 @@ class LessonCompletionTest extends TestCase
             'is_published' => true,
         ]);
 
-        $this->assertFalse(
-            $lesson->fresh()->isCompletedBy($user)
-        );
+        $this->assertFalse($lesson->fresh()->isCompletedBy($user));
 
         QuizResult::create([
             'quiz_id' => $finalQuiz->id,
@@ -328,127 +244,41 @@ class LessonCompletionTest extends TestCase
             'passed' => true,
         ]);
 
-        $this->assertTrue(
-            $lesson->fresh()->isCompletedBy($user)
-        );
+        $this->assertTrue($lesson->fresh()->isCompletedBy($user));
     }
 
     public function test_prerequisite_lesson_remains_locked_until_previous_lesson_is_completed(): void
     {
         $user = User::factory()->create();
+        $firstLesson = $this->createLesson('First Lesson');
+        $secondLesson = $this->createLesson('Second Lesson', $firstLesson);
+        $module = $this->createModule($firstLesson);
+        $topic = $this->createTopic($module);
 
-        $firstLesson = $this->createLesson(
-            'First Lesson'
-        );
+        $this->assertFalse($firstLesson->fresh()->isCompletedBy($user));
+        $this->assertFalse($secondLesson->fresh()->canBeStartedBy($user));
 
-        $secondLesson = $this->createLesson(
-            'Second Lesson',
-            $firstLesson
-        );
+        $this->completeTopic($user, $firstLesson, $topic);
 
-        $module = $this->createModule(
-            $firstLesson
-        );
-
-        $topic = $this->createTopic(
-            $module
-        );
-
-        $this->assertFalse(
-            $firstLesson->fresh()->isCompletedBy($user)
-        );
-
-        $this->assertFalse(
-            $secondLesson->fresh()->canBeStartedBy($user)
-        );
-
-        $this->completeTopic(
-            $user,
-            $firstLesson,
-            $topic
-        );
-
-        $this->assertTrue(
-            $firstLesson->fresh()->isCompletedBy($user)
-        );
-
-        $this->assertTrue(
-            $secondLesson->fresh()->canBeStartedBy($user)
-        );
+        $this->assertTrue($firstLesson->fresh()->isCompletedBy($user));
+        $this->assertTrue($secondLesson->fresh()->canBeStartedBy($user));
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | HTTP Flow Tests
-    |--------------------------------------------------------------------------
-    */
 
     public function test_student_can_open_later_module_even_when_previous_module_is_incomplete(): void
     {
         $user = User::factory()->create();
+        $lesson = $this->createLesson('Open Module Navigation Lesson');
+        $moduleOne = $this->createModule($lesson, 'Module One', 1);
+        $topicOne = $this->createTopic($moduleOne, 'Topic One', 1);
+        $this->createRequiredModuleQuiz($lesson, $moduleOne, 'Module One Quiz');
+        $moduleTwo = $this->createModule($lesson, 'Module Two', 2);
+        $topicTwo = $this->createTopic($moduleTwo, 'Topic Two', 1);
 
-        $lesson = $this->createLesson(
-            'Open Module Navigation Lesson'
-        );
+        $this->enrollUser($user, $lesson);
+        $this->completeTopic($user, $lesson, $topicOne);
 
-        $moduleOne = $this->createModule(
-            $lesson,
-            'Module One',
-            1
-        );
+        $this->assertFalse($moduleOne->fresh()->isCompletedBy($user));
 
-        $topicOne = $this->createTopic(
-            $moduleOne,
-            'Topic One',
-            1
-        );
-
-        $this->createRequiredModuleQuiz(
-            $lesson,
-            $moduleOne,
-            'Module One Quiz'
-        );
-
-        $moduleTwo = $this->createModule(
-            $lesson,
-            'Module Two',
-            2
-        );
-
-        $topicTwo = $this->createTopic(
-            $moduleTwo,
-            'Topic Two',
-            1
-        );
-
-        $this->enrollUser(
-            $user,
-            $lesson
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Module 1 remains incomplete
-        |--------------------------------------------------------------------------
-        |
-        | Topic finished, but required module quiz has not been attempted.
-        |
-        */
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topicOne
-        );
-
-        $this->assertFalse(
-            $moduleOne->fresh()->isCompletedBy($user)
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Student can still open Module 2
-        |--------------------------------------------------------------------------
-        */
         $response = $this
             ->actingAs($user)
             ->get(
@@ -459,7 +289,6 @@ class LessonCompletionTest extends TestCase
             );
 
         $response->assertOk();
-
         $response->assertViewHas(
             'currentTopic',
             fn ($currentTopic) =>
@@ -471,23 +300,9 @@ class LessonCompletionTest extends TestCase
     public function test_final_quiz_is_blocked_until_all_modules_are_completed(): void
     {
         $user = User::factory()->create();
-
-        $lesson = $this->createLesson(
-            'Final Quiz Access Lesson'
-        );
-
-        $module = $this->createModule(
-            $lesson,
-            'Module One',
-            1
-        );
-
-        $topic = $this->createTopic(
-            $module,
-            'Topic One',
-            1
-        );
-
+        $lesson = $this->createLesson('Final Quiz Access Lesson');
+        $module = $this->createModule($lesson, 'Module One', 1);
+        $topic = $this->createTopic($module, 'Topic One', 1);
         $moduleQuiz = $this->createRequiredModuleQuiz(
             $lesson,
             $module,
@@ -505,189 +320,92 @@ class LessonCompletionTest extends TestCase
             'is_published' => true,
         ]);
 
-        $this->enrollUser(
-            $user,
-            $lesson
-        );
+        $this->enrollUser($user, $lesson);
+        $this->completeTopic($user, $lesson, $topic);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Complete topic but leave module quiz pending
-        |--------------------------------------------------------------------------
-        */
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
 
-        $this->assertFalse(
-            $module->fresh()->isCompletedBy($user)
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Final quiz must remain locked
-        |--------------------------------------------------------------------------
-        */
         $response = $this
             ->actingAs($user)
-            ->get(
-                action(
-                    [QuizController::class, 'show'],
-                    ['quiz' => $finalQuiz->id]
-                )
-            );
+            ->get(action([QuizController::class, 'show'], ['quiz' => $finalQuiz->id]));
 
-        $response->assertRedirect(
-            route(
-                'lessons.learn',
-                $lesson->slug
-            )
-        );
-
+        $response->assertRedirect(route('lessons.learn', $lesson->slug));
         $response->assertSessionHas('error');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Attempt module quiz
-        |--------------------------------------------------------------------------
-        |
-        | It may be failed. The current rule only requires an attempt.
-        |
-        */
-        $this->attemptQuiz(
-            $user,
-            $moduleQuiz,
-            false
-        );
+        $this->attemptQuiz($user, $moduleQuiz, false);
 
-        $this->assertTrue(
-            $module->fresh()->isCompletedBy($user)
-        );
+        $this->assertFalse($module->fresh()->isCompletedBy($user));
 
-        /*
-        |--------------------------------------------------------------------------
-        | Final quiz should now be accessible
-        |--------------------------------------------------------------------------
-        */
         $response = $this
             ->actingAs($user)
-            ->get(
-                action(
-                    [QuizController::class, 'show'],
-                    ['quiz' => $finalQuiz->id]
-                )
-            );
+            ->get(action([QuizController::class, 'show'], ['quiz' => $finalQuiz->id]));
+
+        $response->assertRedirect(route('lessons.learn', $lesson->slug));
+        $response->assertSessionHas('error');
+
+        $this->recordPassedQuizResult($user, $moduleQuiz);
+
+        $this->assertTrue($module->fresh()->isCompletedBy($user));
+
+        $response = $this
+            ->actingAs($user)
+            ->get(action([QuizController::class, 'show'], ['quiz' => $finalQuiz->id]));
 
         $response->assertOk();
     }
 
-    public function test_certificate_is_blocked_while_required_module_quiz_is_pending(): void
+    public function test_certificate_is_blocked_until_required_module_quiz_is_passed(): void
     {
         $user = User::factory()->create();
-
-        $lesson = $this->createLesson(
-            'Certificate Protection Lesson'
-        );
-
-        $module = $this->createModule(
-            $lesson,
-            'Module One',
-            1
-        );
-
-        $topic = $this->createTopic(
-            $module,
-            'Topic One',
-            1
-        );
-
+        $lesson = $this->createLesson('Certificate Protection Lesson');
+        $module = $this->createModule($lesson, 'Module One', 1);
+        $topic = $this->createTopic($module, 'Topic One', 1);
         $moduleQuiz = $this->createRequiredModuleQuiz(
             $lesson,
             $module,
             'Certificate Module Quiz'
         );
 
-        $this->enrollUser(
-            $user,
-            $lesson
-        );
+        $this->enrollUser($user, $lesson);
+        $this->completeTopic($user, $lesson, $topic);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Finish topic but leave module quiz pending
-        |--------------------------------------------------------------------------
-        */
-        $this->completeTopic(
-            $user,
-            $lesson,
-            $topic
-        );
+        $this->assertFalse($lesson->fresh()->isCompletedBy($user));
 
-        $this->assertFalse(
-            $lesson->fresh()->isCompletedBy($user)
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Direct certificate request must not bypass completion
-        |--------------------------------------------------------------------------
-        */
         $response = $this
             ->actingAs($user)
-            ->post(
-                action(
-                    [CertificateController::class, 'issue'],
-                    ['lesson' => $lesson->id]
-                )
-            );
+            ->post(action([CertificateController::class, 'issue'], ['lesson' => $lesson->id]));
 
         $response->assertSessionHas('error');
+        $this->assertDatabaseMissing('certificates', [
+            'user_id' => $user->id,
+            'lesson_id' => $lesson->id,
+        ]);
 
-        $this->assertDatabaseMissing(
-            'certificates',
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lesson->id,
-            ]
-        );
+        $this->attemptQuiz($user, $moduleQuiz, false);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Attempt required module quiz
-        |--------------------------------------------------------------------------
-        */
-        $this->attemptQuiz(
-            $user,
-            $moduleQuiz,
-            false
-        );
+        $this->assertFalse($lesson->fresh()->isCompletedBy($user));
 
-        $this->assertTrue(
-            $lesson->fresh()->isCompletedBy($user)
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Certificate should now be allowed
-        |--------------------------------------------------------------------------
-        */
         $response = $this
             ->actingAs($user)
-            ->post(
-                action(
-                    [CertificateController::class, 'issue'],
-                    ['lesson' => $lesson->id]
-                )
-            );
+            ->post(action([CertificateController::class, 'issue'], ['lesson' => $lesson->id]));
 
-        $this->assertDatabaseHas(
-            'certificates',
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lesson->id,
-            ]
-        );
+        $response->assertSessionHas('error');
+        $this->assertDatabaseMissing('certificates', [
+            'user_id' => $user->id,
+            'lesson_id' => $lesson->id,
+        ]);
+
+        $this->recordPassedQuizResult($user, $moduleQuiz);
+
+        $this->assertTrue($lesson->fresh()->isCompletedBy($user));
+
+        $this
+            ->actingAs($user)
+            ->post(action([CertificateController::class, 'issue'], ['lesson' => $lesson->id]));
+
+        $this->assertDatabaseHas('certificates', [
+            'user_id' => $user->id,
+            'lesson_id' => $lesson->id,
+        ]);
     }
 }
