@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\LessonEnrollmentController;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class LessonEnrollmentInstructorAssignmentTest extends TestCase
@@ -70,8 +69,10 @@ class LessonEnrollmentInstructorAssignmentTest extends TestCase
         );
     }
 
-    public function test_controller_new_enrollment_automatically_assigns_follow_up_instructor(): void
+    public function test_active_enrollment_route_automatically_assigns_follow_up_instructor(): void
     {
+        Notification::fake();
+
         $lesson = $this->createLesson();
 
         $instructor = $this->createInstructor('Mary');
@@ -81,20 +82,17 @@ class LessonEnrollmentInstructorAssignmentTest extends TestCase
 
         $student = $this->createStudent();
 
-        $request = Request::create(
-            '/lessons/' . $lesson->slug . '/enroll',
-            'POST',
-            [
-                'study_pace' => Lesson::PACE_REGULAR,
-            ]
-        );
-
-        $request->setUserResolver(
-            fn () => $student
-        );
-
-        app(LessonEnrollmentController::class)
-            ->store($request, $lesson);
+        $this
+            ->actingAs($student)
+            ->post(
+                route('lessons.enroll', $lesson),
+                [
+                    'study_pace' => Lesson::PACE_REGULAR,
+                ]
+            )
+            ->assertRedirect(
+                route('lessons.learn', $lesson)
+            );
 
         $enrollment = LessonEnrollment::query()
             ->where('user_id', $student->id)
@@ -111,7 +109,7 @@ class LessonEnrollmentInstructorAssignmentTest extends TestCase
         );
     }
 
-    public function test_existing_enrollment_is_not_reassigned_when_schedule_is_updated(): void
+    public function test_existing_enrollment_is_not_reassigned_when_schedule_is_reset(): void
     {
         $lesson = $this->createLesson([
             'allow_schedule_reset' => true,
@@ -143,20 +141,15 @@ class LessonEnrollmentInstructorAssignmentTest extends TestCase
         $originalAssignedAt =
             $enrollment->instructor_assigned_at->copy();
 
-        $request = Request::create(
-            '/lessons/' . $lesson->slug . '/enroll',
-            'POST',
-            [
-                'study_pace' => Lesson::PACE_INTENSIVE,
-            ]
-        );
-
-        $request->setUserResolver(
-            fn () => $student
-        );
-
-        app(LessonEnrollmentController::class)
-            ->store($request, $lesson);
+        $this
+            ->actingAs($student)
+            ->patch(
+                route('lessons.schedule.reset', $lesson),
+                [
+                    'study_pace' => Lesson::PACE_INTENSIVE,
+                ]
+            )
+            ->assertRedirect();
 
         $enrollment->refresh();
 
@@ -169,6 +162,11 @@ class LessonEnrollmentInstructorAssignmentTest extends TestCase
             $enrollment
                 ->instructor_assigned_at
                 ->equalTo($originalAssignedAt)
+        );
+
+        $this->assertSame(
+            Lesson::PACE_INTENSIVE,
+            $enrollment->study_pace
         );
     }
 
