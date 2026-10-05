@@ -202,10 +202,6 @@ class LessonController extends Controller
         |--------------------------------------------------------------------------
         | Lesson-Level Prerequisite
         |--------------------------------------------------------------------------
-        |
-        | This only controls whether the whole lesson may be started.
-        | It does NOT lock modules inside the lesson.
-        |
         */
         if (! $lesson->canBeStartedBy($user)) {
             return redirect()
@@ -291,10 +287,9 @@ class LessonController extends Controller
         | Current Topic
         |--------------------------------------------------------------------------
         |
-        | IMPORTANT:
-        | There is intentionally no previous-module completion check here.
-        |
-        | A student can open any published topic/module in this lesson.
+        | Students may move freely inside the current unlocked module, but
+        | every earlier published module must be complete before a later
+        | module can be opened.
         |
         */
         $currentTopic = null;
@@ -308,6 +303,41 @@ class LessonController extends Controller
 
         if (! $currentTopic) {
             $currentTopic = $allTopics->first();
+        }
+
+        if ($currentTopic) {
+            $currentModuleIndex = $lesson->modules->search(
+                fn ($module) => $module->id === $currentTopic->module_id
+            );
+
+            if ($currentModuleIndex !== false && $currentModuleIndex > 0) {
+                $blockingModule = $lesson->modules
+                    ->take($currentModuleIndex)
+                    ->first(
+                        fn ($module) => ! $module->isCompletedBy($user)
+                    );
+
+                if ($blockingModule) {
+                    $fallbackTopic = $blockingModule->topics->first()
+                        ?? $allTopics->first();
+
+                    if ($fallbackTopic) {
+                        $requestedModule = $lesson->modules[$currentModuleIndex];
+
+                        return redirect()
+                            ->route('lessons.learn', [
+                                'lesson' => $lesson->slug,
+                                'topic' => $fallbackTopic->id,
+                            ])
+                            ->with(
+                                'error',
+                                'Kamilisha ' . $blockingModule->title .
+                                ' kwanza kabla ya kuendelea na ' .
+                                $requestedModule->title . '.'
+                            );
+                    }
+                }
+            }
         }
 
         $currentIndex = $currentTopic
@@ -367,12 +397,10 @@ class LessonController extends Controller
         | Module Completion
         |--------------------------------------------------------------------------
         |
-        | Student navigation remains open.
-        |
         | Module::isCompletedBy() determines completion:
         |
         | 1. Every published topic completed
-        | 2. Required module quiz attempted
+        | 2. Required module quiz passed
         |
         */
         $completedModulesCount = 0;
@@ -612,9 +640,6 @@ class LessonController extends Controller
     |
     | This prevents a required topic quiz from being bypassed.
     |
-    | This restriction does NOT prevent the student from opening later topics
-    | or modules.
-    |
     */
     public function markProgress(Request $request, Lesson $lesson)
     {
@@ -691,8 +716,6 @@ class LessonController extends Controller
         | A required topic quiz must be passed before that topic can be marked
         | complete.
         |
-        | Student is still allowed to continue studying other topics/modules.
-        |
         */
         $topicQuiz = $topic->quiz;
 
@@ -710,7 +733,7 @@ class LessonController extends Controller
             if (! $topicQuizPassed) {
                 return back()->with(
                     'error',
-                    'Mada hii ina quiz ya lazima. Unaweza kuendelea na mada nyingine, lakini mada hii itabaki haijakamilika mpaka ufaulu quiz yake.'
+                    'Mada hii ina quiz ya lazima. Unaweza kuendelea na mada nyingine ndani ya moduli hii, lakini mada hii itabaki haijakamilika mpaka ufaulu quiz yake.'
                 );
             }
         }
