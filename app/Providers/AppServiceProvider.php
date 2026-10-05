@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Filament\Resources\EmailCampaignResource;
 use App\Models\EmailCampaign;
+use App\Models\LessonEnrollment;
+use App\Observers\LessonEnrollmentObserver;
+use App\Services\InstructorEnrollmentReferralService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,7 +16,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            InstructorEnrollmentReferralService::class
+        );
     }
 
     /**
@@ -21,6 +26,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->loadRoutesFrom(
+            base_path('routes/instructor-enrollment-links.php')
+        );
+
+        LessonEnrollment::observe(
+            LessonEnrollmentObserver::class
+        );
+
         EmailCampaignResource::macro(
             'availableActionsFor',
             function (EmailCampaign $campaign): array {
