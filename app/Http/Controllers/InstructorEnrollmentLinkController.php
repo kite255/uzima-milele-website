@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InstructorEnrollmentLink;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
-use App\Models\User;
 use App\Services\InstructorEnrollmentReferralService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -33,7 +33,7 @@ class InstructorEnrollmentLinkController extends Controller
                 )
             )
             ->map(function (Lesson $lesson) use ($referrals, $instructor) {
-                $lesson->enrollment_link = $referrals->signedUrl(
+                $lesson->enrollment_link = $referrals->shortUrl(
                     $lesson,
                     $instructor
                 );
@@ -49,12 +49,22 @@ class InstructorEnrollmentLinkController extends Controller
     }
 
     public function join(
-        Lesson $lesson,
-        User $instructor,
+        string $code,
         InstructorEnrollmentReferralService $referrals
     ): RedirectResponse {
-        abort_if(! $lesson->is_published, 404);
-        abort_if($instructor->role !== 'instructor', 404);
+        $link = InstructorEnrollmentLink::query()
+            ->with([
+                'lesson',
+                'instructor',
+            ])
+            ->where('code', strtoupper($code))
+            ->firstOrFail();
+
+        $lesson = $link->lesson;
+        $instructor = $link->instructor;
+
+        abort_if(! $lesson || ! $lesson->is_published, 404);
+        abort_if(! $instructor || $instructor->role !== 'instructor', 404);
         abort_unless($referrals->isEligible($lesson, $instructor), 404);
 
         if (auth()->check()) {
