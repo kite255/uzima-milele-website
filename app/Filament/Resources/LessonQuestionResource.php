@@ -29,6 +29,18 @@ class LessonQuestionResource extends Resource
 
     protected static ?int $navigationSort = 6;
 
+    public static function getNavigationLabel(): string
+    {
+        return auth()->user()?->role === 'instructor'
+            ? 'Student Q&A'
+            : 'Lesson Q&A';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
