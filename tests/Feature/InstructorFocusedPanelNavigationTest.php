@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\OverdueStudents;
+use App\Filament\Resources\DevotionResource;
+use App\Filament\Resources\EmailCampaignResource;
+use App\Filament\Resources\EmailCampaignTemplateResource;
 use App\Filament\Resources\EmailSubscriberGroupResource;
 use App\Filament\Resources\EmailSubscriberResource;
 use App\Filament\Resources\LessonEnrollmentResource;
@@ -11,7 +14,11 @@ use App\Filament\Resources\LessonResource;
 use App\Filament\Resources\LessonTopicResource;
 use App\Filament\Resources\ModuleResource;
 use App\Filament\Resources\PrayerRequestResource;
+use App\Filament\Resources\QuestionResource;
 use App\Filament\Resources\QuizResource;
+use App\Filament\Resources\UserResource;
+use App\Filament\Resources\WatotoQuizResource;
+use App\Filament\Resources\WatotoVideoResource;
 use App\Filament\Resources\QuizResultResource;
 use App\Models\User;
 use Tests\TestCase;
@@ -26,10 +33,17 @@ class InstructorFocusedPanelNavigationTest extends TestCase
 
         $this->actingAs($instructor);
 
+        $this->assertFalse(DevotionResource::shouldRegisterNavigation());
+        $this->assertFalse(EmailCampaignResource::shouldRegisterNavigation());
+        $this->assertFalse(EmailCampaignTemplateResource::shouldRegisterNavigation());
         $this->assertFalse(ModuleResource::shouldRegisterNavigation());
         $this->assertFalse(LessonTopicResource::shouldRegisterNavigation());
         $this->assertFalse(QuizResource::shouldRegisterNavigation());
         $this->assertFalse(PrayerRequestResource::shouldRegisterNavigation());
+        $this->assertFalse(QuestionResource::shouldRegisterNavigation());
+        $this->assertFalse(UserResource::shouldRegisterNavigation());
+        $this->assertFalse(WatotoQuizResource::shouldRegisterNavigation());
+        $this->assertFalse(WatotoVideoResource::shouldRegisterNavigation());
         $this->assertFalse(EmailSubscriberResource::shouldRegisterNavigation());
         $this->assertFalse(EmailSubscriberGroupResource::shouldRegisterNavigation());
 
@@ -53,10 +67,17 @@ class InstructorFocusedPanelNavigationTest extends TestCase
 
         $this->actingAs($admin);
 
+        $this->assertTrue(DevotionResource::shouldRegisterNavigation());
+        $this->assertTrue(EmailCampaignResource::shouldRegisterNavigation());
+        $this->assertTrue(EmailCampaignTemplateResource::shouldRegisterNavigation());
         $this->assertTrue(ModuleResource::shouldRegisterNavigation());
         $this->assertTrue(LessonTopicResource::shouldRegisterNavigation());
         $this->assertTrue(QuizResource::shouldRegisterNavigation());
         $this->assertTrue(PrayerRequestResource::shouldRegisterNavigation());
+        $this->assertTrue(QuestionResource::shouldRegisterNavigation());
+        $this->assertTrue(UserResource::shouldRegisterNavigation());
+        $this->assertTrue(WatotoQuizResource::shouldRegisterNavigation());
+        $this->assertTrue(WatotoVideoResource::shouldRegisterNavigation());
         $this->assertTrue(EmailSubscriberResource::shouldRegisterNavigation());
         $this->assertTrue(EmailSubscriberGroupResource::shouldRegisterNavigation());
 
