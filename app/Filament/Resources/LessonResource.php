@@ -4,6 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LessonResource\Pages;
 use App\Filament\Resources\LessonResource\RelationManagers\ModulesRelationManager;
+use App\Filament\Resources\LessonEnrollmentResource;
+use App\Filament\Resources\LessonQuestionResource;
+use App\Filament\Resources\QuizResultResource;
 use App\Models\Lesson;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -27,6 +30,42 @@ class LessonResource extends Resource
     protected static ?string $modelLabel = 'Lesson';
 
     protected static ?string $pluralModelLabel = 'Lessons';
+
+    public static function getNavigationLabel(): string
+    {
+        return auth()->user()?->role === 'instructor'
+            ? 'My Lessons'
+            : 'Lessons';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
+
+    public static function canViewAny(): bool
+    {
+        return in_array(
+            auth()->user()?->role,
+            ['admin', 'instructor'],
+            true
+        );
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
 
     public static function form(Form $form): Form
     {
@@ -678,15 +717,91 @@ class LessonResource extends Resource
                             ->send();
                     }),
 
+                Tables\Actions\Action::make('students')
+                    ->label('Students')
+                    ->icon('heroicon-o-user-group')
+                    ->color('info')
+                    ->url(
+                        fn (Lesson $record): string =>
+                            LessonEnrollmentResource::getUrl('index', [
+                                'tableFilters' => [
+                                    'lesson_id' => [
+                                        'value' => $record->id,
+                                    ],
+                                ],
+                            ])
+                    )
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'instructor'
+                    ),
+
+                Tables\Actions\Action::make('joinLink')
+                    ->label('Join Link')
+                    ->icon('heroicon-o-link')
+                    ->color('primary')
+                    ->url(
+                        fn (): string =>
+                            route('instructor.enrollment-links.index')
+                    )
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'instructor'
+                    ),
+
+                Tables\Actions\Action::make('questions')
+                    ->label('Q&A')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('gray')
+                    ->url(
+                        fn (Lesson $record): string =>
+                            LessonQuestionResource::getUrl('index', [
+                                'tableFilters' => [
+                                    'lesson_id' => [
+                                        'value' => $record->id,
+                                    ],
+                                ],
+                            ])
+                    )
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'instructor'
+                    ),
+
+                Tables\Actions\Action::make('quizResults')
+                    ->label('Quiz Results')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('gray')
+                    ->url(
+                        fn (): string =>
+                            QuizResultResource::getUrl('index')
+                    )
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'instructor'
+                    ),
+
                 Tables\Actions\EditAction::make()
-                    ->label('Manage Course'),
+                    ->label('Manage Course')
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'admin'
+                    ),
 
                 Tables\Actions\DeleteAction::make()
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'admin'
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(
+                            fn (): bool =>
+                                auth()->user()?->role === 'admin'
+                        ),
                 ]),
             ])
             ->defaultSort(
