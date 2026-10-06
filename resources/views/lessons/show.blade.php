@@ -51,7 +51,15 @@
     | Auth / Enrollment
     |--------------------------------------------------------------------------
     */
-    $loginUrl = route('login') . '?redirect=' . urlencode(route('lessons.show', $lesson->slug));
+    $enrollmentReturnUrl = route('lessons.show', $lesson->slug) . '#learning-schedule';
+
+    $loginUrl = route('login', [
+        'redirect' => $enrollmentReturnUrl,
+    ]);
+
+    $registerUrl = route('register', [
+        'redirect' => $enrollmentReturnUrl,
+    ]);
 
     $enrollment = auth()->check()
         ? auth()->user()
@@ -806,7 +814,7 @@
                             Ingia Kuanza
                         </a>
 
-                        <a href="{{ route('register') }}"
+                        <a href="{{ $registerUrl }}"
                            class="w-full inline-flex justify-center rounded-xl bg-accent text-navy font-bold px-6 py-3 hover:opacity-90 transition">
                             Tengeneza Akaunti
                         </a>
