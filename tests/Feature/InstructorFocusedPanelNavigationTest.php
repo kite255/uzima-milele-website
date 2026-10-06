@@ -57,6 +57,19 @@ class InstructorFocusedPanelNavigationTest extends TestCase
         $this->assertFalse(LessonQuestionResource::shouldRegisterNavigation());
         $this->assertFalse(QuizResultResource::shouldRegisterNavigation());
         $this->assertFalse(OverdueStudents::shouldRegisterNavigation());
+
+        $this->get('/admin')
+            ->assertOk()
+            ->assertSee('Instructor Hub')
+            ->assertSee('My Lessons')
+            ->assertSee('Student Join Links')
+            ->assertSee('Student Q&A')
+            ->assertSee('Assigned Students')
+            ->assertSee('Due Follow-ups')
+            ->assertSee('Overdue Students')
+            ->assertSee('Quiz Results')
+            ->assertSee('Notifications')
+            ->assertSee('Profile');
     }
 
     public function test_admin_keeps_full_management_navigation(): void
