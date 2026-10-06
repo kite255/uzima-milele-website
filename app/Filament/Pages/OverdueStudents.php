@@ -30,11 +30,7 @@ class OverdueStudents extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return in_array(
-            auth()->user()?->role,
-            ['admin', 'instructor'],
-            true
-        );
+        return auth()->user()?->role === 'admin';
     }
 
     public static function canAccess(): bool
