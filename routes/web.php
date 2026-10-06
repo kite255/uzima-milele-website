@@ -252,8 +252,10 @@ Route::prefix('lessons')
 
         Route::get(
             '/{lesson:slug}/enroll',
-            fn (\App\Models\Lesson $lesson) => redirect()
-                ->route('lessons.show', ['lesson' => $lesson->slug])
+            fn (\App\Models\Lesson $lesson) => redirect(
+                route('lessons.show', ['lesson' => $lesson->slug])
+                . '#learning-schedule'
+            )
         )->name('enroll.redirect');
 
         Route::middleware('auth')
