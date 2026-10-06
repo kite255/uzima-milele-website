@@ -13,8 +13,19 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    public function redirect()
+    public function redirect(Request $request)
     {
+        if ($request->filled('redirect')) {
+            $redirect = (string) $request->query('redirect');
+
+            if ($this->isSafeRedirect($redirect)) {
+                $request->session()->put(
+                    'lesson_auth_redirect',
+                    $redirect
+                );
+            }
+        }
+
         try {
             return Socialite::driver('google')
                 ->stateless()
@@ -163,6 +174,14 @@ class GoogleAuthController extends Controller
 
             $request->session()->regenerate();
 
+            $redirect = $request->session()->pull(
+                'lesson_auth_redirect'
+            );
+
+            if ($this->isSafeRedirect($redirect)) {
+                return redirect()->to($redirect);
+            }
+
             return redirect()->intended('/dashboard');
         } catch (Throwable $e) {
             Log::error('Google login failed', [
@@ -179,5 +198,15 @@ class GoogleAuthController extends Controller
                     'email' => 'Kuingia kwa kutumia Google kumeshindikana. Tafadhali jaribu tena au tumia barua pepe na nenosiri.',
                 ]);
         }
+    }
+
+    private function isSafeRedirect(?string $redirect): bool
+    {
+        if (! $redirect || Str::startsWith($redirect, '//')) {
+            return false;
+        }
+
+        return Str::startsWith($redirect, url('/'))
+            || Str::startsWith($redirect, '/');
     }
 }

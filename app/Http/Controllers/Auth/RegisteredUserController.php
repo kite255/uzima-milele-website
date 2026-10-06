@@ -64,8 +64,11 @@ class RegisteredUserController extends Controller
             $redirect = $request->input('redirect');
 
             if (
-                Str::startsWith($redirect, url('/')) ||
-                Str::startsWith($redirect, '/')
+                ! Str::startsWith($redirect, '//')
+                && (
+                    Str::startsWith($redirect, url('/'))
+                    || Str::startsWith($redirect, '/')
+                )
             ) {
                 return redirect()->to($redirect);
             }
