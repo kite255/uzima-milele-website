@@ -32,13 +32,16 @@ class QuizResultResource extends Resource
     | Follow-up instructor sees only results from students assigned to them.
     | Legacy instructor_id remains as fallback for old unconfigured lessons.
     */
+    public static function getNavigationLabel(): string
+    {
+        return auth()->user()?->role === 'instructor'
+            ? 'Quiz Results'
+            : 'Lesson Quiz Results';
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
-        return in_array(
-            auth()->user()?->role,
-            ['admin', 'instructor'],
-            true
-        );
+        return auth()->user()?->role === 'admin';
     }
 
     public static function canViewAny(): bool
