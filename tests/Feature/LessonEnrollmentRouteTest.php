@@ -25,6 +25,7 @@ class LessonEnrollmentRouteTest extends TestCase
             ->get('/lessons/' . $lesson->slug . '/enroll')
             ->assertRedirect(
                 route('lessons.show', ['lesson' => $lesson->slug])
+                . '#learning-schedule'
             );
     }
 }
