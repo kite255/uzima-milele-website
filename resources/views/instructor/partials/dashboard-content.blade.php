@@ -14,10 +14,16 @@
         {{-- STATS --}}
         <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
 
-            <x-ui.stat-card
-                label="My Lessons"
-                :value="$totalLessons"
-            />
+            <a
+                href="{{ \App\Filament\Resources\LessonResource::getUrl('index') }}"
+                class="block"
+                title="Open My Lessons"
+            >
+                <x-ui.stat-card
+                    label="My Lessons"
+                    :value="$totalLessons"
+                />
+            </a>
 
             <x-ui.stat-card
                 label="Students"
@@ -82,10 +88,10 @@
                     @endif
 
                     <a
-                        href="{{ route('lessons.index') }}"
+                        href="{{ \App\Filament\Resources\LessonResource::getUrl('index') }}"
                         class="rounded-2xl bg-gray-100 p-5 font-black text-navy transition hover:bg-gray-200"
                     >
-                        View Lessons
+                        My Lessons
                     </a>
 
                 </div>
