@@ -100,4 +100,44 @@ class LessonResourceInstructorAccessTest extends TestCase
                 ->exists()
         );
     }
+    public function test_instructor_can_view_lessons_but_cannot_create_edit_or_delete_them(): void
+    {
+        $instructor = $this->createInstructor('Read Only Instructor');
+
+        $lesson = $this->createLesson('Read Only Course');
+        $lesson->forceFill([
+            'lead_instructor_id' => $instructor->id,
+        ])->save();
+
+        $this->actingAs($instructor);
+
+        $this->assertTrue(LessonResource::canViewAny());
+        $this->assertFalse(LessonResource::canCreate());
+        $this->assertFalse(LessonResource::canEdit($lesson));
+        $this->assertFalse(LessonResource::canDelete($lesson));
+
+        $this->get(LessonResource::getUrl('create'))
+            ->assertForbidden();
+
+        $this->get(LessonResource::getUrl('edit', [
+            'record' => $lesson,
+        ]))->assertForbidden();
+    }
+
+    public function test_admin_can_create_edit_and_delete_lessons(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $lesson = $this->createLesson('Admin Course');
+
+        $this->actingAs($admin);
+
+        $this->assertTrue(LessonResource::canViewAny());
+        $this->assertTrue(LessonResource::canCreate());
+        $this->assertTrue(LessonResource::canEdit($lesson));
+        $this->assertTrue(LessonResource::canDelete($lesson));
+    }
+
 }

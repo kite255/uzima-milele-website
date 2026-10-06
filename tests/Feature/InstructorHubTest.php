@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\LessonResource;
 use App\Models\User;
 use Tests\TestCase;
 

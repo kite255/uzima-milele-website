@@ -29,6 +29,11 @@ class UserResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Users';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->role === 'admin';
+    }
+
     public static function canViewAny(): bool
     {
         return auth()->user()?->role === 'admin';
