@@ -9,6 +9,7 @@ use App\Filament\Resources\LessonQuestionResource;
 use App\Filament\Resources\LessonResource;
 use App\Filament\Resources\QuizResultResource;
 use App\Filament\Widgets\DashboardStats;
+use App\Models\Lesson;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -181,6 +182,25 @@ class AdminPanelProvider extends PanelProvider
                     ->visible(
                         fn (): bool =>
                             auth()->user()?->role === 'instructor'
+                    ),
+
+                NavigationItem::make('Team Supervision')
+                    ->group('Students')
+                    ->icon('heroicon-o-user-group')
+                    ->url(
+                        fn (): string =>
+                            route('instructor.dashboard') . '#team-supervision'
+                    )
+                    ->sort(75)
+                    ->visible(
+                        fn (): bool =>
+                            auth()->user()?->role === 'instructor'
+                            && Lesson::query()
+                                ->where(
+                                    'lead_instructor_id',
+                                    auth()->id()
+                                )
+                                ->exists()
                     ),
 
                 NavigationItem::make('Notifications')
