@@ -27,37 +27,67 @@
 
         @forelse($lessons as $lesson)
 
-            <a href="{{ route('lessons.show', $lesson->slug) }}"
-               class="group bg-white rounded-2xl shadow hover:shadow-xl transition overflow-hidden border border-gray-100">
+            @php
+                $lessonUrl = route('lessons.show', $lesson->slug);
+                $scheduleUrl = $lessonUrl . '#learning-schedule';
+                $isEnrolled = in_array($lesson->id, $enrolledLessonIds ?? []);
 
-                @if($lesson->cover_image)
-                    <img src="{{ asset('storage/'.$lesson->cover_image) }}"
-                         alt="{{ $lesson->title }}"
-                         class="w-full h-48 object-cover group-hover:scale-105 transition duration-500">
-                @else
-                    <div class="h-48 bg-primary flex items-center justify-center text-white font-bold">
-                        Somo la Uzima Milele
-                    </div>
-                @endif
+                if (auth()->guest()) {
+                    $primaryActionUrl = route('login', [
+                        'redirect' => $scheduleUrl,
+                    ]);
+                    $primaryActionLabel = 'Ingia Kuanza Kujifunza →';
+                } elseif ($isEnrolled) {
+                    $primaryActionUrl = route('lessons.learn', $lesson->slug);
+                    $primaryActionLabel = 'Endelea Kujifunza →';
+                } else {
+                    $primaryActionUrl = $scheduleUrl;
+                    $primaryActionLabel = 'Jiunge na Somo →';
+                }
+            @endphp
+
+            <article class="group bg-white rounded-2xl shadow hover:shadow-xl transition overflow-hidden border border-gray-100">
+                <a href="{{ $lessonUrl }}" class="block overflow-hidden">
+                    @if($lesson->cover_image)
+                        <img src="{{ asset('storage/'.$lesson->cover_image) }}"
+                             alt="{{ $lesson->title }}"
+                             class="w-full h-48 object-cover group-hover:scale-105 transition duration-500">
+                    @else
+                        <div class="h-48 bg-primary flex items-center justify-center text-white font-bold">
+                            Somo la Uzima Milele
+                        </div>
+                    @endif
+                </a>
 
                 <div class="p-6">
                     <span class="inline-flex items-center rounded-full bg-primary/10 text-primary text-xs font-bold px-3 py-1 mb-4">
                         Somo la Biblia
                     </span>
 
-                    <h2 class="text-xl font-black text-navy leading-snug group-hover:text-primary transition">
-                        {{ $lesson->title }}
-                    </h2>
+                    <a href="{{ $lessonUrl }}" class="block">
+                        <h2 class="text-xl font-black text-navy leading-snug group-hover:text-primary transition">
+                            {{ $lesson->title }}
+                        </h2>
+                    </a>
 
                     <p class="text-sm text-gray-600 mt-3 leading-relaxed">
                         {{ Str::limit($lesson->description, 120) }}
                     </p>
 
-                    <div class="mt-6 inline-flex items-center text-primary font-bold group-hover:text-primaryDark transition">
-                        Tazama Somo →
+                    <div class="mt-6 flex flex-col gap-3">
+                        <a href="{{ $primaryActionUrl }}"
+                           class="inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-black text-navy transition hover:opacity-90">
+                            {{ $primaryActionLabel }}
+                        </a>
+
+                        <a href="{{ $lessonUrl }}"
+                           class="inline-flex items-center justify-center text-primary font-bold transition hover:text-primaryDark">
+                            Tazama Somo →
+                        </a>
                     </div>
                 </div>
-            </a>
+            </article>
+
 
         @empty
             <div class="md:col-span-2 lg:col-span-3 bg-white rounded-2xl p-10 text-center shadow-sm">
