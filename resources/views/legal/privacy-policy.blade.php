@@ -3,15 +3,13 @@
 @section('title', 'Sera ya Faragha | Uzima Milele')
 
 @section('content')
-{{-- Uzima Milele solid-navy legal page header, matching the approved reference. --}}
-<section class="bg-gray-50 pt-5 sm:pt-8">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6">
-        <div class="rounded-xl bg-navy text-white text-center px-5 py-6 sm:px-10 sm:py-8">
-            <p class="text-accent text-xs font-black uppercase tracking-wide">UZIMA MILELE</p>
-            <h1 class="mt-3 text-2xl sm:text-3xl font-black leading-tight">Sera ya Faragha</h1>
-            <p class="mt-2 text-sm sm:text-base text-white/90 leading-relaxed">Tunathamini faragha yako na usalama wa taarifa zako.</p>
-            <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-accent"></div>
-        </div>
+{{-- Full-width hero consistent with the site's Tafakari and About page structure. --}}
+<section class="relative min-h-[240px] md:min-h-[330px] flex items-center justify-center overflow-hidden bg-navy text-white">
+    <div class="relative z-10 text-center px-4 py-12 max-w-4xl mx-auto">
+        <p class="text-accent text-xs sm:text-sm font-black uppercase tracking-wide">UZIMA MILELE</p>
+        <h1 class="mt-3 text-3xl md:text-5xl font-black leading-tight">Sera ya Faragha</h1>
+        <p class="mt-4 text-white/90 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">Tunathamini faragha yako na usalama wa taarifa zako.</p>
+        <div class="mx-auto mt-4 h-1 w-12 rounded-full bg-accent"></div>
     </div>
 </section>
 <section class="py-10 sm:py-16 bg-gray-50">
