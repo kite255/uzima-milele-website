@@ -18,6 +18,7 @@ class LegalPagesTest extends TestCase
         $this->get('/account-deletion')
             ->assertOk()
             ->assertSee('Kufuta Akaunti ya Uzima Milele')
-            ->assertSee('info@uzimamilele.or.tz');
+            ->assertSee('info@uzimamilele.or.tz')
+            ->assertSee('Umesahau nenosiri?');
     }
 }
