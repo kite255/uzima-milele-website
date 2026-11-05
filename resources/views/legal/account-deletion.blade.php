@@ -30,7 +30,7 @@
                 <li>Chagua <strong>Delete Account</strong> na fuata hatua za uthibitishaji.</li>
             </ol>
             <p class="text-gray-600 text-sm mt-3">Kwa sasa, uthibitishaji wa kujifutia akaunti unaomba nenosiri.
-            Ikiwa ulisajili kwa Google pekee na huna nenosiri, tumia mawasiliano hapa chini.</p>
+            Ikiwa ulisajili kwa Google pekee na hujawahi kuweka nenosiri, ondoka kwenye akaunti, fungua ukurasa wa kuingia na chagua “Umesahau nenosiri?” ili kuweka nenosiri kwa kutumia barua pepe yako. Ikiwa hatua hii haiwezekani, tumia mawasiliano hapa chini.</p>
         </div>
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-7">
             <h2 class="text-xl text-navy font-black mb-3">Ikiwa huwezi kuingia</h2>
