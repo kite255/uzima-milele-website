@@ -5,9 +5,17 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.') }}
+            Kufuta akaunti yako kunaweza kufuta usajili wa masomo, maendeleo ya kujifunza, majaribio na vyeti vinavyohusishwa na akaunti. Hatua hii haiwezi kutenguliwa. Baadhi ya rekodi zinaweza kuhifadhiwa kulingana na utaratibu wa huduma.
         </p>
     </header>
+
+    @if(auth()->user()?->google_id)
+        <div class="rounded-2xl border-l-4 border-accent bg-blue-50 p-4 text-sm text-navy space-y-2">
+            <p class="font-bold">Unatumia akaunti ya Google?</p>
+            <p>Kwa usalama, mfumo unahitaji nenosiri kuthibitisha kufuta akaunti. Ikiwa hujawahi kuweka nenosiri, ondoka kwenye akaunti kisha tumia "Umesahau nenosiri?" kwenye ukurasa wa kuingia ili kutengeneza nenosiri kupitia barua pepe yako.</p>
+            <p>Ikiwa huwezi kutumia njia hiyo, angalia <a href="{{ route('account-deletion') }}" class="font-bold text-primary underline">maelekezo ya kuomba kufuta akaunti</a>.</p>
+        </div>
+    @endif
 
     <x-danger-button
         x-data=""
@@ -24,7 +32,7 @@
             </h2>
 
             <p class="mt-1 text-sm text-gray-600">
-                {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                Una uhakika unataka kufuta akaunti yako? Hatua hii inaweza kufuta maendeleo ya masomo, majaribio na vyeti. Weka nenosiri lako kuthibitisha.
             </p>
 
             <div class="mt-6">
