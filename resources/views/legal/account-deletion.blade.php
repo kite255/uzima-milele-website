@@ -3,19 +3,15 @@
 @section('title', 'Kufuta Akaunti | Uzima Milele')
 
 @section('content')
-{{-- Compact shared visual language with the Tafakari page; logo stays in the site navbar. --}}
-<section class="relative min-h-[220px] sm:min-h-[260px] flex items-center justify-center overflow-hidden bg-navy">
-    <img
-        src="https://images.unsplash.com/photo-1504052434569-70ad5836ab65?q=80&w=1600&auto=format&fit=crop"
-        alt=""
-        aria-hidden="true"
-        class="absolute inset-0 h-full w-full object-cover"
-    >
-    <div class="absolute inset-0 bg-navy/75"></div>
-    <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-10 text-center text-white">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black leading-tight">Kufuta Akaunti ya Uzima Milele</h1>
-        <p class="mt-4 text-sm sm:text-base text-white/90 leading-relaxed max-w-2xl mx-auto">Maelekezo ya kuomba kufutwa kwa akaunti na taarifa zako.</p>
-        <div class="mt-5 mx-auto h-1 w-16 rounded-full bg-accent"></div>
+{{-- Uzima Milele solid-navy legal page header, matching the approved reference. --}}
+<section class="bg-gray-50 pt-5 sm:pt-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+        <div class="rounded-xl bg-navy text-white text-center px-5 py-6 sm:px-10 sm:py-8">
+            <p class="text-accent text-xs font-black uppercase tracking-wide">UZIMA MILELE</p>
+            <h1 class="mt-3 text-2xl sm:text-3xl font-black leading-tight">Kufuta Akaunti ya Uzima Milele</h1>
+            <p class="mt-2 text-sm sm:text-base text-white/90 leading-relaxed">Maelekezo ya kuomba kufutwa kwa akaunti na taarifa zako.</p>
+            <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-accent"></div>
+        </div>
     </div>
 </section>
 <section class="bg-gray-50 py-10 sm:py-16">
