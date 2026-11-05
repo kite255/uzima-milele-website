@@ -28,3 +28,9 @@ vendor.zip
 uzima-milele-review.zip
 subscribers-test.csv
 *:Zone.Identifier
+
+# Ignore server-generated artifacts in public paths.
+/public/error_log
+/public/C_/
+/public/**/storage/framework/views/
+/public/**/*.log
