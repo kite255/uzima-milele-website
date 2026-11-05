@@ -3,21 +3,19 @@
 @section('title', 'Kufuta Akaunti | Uzima Milele')
 
 @section('content')
-<section class="bg-gradient-to-br from-primary via-primaryDark to-navy text-white py-12 sm:py-16">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6">
-        <div class="flex items-center gap-3 mb-6">
-            <div class="bg-white rounded-2xl p-2 shadow-sm shrink-0">
-                <img src="{{ asset('logo.png') }}" alt="Uzima Milele" class="h-12 w-auto object-contain">
-            </div>
-            <div>
-                <p class="font-black text-lg">Uzima Milele</p>
-                <p class="text-white/75 text-sm">Huduma ya Neno la Mungu</p>
-            </div>
-        </div>
-        <span class="inline-flex rounded-full bg-white/15 px-4 py-1.5 text-sm font-bold">Usimamizi wa Akaunti</span>
-        <h1 class="mt-4 text-3xl sm:text-5xl font-black leading-tight">Kufuta Akaunti ya Uzima Milele</h1>
-        <p class="mt-4 text-white/85 max-w-2xl leading-relaxed">Maelekezo ya kuomba kufutwa kwa akaunti na taarifa zako.</p>
-        <div class="mt-6 h-1 w-20 bg-accent rounded-full"></div>
+{{-- Compact shared visual language with the Tafakari page; logo stays in the site navbar. --}}
+<section class="relative min-h-[220px] sm:min-h-[260px] flex items-center justify-center overflow-hidden bg-navy">
+    <img
+        src="https://images.unsplash.com/photo-1504052434569-70ad5836ab65?q=80&w=1600&auto=format&fit=crop"
+        alt=""
+        aria-hidden="true"
+        class="absolute inset-0 h-full w-full object-cover"
+    >
+    <div class="absolute inset-0 bg-navy/75"></div>
+    <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-10 text-center text-white">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black leading-tight">Kufuta Akaunti ya Uzima Milele</h1>
+        <p class="mt-4 text-sm sm:text-base text-white/90 leading-relaxed max-w-2xl mx-auto">Maelekezo ya kuomba kufutwa kwa akaunti na taarifa zako.</p>
+        <div class="mt-5 mx-auto h-1 w-16 rounded-full bg-accent"></div>
     </div>
 </section>
 <section class="bg-gray-50 py-10 sm:py-16">
