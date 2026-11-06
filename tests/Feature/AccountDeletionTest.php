@@ -3,9 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -14,15 +15,14 @@ use Tests\TestCase;
  * DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test --filter=AccountDeletionTest
  *
  * Never run destructive account tests against a real student database.
+ * This isolated schema cannot prove production data-cascade behavior.
  */
 class AccountDeletionTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected function setUp(): void
     {
-        // RefreshDatabase can issue migrate:fresh. Require an explicitly
-        // selected in-memory database before booting the Laravel test app.
+        // Require a disposable in-memory database. The project contains
+        // MySQL-specific migrations which cannot run under SQLite.
         if (getenv('DB_CONNECTION') !== 'sqlite' || getenv('DB_DATABASE') !== ':memory:') {
             $this->markTestSkipped('Use DB_CONNECTION=sqlite DB_DATABASE=:memory: to run account deletion tests safely.');
         }
@@ -31,6 +31,30 @@ class AccountDeletionTest extends TestCase
 
         $this->assertSame('sqlite', config('database.default'));
         $this->assertSame(':memory:', config('database.connections.sqlite.database'));
+
+        // Exercise authentication and deletion without running the project's
+        // MySQL-only migration history. This is a controller-level test; it
+        // does NOT verify full production foreign-key cascade behavior.
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
+
+        Schema::create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('role')->default('student');
+            $table->string('google_id')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('password_reset_tokens', function (Blueprint $table): void {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
     }
 
     public function test_guest_cannot_delete_an_account(): void
