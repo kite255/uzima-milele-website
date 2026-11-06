@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -90,9 +91,21 @@ class AccountDeletionMySqlTest extends TestCase
             $student = User::factory()->create(['role' => 'student']);
             $id = $student->id;
 
-            $this->actingAs($student)
-                ->delete(route('profile.destroy'), ['password' => 'password'])
-                ->assertRedirect('/');
+            // Ensure this environment has the intended DELETE route before
+            // attributing any 404 to the controller or its database logic.
+            $route = Route::getRoutes()->getByName('profile.destroy');
+            $this->assertNotNull($route, 'The profile.destroy route is missing.');
+            $this->assertContains('DELETE', $route->methods());
+            $this->assertSame('profile', $route->uri());
+
+            // Surface exceptions that would otherwise be rendered as HTTP 404.
+            // Do not disable the application's real authentication middleware.
+            $this->withoutExceptionHandling();
+
+            $response = $this->actingAs($student)
+                ->delete('/profile', ['password' => 'password']);
+
+            $response->assertRedirect('/');
 
             $this->assertGuest();
             $this->assertDatabaseMissing('users', ['id' => $id]);
