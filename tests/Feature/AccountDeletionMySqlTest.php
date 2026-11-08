@@ -90,6 +90,10 @@ class AccountDeletionMySqlTest extends TestCase
         try {
             $student = User::factory()->create(['role' => 'student']);
             $id = $student->id;
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $student->email],
+                ['token' => 'temporary-test-token', 'created_at' => now()]
+            );
 
             // Ensure this environment has the intended DELETE route before
             // attributing any 404 to the controller or its database logic.
@@ -109,6 +113,7 @@ class AccountDeletionMySqlTest extends TestCase
 
             $this->assertGuest();
             $this->assertDatabaseMissing('users', ['id' => $id]);
+            $this->assertDatabaseMissing('password_reset_tokens', ['email' => $student->email]);
         } finally {
             DB::rollBack();
         }

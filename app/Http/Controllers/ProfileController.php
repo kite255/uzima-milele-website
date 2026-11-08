@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
@@ -48,9 +49,18 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        // Remove password-reset credentials tied to this account's email.
+        // Other independently collected records (for example, email newsletter
+        // subscriptions) require a separate retention and deletion policy.
+        DB::transaction(function () use ($user): void {
+            DB::table('password_reset_tokens')
+                ->where('email', $user->email)
+                ->delete();
 
-        $user->delete();
+            $user->delete();
+        });
+
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
