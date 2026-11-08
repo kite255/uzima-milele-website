@@ -35,6 +35,10 @@
         <div class="bg-white border-l-4 border-accent rounded-2xl shadow-sm p-5 sm:p-6 text-sm text-gray-700">
             <strong>Angalizo:</strong> Athari za kufuta akaunti kwa taarifa zinazohusiana na masomo,
             cheti, ujumbe na rekodi zinazohitajika kuhifadhiwa bado zinapitiwa.
+            Rekodi za uthibitishaji wa kubadili nenosiri zinazohusiana na barua pepe ya akaunti hufutwa pamoja na akaunti.
+            Usajili wa kupokea tafakari kwa barua pepe ni huduma tofauti; kuufuta akaunti hakuondoi
+            moja kwa moja usajili huo au historia ya kampeni. Ili kuacha kupokea barua pepe,
+            tumia kiungo cha kujiondoa kinachopatikana kwenye ujumbe.
             Hatua hii haimaanishi kwamba rekodi zote zinazohusiana hufutwa mara moja.
         </div>
         <p class="text-sm text-gray-600">Tazama pia <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark" href="{{ route('privacy-policy') }}">Sera ya Faragha</a>.</p>
