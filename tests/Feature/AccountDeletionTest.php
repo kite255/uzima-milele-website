@@ -79,12 +79,16 @@ class AccountDeletionTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'student']);
 
+        Password::broker()->createToken($user);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
         $this->actingAs($user)
             ->delete(route('profile.destroy'), ['password' => 'password'])
             ->assertRedirect('/');
 
         $this->assertGuest();
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
     }
 
     public function test_google_linked_student_can_reset_password_before_deletion(): void
