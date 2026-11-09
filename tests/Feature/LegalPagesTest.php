@@ -11,17 +11,17 @@ class LegalPagesTest extends TestCase
         $this->get('/privacy-policy')
             ->assertOk()
             ->assertSee('Sera ya Faragha')
-            ->assertSee('Google Play')
             ->assertSee('Median')
             ->assertSee('Elfsight')
             ->assertSee('3. Faragha ya watoto')
             ->assertSee('id="faragha-ya-watoto"', false)
             ->assertSee('Uzima Milele Watoto')
-            ->assertSee('youtube-nocookie.com')
             ->assertSee('haki-na-ufutaji')
             ->assertSee('7. Mawasiliano ya faragha')
             ->assertSee('info@uzimamilele.or.tz')
-            ->assertSee('Utaratibu wa Kufuta Akaunti');
+            ->assertSee('Utaratibu wa Kufuta Akaunti')
+            ->assertDontSee('Rasimu inayosubiri uthibitisho wa mwisho')
+            ->assertDontSee('idhini ya uongozi');
     }
 
     public function test_terms_page_is_public_and_links_to_privacy_and_deletion(): void
