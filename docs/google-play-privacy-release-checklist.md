@@ -14,6 +14,15 @@ Status: **staging review draft — not approved for Play Console publication** (
 - The frontend is wrapped using Median according to the app owner; Median native plugin settings are not visible in this Laravel repository.
 - Existing privacy policy is a **draft**, not yet approved.
 
+## Watoto-specific implementation findings (from staging code)
+
+- Watoto video pages and quizzes are publicly accessible without account creation.
+- Published video URLs use recognized HTTPS YouTube hosts and the `youtube-nocookie.com` embed endpoint, **not** a guarantee against all third-party data processing.
+- New Watoto quiz results use the general label `Guest`; existing historical `watoto_quiz_results.user_name` values can still contain names and need an approved review/erasure plan.
+- The main website's registration flow is not equivalent to a verified parent-managed children's account workflow.
+- Parent/guardian information requests can be directed to the existing ministry email, but identity/authority verification and retention workflows must be operationally confirmed.
+- Verify that the currently deployed application includes these staging changes; a GitHub merge alone does not update the hosting directory.
+
 ## Required confirmations before changing the draft into a final policy
 
 - [ ] Confirm exact developer/publisher name used in the Play listing and the reachable privacy contact address.
