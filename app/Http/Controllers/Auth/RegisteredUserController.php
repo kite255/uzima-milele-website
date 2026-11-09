@@ -60,6 +60,10 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        // Rotate the session ID after registration to prevent session fixation,
+        // matching the existing password-login and Google-login flows.
+        $request->session()->regenerate();
+
         if ($request->filled('redirect')) {
             $redirect = $request->input('redirect');
 
