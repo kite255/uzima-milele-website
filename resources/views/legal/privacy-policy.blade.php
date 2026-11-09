@@ -39,6 +39,29 @@
             Huduma za Median, ruhusa za kifaa, uchanganuzi na taarifa zinazoshughulikiwa na watoa huduma wengine
             bado zinahitaji kuhakikiwa dhidi ya mipangilio halisi ya programu kabla ya kuchapishwa.</p>
         </section>
+        <section class="bg-white border border-sky-100 shadow-sm rounded-2xl p-5 sm:p-7">
+            <h2 class="font-black text-navy text-xl mb-3">3A. Faragha ya watoto — Uzima Milele Watoto</h2>
+            <p>Uzima Milele Watoto hutoa video, hadithi za Biblia na majaribio ya kujifunza. Kurasa za watoto na
+            majaribio yake yanaweza kutumiwa bila kufungua akaunti. Watoto hawahitaji kutoa jina, namba ya simu
+            au barua pepe ili kutazama masomo hayo na kujibu maswali.</p>
+            <p class="mt-3">Mfumo huhifadhi matokeo ya majaribio ya watoto kama alama, idadi ya majibu sahihi
+            na somo husika. Katika marekebisho ya sasa, matokeo mapya yanahifadhiwa chini ya jina la jumla
+            <strong>Guest</strong>, hata ikiwa mtumiaji ameingia kwenye akaunti. Hata hivyo, rekodi za zamani
+            zinaweza kuwa na jina la mtumiaji; ukaguzi wa namna ya kuzifuta au kuzihifadhi bado unaendelea.
+            Taarifa za kiufundi kama kumbukumbu za seva zinaweza pia kuzalishwa wakati wa kutumia tovuti.</p>
+            <p class="mt-3">Baadhi ya masomo yana video za YouTube zilizopachikwa. Tumeanza kutumia
+            <strong>youtube-nocookie.com</strong> kwa uchezaji wa video, lakini hii haimaanishi kuwa YouTube
+            haishughulikii taarifa zozote za matumizi. Kutazama video kunaweza kuhusisha uchakataji wa data
+            na huduma ya YouTube. Pia tunakagua viungo vinavyompeleka mtumiaji nje ya tovuti,
+            huduma nyingine za ukurasa na vipengele vya programu ya Median.</p>
+            <p class="mt-3">Kwa mzazi au mlezi mwenye swali kuhusu faragha ya mtoto au anayetaka
+            kuomba kufutwa kwa taarifa zinazoweza kumhusu mtoto, wasiliana na
+            <a href="mailto:info@uzimamilele.or.tz?subject=Faragha%20ya%20Watoto"
+               class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark">info@uzimamilele.or.tz</a>.
+            Tutahitaji kuthibitisha uhusiano na mamlaka ya mwombaji kabla ya kushughulikia taarifa binafsi.
+            Taarifa za muda wa uhifadhi, matumizi ya huduma za nje na taratibu kamili za maombi bado
+            zinafanyiwa ukaguzi kabla ya sera hii kuidhinishwa.</p>
+        </section>
         <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">4. Usalama na uhifadhi wa taarifa</h2>
             <p>Taarifa za akaunti na masomo huhifadhiwa ili kuendesha huduma zinazohusiana.
             Baadhi ya rekodi kama historia ya kampeni za barua pepe, maombi, ushuhuda, nakala za hifadhi na kumbukumbu
