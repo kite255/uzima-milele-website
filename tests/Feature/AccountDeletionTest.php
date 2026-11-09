@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
@@ -105,12 +106,29 @@ class AccountDeletionTest extends TestCase
         Password::broker()->createToken($user);
         $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
 
+        DB::enableQueryLog();
+
         $this->actingAs($user)
             ->delete(route('profile.destroy'), ['password' => 'password'])
             ->assertRedirect('/')
             ->assertSessionHasNoErrors();
 
-        $this->assertFalse($user->exists, 'The account deletion controller did not delete the authenticated model.');
+        // Check the persisted record, not the original PHP model's stale
+        // $exists property (the request may use another model instance).
+        $stillExists = DB::table('users')->where('id', $user->id)->exists();
+        $queries = collect(DB::getQueryLog())
+            ->pluck('query')
+            ->filter(fn (string $query): bool => str_contains(strtolower($query), 'users')
+                || str_contains(strtolower($query), 'password_reset_tokens'))
+            ->values()
+            ->all();
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+
+        $this->assertFalse(
+            $stillExists,
+            'User row remains after DELETE /profile. Relevant SQL: ' . json_encode($queries)
+        );
 
         $this->assertGuest();
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
