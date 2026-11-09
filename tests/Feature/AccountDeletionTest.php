@@ -77,6 +77,10 @@ class AccountDeletionTest extends TestCase
         $this->actingAs($user)
             ->get(route('profile.edit'))
             ->assertOk()
+            ->assertSee('Taarifa Binafsi')
+            ->assertSee('Usalama wa Akaunti')
+            ->assertSee('Futa Akaunti')
+            ->assertSee('Hifadhi Mabadiliko')
             ->assertSee('action="' . route('profile.destroy') . '"', false)
             ->assertSee('name="_method"', false);
     }
