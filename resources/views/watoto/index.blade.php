@@ -231,4 +231,12 @@
     </div>
 </section>
 
+<section class="border-t border-sky-100 bg-sky-50 py-5">
+    <div class="mx-auto max-w-7xl px-4 text-center text-sm leading-6 text-navy sm:px-6">
+        <span class="font-semibold">Kwa wazazi na walezi:</span>
+        Soma <a href="{{ route('privacy-policy') }}#faragha-ya-watoto"
+            class="font-bold text-primary underline underline-offset-2 hover:text-primaryDark">faragha ya watoto</a>
+        katika Sera ya Faragha ya Uzima Milele.
+    </div>
+</section>
 @endsection
