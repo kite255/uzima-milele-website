@@ -18,6 +18,8 @@ class LegalPagesTest extends TestCase
             ->assertSee('id="faragha-ya-watoto"', false)
             ->assertSee('Uzima Milele Watoto')
             ->assertSee('youtube-nocookie.com')
+            ->assertSee('haki-na-ufutaji')
+            ->assertSee('7. Mawasiliano ya faragha')
             ->assertSee('info@uzimamilele.or.tz')
             ->assertSee('Utaratibu wa Kufuta Akaunti');
     }
@@ -28,6 +30,8 @@ class LegalPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Kufuta Akaunti ya Uzima Milele')
             ->assertSee('info@uzimamilele.or.tz')
-            ->assertSee('Umesahau nenosiri?');
+            ->assertSee('Umesahau nenosiri?')
+            ->assertSee('Maombi ya mzazi au mlezi kuhusu mtoto')
+            ->assertSee('Futa Akaunti');
     }
 }
