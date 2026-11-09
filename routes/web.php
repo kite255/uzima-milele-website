@@ -201,6 +201,11 @@ Route::view(
     'donation'
 )->name('changia');
 
+// Public legal pages for web and mobile users.
+Route::view('/privacy-policy', 'legal.privacy-policy')->name('privacy-policy');
+Route::view('/terms-and-conditions', 'legal.terms-and-conditions')->name('terms-and-conditions');
+Route::view('/account-deletion', 'legal.account-deletion')->name('account-deletion');
+
 /*
 |--------------------------------------------------------------------------
 | Maombi na Ushuhuda
