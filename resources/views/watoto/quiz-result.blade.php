@@ -4,7 +4,7 @@
 
 @php
     $total = count($results);
-    $percentage = $total > 0 ? round(($score / $total) * 100) : 0;
+    $percentage = $score;
 
     if ($percentage == 100) {
         $message = "Hongera sana! Umefaulu kikamilifu";
@@ -52,7 +52,7 @@
                 </p>
 
                 <p class="text-6xl font-black text-primary mt-2">
-                    {{ $score }} / {{ $total }}
+                    {{ $correct }} / {{ $total }}
                 </p>
 
                 <p class="mt-3 text-lg font-bold text-navy">

@@ -45,30 +45,59 @@ class WatotoVideo extends Model
         return $this->hasMany(WatotoQuiz::class);
     }
 
-    public function getYoutubeEmbedAttribute(): string
+    /**
+     * Accept only direct YouTube video URLs and return a trusted video ID.
+     * A URL that only looks like YouTube must not become an iframe source.
+     */
+    public static function youtubeVideoId(?string $url): ?string
     {
-        $url = $this->youtube_url;
-
-        if (str_contains($url, 'watch?v=')) {
-            return str_replace('watch?v=', 'embed/', $url);
+        if (! is_string($url)) {
+            return null;
         }
 
-        if (str_contains($url, 'youtu.be/')) {
-            $id = basename(parse_url($url, PHP_URL_PATH));
-            return 'https://www.youtube.com/embed/' . $id;
+        $parts = parse_url(trim($url));
+
+        if (! is_array($parts) || strtolower($parts['scheme'] ?? '') !== 'https') {
+            return null;
         }
 
-        return $url;
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])) {
+            return null;
+        }
+
+        $host = strtolower($parts['host'] ?? '');
+        $path = $parts['path'] ?? '';
+        $id = null;
+
+        if ($host === 'youtu.be') {
+            $id = trim($path, '/');
+        } elseif (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com', 'youtube-nocookie.com'], true)) {
+            if ($path === '/watch') {
+                parse_str($parts['query'] ?? '', $query);
+                $id = $query['v'] ?? null;
+            } elseif (preg_match('~^/(?:embed|shorts)/([A-Za-z0-9_-]{11})/?$~', $path, $matches)) {
+                $id = $matches[1];
+            }
+        }
+
+        return is_string($id) && preg_match('/^[A-Za-z0-9_-]{11}$/D', $id) ? $id : null;
+    }
+
+    public function getYoutubeEmbedAttribute(): ?string
+    {
+        $id = self::youtubeVideoId($this->youtube_url);
+
+        // Privacy-enhanced mode reduces some tracking, but is not a substitute
+        // for checking the video's child suitability and YouTube data practices.
+        return $id ? 'https://www.youtube-nocookie.com/embed/' . $id : null;
     }
 
     public function getYoutubeThumbnailAttribute(): string
     {
-        preg_match('/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]+)/', $this->youtube_url, $matches);
+        $id = self::youtubeVideoId($this->youtube_url);
 
-        $videoId = $matches[1] ?? null;
-
-        return $videoId
-            ? "https://img.youtube.com/vi/{$videoId}/hqdefault.jpg"
+        return $id
+            ? "https://img.youtube.com/vi/{$id}/hqdefault.jpg"
             : asset('images/placeholder.jpg');
     }
 }

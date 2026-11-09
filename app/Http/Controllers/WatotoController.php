@@ -6,6 +6,7 @@ use App\Models\WatotoQuiz;
 use App\Models\WatotoQuizResult;
 use App\Models\WatotoVideo;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WatotoController extends Controller
 {
@@ -41,6 +42,9 @@ class WatotoController extends Controller
             ->limit(5)
             ->get();
 
+        // Bind the displayed questions to this session to reject forged quiz IDs.
+        request()->session()->put('watoto_quiz_questions.' . $video->id, $questions->pluck('id')->map(fn ($id) => (string) $id)->all());
+
         $relatedVideos = WatotoVideo::where('is_published', true)
             ->where('id', '!=', $video->id)
             ->when($video->category, fn ($query) => $query->where('category', $video->category))
@@ -57,12 +61,36 @@ class WatotoController extends Controller
             ->where('is_published', true)
             ->firstOrFail();
 
-        $answers = $request->input('answers', []);
+        $validated = $request->validate([
+            'answers' => ['required', 'array', 'min:1', 'max:5'],
+            'answers.*' => ['required', 'string', 'in:A,B,C,D'],
+        ]);
+        $answers = $validated['answers'];
+        $expectedIds = $request->session()->get('watoto_quiz_questions.' . $video->id, []);
+        $submittedIds = array_map('strval', array_keys($answers));
 
-        $questions = WatotoQuiz::whereIn('id', array_keys($answers))
+        sort($expectedIds);
+        sort($submittedIds);
+
+        if (! $expectedIds || $submittedIds !== $expectedIds) {
+            throw ValidationException::withMessages([
+                'answers' => 'Jaribio halilingani na maswali yaliyoonyeshwa. Fungua somo tena kisha ujaribu.',
+            ]);
+        }
+
+        $questions = WatotoQuiz::whereIn('id', $submittedIds)
             ->where('watoto_video_id', $video->id)
             ->where('is_active', true)
             ->get();
+
+        if ($questions->count() !== count($expectedIds)) {
+            throw ValidationException::withMessages([
+                'answers' => 'Baadhi ya maswali yamebadilika. Fungua somo tena kisha ujaribu.',
+            ]);
+        }
+
+        // Consume the displayed-question set to prevent accidental duplicate submissions.
+        $request->session()->forget('watoto_quiz_questions.' . $video->id);
 
         $correct = 0;
         $results = [];
@@ -88,7 +116,7 @@ class WatotoController extends Controller
 
         WatotoQuizResult::create([
             'watoto_video_id' => $video->id,
-            'user_name' => auth()->check() ? auth()->user()->name : 'Guest',
+            'user_name' => 'Guest', // Do not persist a child's or signed-in user's name for public quizzes.
             'score' => $score,
             'correct' => $correct,
             'total' => $total,

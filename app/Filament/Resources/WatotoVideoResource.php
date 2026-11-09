@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\WatotoVideoResource\Pages;
 use App\Models\WatotoVideo;
+use Closure;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
@@ -76,7 +77,14 @@ class WatotoVideoResource extends Resource
                     ->placeholder('https://www.youtube.com/watch?v=...')
                     ->required()
                     ->url()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->rule(function (): Closure {
+                        return function (string $attribute, mixed $value, Closure $fail): void {
+                            if (! WatotoVideo::youtubeVideoId(is_string($value) ? $value : null)) {
+                                $fail('Weka kiungo halali cha video ya YouTube (https).');
+                            }
+                        };
+                    }),
 
                 TextInput::make('category')
                     ->label('Category')
