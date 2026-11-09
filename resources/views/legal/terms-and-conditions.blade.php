@@ -15,13 +15,6 @@
 
 <section class="bg-gray-50 py-10 sm:py-16">
     <article class="mx-auto max-w-5xl space-y-5 px-4 text-gray-700 sm:px-6">
-        <div class="rounded-2xl border-l-4 border-accent bg-white p-5 text-sm leading-6 shadow-sm sm:p-6">
-            <strong>Rasimu inayohitaji idhini ya uongozi:</strong>
-            Masharti haya yanaeleza matumizi ya huduma zinazotambulika kwenye mfumo.
-            Yanahitaji ukaguzi na idhini ya Uzima Milele kabla ya kutangazwa kama masharti ya mwisho.
-            Hakuna tarehe au ahadi ya kisheria iliyoidhinishwa iliyobuniwa katika rasimu hii.
-        </div>
-
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
             <h2 class="mb-3 text-xl font-black text-navy">1. Kuhusu huduma</h2>
             <p>Uzima Milele hutoa maudhui ya Biblia, tafakari, masomo, majaribio na huduma
