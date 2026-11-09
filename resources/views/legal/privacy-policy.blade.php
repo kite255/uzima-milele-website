@@ -15,14 +15,6 @@
 </section>
 <section class="bg-gray-50 py-10 sm:py-16">
     <article class="mx-auto max-w-5xl space-y-5 px-4 leading-relaxed text-gray-700 sm:px-6">
-        <div class="rounded-2xl border-l-4 border-accent bg-white p-5 text-sm shadow-sm sm:p-6">
-            <strong>Rasimu inayosubiri uthibitisho wa mwisho:</strong>
-            Sera hii imeandaliwa kutokana na vipengele vilivyokaguliwa kwenye mfumo. Kabla ya kutumika kama
-            sera rasmi ya Google Play, bado tunahitaji kuthibitisha mipangilio ya programu ya Median,
-            uchakataji wa taarifa na huduma za nje, muda wa kuhifadhi data na utaratibu kamili wa kufuta data.
-            Hatuwezi kudai kwamba huduma hizo zote zimehakikiwa bila ukaguzi wa uendeshaji.
-        </div>
-
         <nav aria-label="Sehemu za sera ya faragha" class="rounded-2xl border border-sky-100 bg-sky-50 p-5 text-sm sm:p-6">
             <h2 class="mb-3 font-black text-navy">Soma sehemu muhimu</h2>
             <div class="flex flex-wrap gap-x-6 gap-y-3">
