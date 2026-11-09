@@ -19,7 +19,7 @@
             <ol class="list-decimal pl-5 space-y-2 text-gray-700">
                 <li>Ingia kwenye akaunti yako ya Uzima Milele.</li>
                 <li>Fungua sehemu ya <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark" href="{{ route('profile.edit') }}">Wasifu (Profile)</a>.</li>
-                <li>Chagua <strong>Delete Account</strong> na fuata hatua za uthibitishaji.</li>
+                <li>Chagua <strong>Futa Akaunti</strong> na fuata hatua za uthibitishaji.</li>
             </ol>
             <p class="text-gray-600 text-sm mt-3">Kwa sasa, uthibitishaji wa kujifutia akaunti unaomba nenosiri.
             Ikiwa ulisajili kwa Google pekee na hujawahi kuweka nenosiri, ondoka kwenye akaunti, fungua ukurasa wa kuingia na chagua “Umesahau nenosiri?” ili kuweka nenosiri kwa kutumia barua pepe yako. Ikiwa hatua hii haiwezekani, tumia mawasiliano hapa chini.</p>
