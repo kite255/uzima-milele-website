@@ -30,17 +30,8 @@
             <p>Data hutumika kusimamia akaunti, kutoa masomo na tafakari, kufuatilia maendeleo ya mwanafunzi,
             kujibu mawasiliano na kutuma ujumbe ulioombwa au uliokubaliwa.</p>
         </section>
-        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">3. Huduma zinazohusiana</h2>
-            <p>Unaweza kuingia kwa kutumia Google; mfumo hupokea taarifa zinazohitajika kwa kuingia kama jina,
-            barua pepe, kitambulisho cha akaunti ya Google na picha ya wasifu ikiwa imetolewa.
-            Barua pepe za tafakari na taarifa hutumwa kupitia huduma ya barua pepe iliyosanidiwa na huduma.
-            Tovuti hutumia pia huduma ya mazungumzo ya Elfsight na rasilimali za nje za mwonekano wa kurasa.
-            Programu ya simu imetengenezwa kwa Median na huonyesha tovuti ndani ya programu.
-            Huduma za Median, ruhusa za kifaa, uchanganuzi na taarifa zinazoshughulikiwa na watoa huduma wengine
-            bado zinahitaji kuhakikiwa dhidi ya mipangilio halisi ya programu kabla ya kuchapishwa.</p>
-        </section>
-        <section class="bg-white border border-sky-100 shadow-sm rounded-2xl p-5 sm:p-7">
-            <h2 class="font-black text-navy text-xl mb-3">3A. Faragha ya watoto — Uzima Milele Watoto</h2>
+        <section id="faragha-ya-watoto" class="scroll-mt-24 bg-white border border-sky-100 shadow-sm rounded-2xl p-5 sm:p-7">
+            <h2 class="font-black text-navy text-xl mb-3">3. Faragha ya watoto — Uzima Milele Watoto</h2>
             <p>Uzima Milele Watoto hutoa video, hadithi za Biblia na majaribio ya kujifunza. Kurasa za watoto na
             majaribio yake yanaweza kutumiwa bila kufungua akaunti. Watoto hawahitaji kutoa jina, namba ya simu
             au barua pepe ili kutazama masomo hayo na kujibu maswali.</p>
@@ -62,14 +53,23 @@
             Taarifa za muda wa uhifadhi, matumizi ya huduma za nje na taratibu kamili za maombi bado
             zinafanyiwa ukaguzi kabla ya sera hii kuidhinishwa.</p>
         </section>
-        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">4. Usalama na uhifadhi wa taarifa</h2>
+        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">4. Huduma zinazohusiana</h2>
+            <p>Unaweza kuingia kwa kutumia Google; mfumo hupokea taarifa zinazohitajika kwa kuingia kama jina,
+            barua pepe, kitambulisho cha akaunti ya Google na picha ya wasifu ikiwa imetolewa.
+            Barua pepe za tafakari na taarifa hutumwa kupitia huduma ya barua pepe iliyosanidiwa na huduma.
+            Tovuti hutumia pia huduma ya mazungumzo ya Elfsight na rasilimali za nje za mwonekano wa kurasa.
+            Programu ya simu imetengenezwa kwa Median na huonyesha tovuti ndani ya programu.
+            Huduma za Median, ruhusa za kifaa, uchanganuzi na taarifa zinazoshughulikiwa na watoa huduma wengine
+            bado zinahitaji kuhakikiwa dhidi ya mipangilio halisi ya programu kabla ya kuchapishwa.</p>
+        </section>
+        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">5. Usalama na uhifadhi wa taarifa</h2>
             <p>Taarifa za akaunti na masomo huhifadhiwa ili kuendesha huduma zinazohusiana.
             Baadhi ya rekodi kama historia ya kampeni za barua pepe, maombi, ushuhuda, nakala za hifadhi na kumbukumbu
             za mfumo zinaweza kushughulikiwa tofauti na akaunti ya mtumiaji. Muda mahususi wa kuhifadhi taarifa,
             ufutaji wa nakala za hifadhi na udhibiti wa ufikiaji bado vinakaguliwa.
             Hatutadai kwamba taarifa zote hufutwa mara moja wakati masharti hayo hayajathibitishwa.</p>
         </section>
-        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">5. Haki na maombi ya kufuta akaunti</h2>
+        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">6. Haki na maombi ya kufuta akaunti</h2>
             <p>Mtumiaji aliyeingia anaweza kuomba kufuta akaunti kupitia sehemu ya Wasifu.
             Kufuta akaunti na kujiondoa kwenye orodha ya barua pepe ni michakato tofauti.
             Unaweza kujiondoa kwenye barua pepe kwa kutumia kiungo cha kujiondoa kilicho kwenye ujumbe.
@@ -78,7 +78,7 @@
                 Unaweza pia kuwasiliana na <a href="mailto:info@uzimamilele.or.tz" class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark">info@uzimamilele.or.tz</a>
                 kwa maswali kuhusu taarifa zako.</p>
         </section>
-        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">6. Mabadiliko ya sera</h2>
+        <section class="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 sm:p-7"><h2 class="font-black text-navy text-xl mb-3">7. Mabadiliko ya sera</h2>
             <p>Sera hii itasasishwa pale huduma, watoa huduma, au namna ya kushughulikia data inapobadilika.
             Toleo la mwisho litahitaji kukaguliwa na kuthibitishwa na uongozi wa Uzima Milele kabla ya kutumika
             kama sera rasmi kwenye Google Play au Apple App Store.</p>
