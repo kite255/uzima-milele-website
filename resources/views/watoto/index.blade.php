@@ -72,12 +72,19 @@
         <div class="grid lg:grid-cols-2 gap-8 items-stretch">
 
             <div class="group relative bg-white rounded-[2rem] overflow-hidden shadow-xl hover:shadow-2xl transition">
+                @if($featuredVideo->youtube_embed)
                 <iframe
                     class="w-full h-[300px] md:h-full"
                     src="{{ $featuredVideo->youtube_embed }}"
                     title="{{ $featuredVideo->title }}"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="encrypted-media; picture-in-picture"
                     allowfullscreen>
                 </iframe>
+                @else
+                    <p class="p-6 text-sm text-gray-600">Video hii haipatikani kwa sasa.</p>
+                @endif
             </div>
 
             <div class="relative bg-white rounded-[2rem] p-8 md:p-10 shadow-xl border border-gray-100 flex flex-col justify-center">
