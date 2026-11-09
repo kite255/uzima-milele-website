@@ -1,5 +1,8 @@
 <section class="grid gap-6 md:grid-cols-12 md:gap-10">
-    <header class="md:col-span-4">\n        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">\n            <svg class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></svg>\n        </div>
+    <header class="md:col-span-4">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-100">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"></path></svg>
+        </div>
         <h2 class="mt-4 text-xl font-extrabold text-red-700">
             Futa Akaunti
         </h2>
@@ -7,7 +10,8 @@
         <p class="mt-2 text-sm leading-6 text-slate-500">
             Kufuta akaunti yako kunaweza kufuta usajili wa masomo, maendeleo ya kujifunza, majaribio na vyeti vinavyohusishwa na akaunti. Hatua hii haiwezi kutenguliwa. Baadhi ya rekodi zinaweza kuhifadhiwa kulingana na utaratibu wa huduma.
         </p>
-    </header>\n    <div class="min-w-0 space-y-4 md:col-span-8">
+    </header>
+    <div class="min-w-0 space-y-4 md:col-span-8">
 
     @if(auth()->user()?->google_id)
         <div class="rounded-2xl border-l-4 border-accent bg-blue-50 p-4 text-sm text-navy space-y-2">
@@ -24,7 +28,9 @@
         x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
     >Futa Akaunti</x-danger-button>
 
-    </div>\n\n    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
+    </div>
+
+    <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
             @csrf
             @method('delete')
