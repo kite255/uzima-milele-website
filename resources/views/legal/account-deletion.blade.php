@@ -19,7 +19,7 @@
             <ol class="list-decimal pl-5 space-y-2 text-gray-700">
                 <li>Ingia kwenye akaunti yako ya Uzima Milele.</li>
                 <li>Fungua sehemu ya <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark" href="{{ route('profile.edit') }}">Wasifu (Profile)</a>.</li>
-                <li>Chagua <strong>Delete Account</strong> na fuata hatua za uthibitishaji.</li>
+                <li>Chagua <strong>Futa Akaunti</strong> na fuata hatua za uthibitishaji.</li>
             </ol>
             <p class="text-gray-600 text-sm mt-3">Kwa sasa, uthibitishaji wa kujifutia akaunti unaomba nenosiri.
             Ikiwa ulisajili kwa Google pekee na hujawahi kuweka nenosiri, ondoka kwenye akaunti, fungua ukurasa wa kuingia na chagua “Umesahau nenosiri?” ili kuweka nenosiri kwa kutumia barua pepe yako. Ikiwa hatua hii haiwezekani, tumia mawasiliano hapa chini.</p>
@@ -31,6 +31,16 @@
                 Eleza kwamba unaomba kufuta akaunti na taja barua pepe inayohusishwa nayo.
                 Timu itahitaji kuthibitisha umiliki wa akaunti kabla ya kuchukua hatua.
                 Usitume nenosiri lako kwa barua pepe.</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-sky-100 shadow-sm p-5 sm:p-7">
+            <h2 class="text-xl text-navy font-black mb-3">Maombi ya mzazi au mlezi kuhusu mtoto</h2>
+            <p class="text-gray-700">Ikiwa unahitaji kujua au kuomba kufutwa kwa taarifa zinazoweza
+                kumhusu mtoto aliyeshiriki Uzima Milele Watoto, tuma ujumbe kwa
+                <a class="text-primary font-semibold underline underline-offset-2 hover:text-primaryDark"
+                   href="mailto:info@uzimamilele.or.tz?subject=Ombi%20la%20Faragha%20ya%20Mtoto">info@uzimamilele.or.tz</a>.
+                Eleza huduma au somo linalohusika bila kutuma nenosiri au taarifa nyeti za mtoto.
+                Timu itahitaji kuthibitisha mamlaka ya mzazi au mlezi kabla ya kutoa
+                taarifa binafsi au kushughulikia ombi la ufutaji.</p>
         </div>
         <div class="bg-white border-l-4 border-accent rounded-2xl shadow-sm p-5 sm:p-6 text-sm text-gray-700">
             <strong>Angalizo:</strong> Athari za kufuta akaunti kwa taarifa zinazohusiana na masomo,
