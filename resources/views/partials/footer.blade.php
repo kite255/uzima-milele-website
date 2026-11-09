@@ -258,7 +258,6 @@
     <div class="border-t border-white/10 px-4 py-4 text-center text-sm text-white/75 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
         <a class="hover:text-white underline-offset-4 hover:underline" href="{{ route('privacy-policy') }}">Sera ya Faragha</a>
         <a class="hover:text-white underline-offset-4 hover:underline" href="{{ route('terms-and-conditions') }}">Masharti na Vigezo</a>
-        <a class="hover:text-white underline-offset-4 hover:underline" href="{{ route('account-deletion') }}">Kufuta Akaunti</a>
     </div>
 
     <div class="border-t border-white/10 py-4 text-center text-sm text-white/50">
