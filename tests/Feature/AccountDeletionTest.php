@@ -35,6 +35,7 @@ class AccountDeletionTest extends TestCase
         // Exercise authentication and deletion without running the project's
         // MySQL-only migration history. This is a controller-level test; it
         // does NOT verify full production foreign-key cascade behavior.
+        Schema::dropIfExists('notifications');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
 
@@ -54,6 +55,17 @@ class AccountDeletionTest extends TestCase
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
+        });
+
+        // The authenticated profile layout queries unread database notifications.
+        // Model its dependency in this isolated in-memory controller test.
+        Schema::create('notifications', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
         });
     }
 
