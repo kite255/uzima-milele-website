@@ -21,6 +21,17 @@ class LegalPagesTest extends TestCase
             ->assertSee('Utaratibu wa Kufuta Akaunti');
     }
 
+    public function test_terms_page_is_public_and_links_to_privacy_and_deletion(): void
+    {
+        $this->get('/terms-and-conditions')
+            ->assertOk()
+            ->assertSee('Masharti na Vigezo vya Matumizi')
+            ->assertSee('Uzima Milele Watoto')
+            ->assertSee('Sera ya Faragha')
+            ->assertSee('Utaratibu wa Kufuta Akaunti')
+            ->assertSee('info@uzimamilele.or.tz');
+    }
+
     public function test_account_deletion_information_is_public(): void
     {
         $this->get('/account-deletion')
