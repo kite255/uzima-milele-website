@@ -14,6 +14,9 @@ class LegalPagesTest extends TestCase
             ->assertSee('Google Play')
             ->assertSee('Median')
             ->assertSee('Elfsight')
+            ->assertSee('Faragha ya watoto')
+            ->assertSee('Uzima Milele Watoto')
+            ->assertSee('youtube-nocookie.com')
             ->assertSee('info@uzimamilele.or.tz')
             ->assertSee('Utaratibu wa Kufuta Akaunti');
     }
