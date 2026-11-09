@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
@@ -35,6 +36,7 @@ class AccountDeletionTest extends TestCase
         // Exercise authentication and deletion without running the project's
         // MySQL-only migration history. This is a controller-level test; it
         // does NOT verify full production foreign-key cascade behavior.
+        Schema::dropIfExists('notifications');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');
 
@@ -55,6 +57,28 @@ class AccountDeletionTest extends TestCase
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
+
+        // The authenticated profile layout queries unread database notifications.
+        // Model its dependency in this isolated in-memory controller test.
+        Schema::create('notifications', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function test_signed_in_student_can_open_profile_with_delete_account_control(): void
+    {
+        $user = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('action="' . route('profile.destroy') . '"', false)
+            ->assertSee('name="_method"', false);
     }
 
     public function test_guest_cannot_delete_an_account(): void
@@ -82,9 +106,29 @@ class AccountDeletionTest extends TestCase
         Password::broker()->createToken($user);
         $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
 
+        DB::enableQueryLog();
+
         $this->actingAs($user)
             ->delete(route('profile.destroy'), ['password' => 'password'])
-            ->assertRedirect('/');
+            ->assertRedirect('/')
+            ->assertSessionHasNoErrors();
+
+        // Check the persisted record, not the original PHP model's stale
+        // $exists property (the request may use another model instance).
+        $stillExists = DB::table('users')->where('id', $user->id)->exists();
+        $queries = collect(DB::getQueryLog())
+            ->pluck('query')
+            ->filter(fn (string $query): bool => str_contains(strtolower($query), 'users')
+                || str_contains(strtolower($query), 'password_reset_tokens'))
+            ->values()
+            ->all();
+        DB::disableQueryLog();
+        DB::flushQueryLog();
+
+        $this->assertFalse(
+            $stillExists,
+            'User row remains after DELETE /profile. Relevant SQL: ' . json_encode($queries)
+        );
 
         $this->assertGuest();
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
@@ -112,7 +156,8 @@ class AccountDeletionTest extends TestCase
 
         $this->actingAs($user->fresh())
             ->delete(route('profile.destroy'), ['password' => 'NewSafePassword2026!'])
-            ->assertRedirect('/');
+            ->assertRedirect('/')
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }

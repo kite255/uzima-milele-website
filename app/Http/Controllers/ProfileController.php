@@ -49,6 +49,11 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Logout first: SessionGuard::logout() rotates the remember token
+        // and saves the authenticated model. Logging out after deleting the
+        // model can INSERT that user again because Eloquent marks it as new.
+        Auth::logout();
+
         // Remove password-reset credentials tied to this account's email.
         // Other independently collected records (for example, email newsletter
         // subscriptions) require a separate retention and deletion policy.
@@ -59,8 +64,6 @@ class ProfileController extends Controller
 
             $user->delete();
         });
-
-        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

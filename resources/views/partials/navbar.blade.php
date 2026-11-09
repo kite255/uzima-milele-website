@@ -88,6 +88,11 @@
         <div class="hidden md:flex items-center gap-3">
 
             @auth
+                <a href="{{ route('profile.edit') }}"
+                   class="rounded-full px-4 py-2 font-semibold text-navy transition hover:bg-primary/10 hover:text-primary"
+                   aria-label="Fungua wasifu na mipangilio ya akaunti">
+                    Wasifu
+                </a>
                 @if(auth()->user()->role === 'admin')
                     <a href="/admin"
                        class="px-4 py-2 bg-navy text-white rounded-full font-semibold hover:bg-primaryDark transition">
@@ -189,6 +194,10 @@
         </a>
 
         @auth
+            <a href="{{ route('profile.edit') }}"
+               class="block rounded-xl px-4 py-3 font-semibold text-navy hover:bg-primary/10 hover:text-primary transition">
+                Wasifu na Mipangilio ya Akaunti
+            </a>
             {{-- MOBILE NOTIFICATIONS --}}
             @if(Route::has('notifications.index'))
                 <a href="{{ route('notifications.index') }}"
