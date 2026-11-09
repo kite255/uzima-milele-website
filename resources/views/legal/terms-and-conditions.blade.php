@@ -80,10 +80,7 @@
 
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
             <h2 class="mb-3 text-xl font-black text-navy">8. Mabadiliko na mawasiliano</h2>
-            <p>Masharti haya yanaweza kusasishwa kadiri huduma inavyobadilika.
-            Kwa maswali kuhusu huduma au masharti yake, wasiliana na
-            <a href="mailto:info@uzimamilele.or.tz" class="font-semibold text-primary underline underline-offset-2">info@uzimamilele.or.tz</a>.
-            Toleo la mwisho litahitaji idhini ya uongozi kabla ya matumizi rasmi.</p>
+            <p>Masharti haya yanaweza kusasishwa kadiri huduma inavyobadilika. Kwa maswali kuhusu huduma au masharti yake, wasiliana na <a href="mailto:info@uzimamilele.or.tz" class="font-semibold text-primary underline underline-offset-2">info@uzimamilele.or.tz</a>.</p>
         </section>
     </article>
 </section>
