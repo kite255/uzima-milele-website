@@ -50,23 +50,13 @@
             <p>Uzima Milele Watoto hutoa video, hadithi na majaribio ya Biblia. Kurasa za Watoto
             na majaribio yake zinaweza kutumiwa bila kujisajili. Mtoto hahitaji kuandika jina,
             barua pepe au namba ya simu ili kutazama somo au kufanya jaribio la Watoto.</p>
-            <p class="mt-3">Majaribio yanahifadhi somo husika, alama, idadi ya majibu sahihi na idadi
-            ya maswali. Katika marekebisho ya programu yaliyowekwa kwenye hatua ya majaribio,
-            matokeo mapya hayahifadhi jina la akaunti, bali hutumia jina la jumla
-            <strong>Guest</strong>. Hata hivyo, baadhi ya rekodi zilizotengenezwa kabla ya marekebisho
-            hayo zinaweza kuwa na majina; zinahitaji ukaguzi wa uhifadhi na ufutaji.</p>
-            <p class="mt-3">Video zilizopachikwa zinatumia huduma ya YouTube. Toleo la marekebisho
-            hutumia anwani ya <strong>youtube-nocookie.com</strong> kupunguza baadhi ya aina za ufuatiliaji,
-            lakini hali hiyo haizuii YouTube au huduma nyingine kuchakata taarifa zote za matumizi.
-            Watumiaji wanaweza pia kufuata viungo vinavyoelekea nje ya tovuti. Tunahitaji kuhakiki
-            video, viungo, SDK na huduma nyingine zinazofikika kwa watoto kwenye programu ya mwisho.</p>
+            <p class="mt-3">Majaribio yanaweza kuhifadhi somo husika, alama, idadi ya majibu sahihi na idadi ya maswali. Baadhi ya matokeo ya awali yanaweza kuwa na jina la mtumiaji. Watoto hawahitaji kuandika taarifa zao binafsi kwenye fomu ya jaribio.</p>
+            <p class="mt-3">Video zilizopachikwa zinatumia huduma ya YouTube. YouTube inaweza kuchakata taarifa za matumizi ya kifaa au uchezaji wa video. Baadhi ya kurasa zina viungo vinavyoelekea nje ya tovuti, ambako taratibu za watoa huduma wengine zinaweza kutumika.</p>
             <p class="mt-3">Mzazi au mlezi anaweza kuomba ufafanuzi, marekebisho au kufutwa kwa
             taarifa zinazoweza kumhusu mtoto kupitia anwani iliyo chini ya sera hii.
             Ombi la kufuta taarifa binafsi litahitaji uthibitisho unaofaa wa mamlaka ya mwombaji;
             hatuombi nywila za watoto au wazazi kupitia barua pepe.</p>
-            <p class="mt-3">Sehemu hii haimaanishi kuwa usajili wa watoto chini ya umri wa kisheria
-            na idhini ya wazazi tayari vimetekelezwa. Vipengele vya akaunti, usimamizi wa mzazi
-            na huduma za nje lazima vikaguliwe kulingana na hadhira inayolengwa.</p>
+            <p class="mt-3">Ikiwa mtoto anatumia huduma nyingine zinazohitaji akaunti, mzazi au mlezi anapaswa kusimamia matumizi yake na kututumia maswali yoyote ya faragha kupitia mawasiliano yaliyo hapa chini.</p>
         </section>
 
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
@@ -75,23 +65,13 @@
             Google, jina, barua pepe na picha ya wasifu inayorejeshwa na huduma hiyo.
             Barua pepe za tafakari na taarifa husafirishwa kupitia huduma iliyosanidiwa kwa barua pepe.
             Tovuti pia ina vipengele vinavyotumia Elfsight na rasilimali za nje.
-            Programu ya simu inatengenezwa kupitia Median. Huduma za Median, SDK zake,
-            vitambulisho vya kifaa, uchanganuzi, ruhusa na huduma za mazungumzo lazima
-            zikaguliwe katika programu iliyojengwa kabla ya kueleza kwa uhakika data
-            zinazopokelewa na kila mhusika.</p>
+            Programu ya simu inatengenezwa kupitia Median. Huduma za programu ya Median na watoa huduma wengine zinaweza kuchakata taarifa za kiufundi za kifaa na matumizi, kulingana na mipangilio ya programu inayotumika.</p>
         </section>
 
         <section id="hifadhi-na-usalama" class="scroll-mt-24 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
             <h2 class="mb-3 text-xl font-black text-navy">5. Usalama na uhifadhi wa taarifa</h2>
-            <p>Uzima Milele hutumia akaunti na utaratibu wa uthibitishaji wa kuingia
-            ili kudhibiti ufikiaji wa baadhi ya huduma. Hata hivyo, taratibu za udhibiti wa
-            ruhusa, hifadhi nakala, kumbukumbu za seva na ufutaji wa data bado zinahitaji
-            kuthibitishwa kwa mazingira ya uzalishaji.</p>
-            <p class="mt-3">Rekodi za masomo, kampeni za barua pepe, maombi, ushuhuda,
-            kumbukumbu za kiufundi na nakala za hifadhi zinaweza kuwa na mifumo
-            tofauti ya uhifadhi. Vipindi vya uhifadhi na sababu za kubakiza
-            taarifa zinazohitajika bado vinafanyiwa ukaguzi. Hatutadai kwamba
-            kila data inafutika mara moja bila uthibitisho huo.</p>
+            <p>Uzima Milele hutumia akaunti na utaratibu wa uthibitishaji wa kuingia ili kudhibiti ufikiaji wa baadhi ya huduma. Taarifa zinaweza kuwekwa kwenye kumbukumbu za seva na nakala za hifadhi kwa sababu za uendeshaji na usalama.</p>
+            <p class="mt-3">Rekodi za masomo, kampeni za barua pepe, maombi, ushuhuda, kumbukumbu za kiufundi na nakala za hifadhi zinaweza kuhifadhiwa kwa vipindi tofauti kulingana na madhumuni ya huduma, usalama na majukumu yanayotumika. Kuomba kufuta akaunti hakumaanishi kwamba kila rekodi ya kujitegemea au nakala ya hifadhi itafutwa mara moja.</p>
         </section>
 
         <section id="haki-na-ufutaji" class="scroll-mt-24 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
@@ -119,10 +99,7 @@
 
         <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
             <h2 class="mb-3 text-xl font-black text-navy">8. Mabadiliko ya sera</h2>
-            <p>Sera hii itasasishwa pale vipengele vya huduma, watoa huduma au utaratibu wa
-            kushughulikia data unapobadilika. Kabla ya kuiidhinisha kama sera rasmi
-            ya Google Play, Uzima Milele inahitaji kuthibitisha usahihi wa taarifa,
-            kuondoa mapengo yaliyotajwa katika rasimu hii na kupata idhini ya uongozi.</p>
+            <p>Sera hii inaweza kusasishwa huduma, watoa huduma au namna ya kushughulikia taarifa zinapobadilika. Taarifa zitakazotolewa humu zinapaswa kuendelea kuendana na jinsi huduma inavyoendeshwa.</p>
         </section>
     </article>
 </section>
