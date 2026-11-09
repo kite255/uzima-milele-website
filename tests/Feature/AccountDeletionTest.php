@@ -57,6 +57,16 @@ class AccountDeletionTest extends TestCase
         });
     }
 
+    public function test_signed_in_student_can_open_profile_with_delete_account_control(): void
+    {
+        $user = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('Delete Account');
+    }
+
     public function test_guest_cannot_delete_an_account(): void
     {
         $this->delete(route('profile.destroy'))->assertRedirect(route('login'));
