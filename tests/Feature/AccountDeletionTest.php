@@ -107,7 +107,10 @@ class AccountDeletionTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('profile.destroy'), ['password' => 'password'])
-            ->assertRedirect('/');
+            ->assertRedirect('/')
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse($user->exists, 'The account deletion controller did not delete the authenticated model.');
 
         $this->assertGuest();
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
@@ -135,7 +138,8 @@ class AccountDeletionTest extends TestCase
 
         $this->actingAs($user->fresh())
             ->delete(route('profile.destroy'), ['password' => 'NewSafePassword2026!'])
-            ->assertRedirect('/');
+            ->assertRedirect('/')
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('users', ['id' => $user->id]);
     }
