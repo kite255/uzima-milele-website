@@ -10,7 +10,12 @@ class LegalPagesTest extends TestCase
     {
         $this->get('/privacy-policy')
             ->assertOk()
-            ->assertSee('Sera ya Faragha');
+            ->assertSee('Sera ya Faragha')
+            ->assertSee('Google Play')
+            ->assertSee('Median')
+            ->assertSee('Elfsight')
+            ->assertSee('info@uzimamilele.or.tz')
+            ->assertSee('Utaratibu wa Kufuta Akaunti');
     }
 
     public function test_account_deletion_information_is_public(): void
