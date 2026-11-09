@@ -6,6 +6,17 @@ use Tests\TestCase;
 
 class LegalPagesTest extends TestCase
 {
+    public function test_footer_shows_privacy_and_terms_without_separate_deletion_link(): void
+    {
+        $footer = file_get_contents(resource_path('views/partials/footer.blade.php'));
+        $policy = file_get_contents(resource_path('views/legal/privacy-policy.blade.php'));
+
+        $this->assertStringContainsString("route('privacy-policy')", $footer);
+        $this->assertStringContainsString("route('terms-and-conditions')", $footer);
+        $this->assertStringNotContainsString("route('account-deletion')", $footer);
+        $this->assertStringContainsString("route('account-deletion')", $policy);
+    }
+
     public function test_privacy_policy_page_is_public(): void
     {
         $this->get('/privacy-policy')
