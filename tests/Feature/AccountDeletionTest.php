@@ -76,7 +76,8 @@ class AccountDeletionTest extends TestCase
         $this->actingAs($user)
             ->get(route('profile.edit'))
             ->assertOk()
-            ->assertSee('Delete Account');
+            ->assertSee('action="' . route('profile.destroy') . '"', false)
+            ->assertSee('name="_method"', false);
     }
 
     public function test_guest_cannot_delete_an_account(): void
