@@ -36,12 +36,19 @@
     <div class="max-w-6xl mx-auto px-4">
 
         <div class="bg-white rounded-[2rem] p-3 shadow-2xl border border-white">
+            @if($video->youtube_embed)
             <iframe
                 class="w-full aspect-video rounded-[1.5rem]"
                 src="{{ $video->youtube_embed }}"
                 title="{{ $video->title }}"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allow="encrypted-media; picture-in-picture"
                 allowfullscreen>
             </iframe>
+            @else
+                <p class="p-6 text-center text-sm text-gray-600">Video hii haipatikani kwa sasa.</p>
+            @endif
         </div>
 
         <div class="grid md:grid-cols-3 gap-6 mt-10">
@@ -98,6 +105,7 @@
                     </div>
 
                     <form method="POST" action="{{ route('children.quiz.submit', $video->slug) }}" class="space-y-6">
+                        @error('answers')<p role="alert" class="rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ $message }}</p>@enderror
                         @csrf
 
                         @foreach($questions as $index => $question)
@@ -121,7 +129,7 @@
                                                     name="answers[{{ $question->id }}]"
                                                     value="{{ $letter }}"
                                                     required
-                                                    class="peer hidden"
+                                                    class="peer sr-only"
                                                 >
 
                                                 <div class="flex items-center gap-4 rounded-2xl border-2 border-gray-100 bg-gray-50 p-4 transition
