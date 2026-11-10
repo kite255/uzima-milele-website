@@ -152,6 +152,9 @@ Route::get(
     EmailCampaignClickController::class
 )->name('email-campaigns.click');
 
+/* Median app account hub; normal authorization applies to protected routes. */
+Route::view('/app/account', 'app.account')->name('app.account');
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard Redirect
