@@ -5,11 +5,6 @@
             <img src="{{ asset('logo.png') }}" alt="" class="h-9 w-auto max-w-12 object-contain">
             <span class="truncate font-black text-navy">Uzima Milele</span>
         </a>
-        @auth
-            <a href="{{ route('profile.edit') }}" class="rounded-full bg-gray-100 px-3 py-2 text-sm font-bold text-navy">Wasifu</a>
-        @else
-            <a href="{{ route('login') }}" class="rounded-full bg-primary px-4 py-2 text-sm font-bold text-white">Ingia</a>
-        @endauth
     </div>
 </header>
 
@@ -22,7 +17,7 @@
             ['route' => 'lessons.index', 'label' => 'Masomo', 'icon' => 'book', 'active' => request()->routeIs('lessons.*')],
             ['route' => 'devotions.index', 'label' => 'Tafakari', 'icon' => 'sun', 'active' => request()->routeIs('devotions.*')],
             ['route' => auth()->check() ? 'dashboard' : 'login', 'label' => 'Yangu', 'icon' => 'learning', 'active' => request()->routeIs('student.*', 'dashboard')],
-            ['route' => auth()->check() ? 'profile.edit' : 'register', 'label' => 'Akaunti', 'icon' => 'user', 'active' => request()->routeIs('profile.*', 'register', 'login')],
+            ['route' => 'app.account', 'label' => 'Akaunti', 'icon' => 'user', 'active' => request()->routeIs('app.account', 'profile.*', 'register', 'login', 'password.*')],
         ];
     @endphp
 
