@@ -727,7 +727,7 @@
                         </p>
                     @endif
 
-                    @if($googleLoginUrl)
+                    @if($googleLoginUrl && ! session('median_app_mode'))
 
                         <div class="divider">
                             au
