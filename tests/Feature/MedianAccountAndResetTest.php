@@ -33,6 +33,23 @@ class MedianAccountAndResetTest extends TestCase
             ->assertSee('Toka kwenye akaunti');
     }
 
+    public function test_privacy_policy_link_is_visible_for_guests_and_members(): void
+    {
+        $this->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('Sera ya Faragha')
+            ->assertSee('href="'.route('privacy-policy').'"', false);
+
+        $this->actingAs(User::factory()->create())
+            ->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('href="'.route('privacy-policy').'"', false);
+
+        $this->get(route('privacy-policy'))->assertOk();
+    }
+
     public function test_password_reset_link_shows_new_password_form_and_preserves_google_account(): void
     {
         $user = User::factory()->create(['google_id' => 'google-test-id']);
