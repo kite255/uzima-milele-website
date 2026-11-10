@@ -29,32 +29,25 @@
             overflow-x: hidden;
         }
 
-        /* The chatbot launcher must remain clear of Median's bottom navigation.
-           Elfsight can render in an iframe, so also set its vertical offset
-           in the Elfsight dashboard if these selectors do not reach it. */
-        body.median-app-mode [class*="FloatingButton__FloatingButtonContainer"],
-        body.median-app-mode [class*="Widget__Component"],
+        /* Keep Elfsight launcher above the 68px app tab bar + safe area.
+           Elfsight may render in a cross-origin iframe: these rules can only
+           affect host-page elements, not styles inside that iframe. */
+        body.median-app-mode {
+            --median-chat-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+        }
+
+        body.median-app-mode [class*="FloatingButton__FloatingButtonContainer"] {
+            bottom: var(--median-chat-bottom) !important;
+        }
+
         body.median-app-mode [class*="Window__Content"] {
-            bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+            bottom: var(--median-chat-bottom) !important;
+            max-height: calc(100dvh - 120px - env(safe-area-inset-bottom, 0px));
         }
 
-        @media (max-width: 640px) {
-            body.median-app-mode [class*="Window__Content"] {
-                max-height: calc(100dvh - 116px - env(safe-area-inset-bottom, 0px));
-            }
-        }
-
-        /* Elfsight may inject a separate floating iframe outside its mount node.
-           Shift only the small launcher container, never the full chat window. */
-        body.median-app-mode .median-elfsight-launcher-offset {
-            transform: translateY(calc(-92px - env(safe-area-inset-bottom, 0px))) !important;
-        }
-
-        /* Ensure the Account tab is always reachable if third-party positioning
-           changes again; visual overlap is still checked on real devices. */
+        /* Do not conceal the launcher behind an artificially high nav z-index. */
         body.median-app-mode .median-app-bottom-nav {
-            z-index: 2147483646 !important;
-            isolation: isolate;
+            z-index: 50;
         }
     </style>
 
@@ -131,41 +124,58 @@
 
 @if(session('median_app_mode'))
     <script>
-        (function () {
+        (() => {
             'use strict';
+            // A floating Elfsight iframe can sit outside its original mount.
+            // Move only small, bottom-right, fixed-position launcher hosts.
+            // Never shift the full chat window or unrelated third-party widgets.
+            const offset = 'calc(100px + env(safe-area-inset-bottom, 0px))';
+            const launcherSelector = '[class*="FloatingButton__FloatingButtonContainer"]';
+            const widgetId = '3a148ff9-1e5a-4372-9098-4aed0e13b872';
 
-            // Elfsight can render its floating launcher in a small fixed iframe.
-            // Offset only that launcher; do not shift full-screen chat dialogs.
-            function moveMedianChatLauncher() {
-                const frames = document.querySelectorAll('iframe');
-                for (const frame of frames) {
-                    const src = frame.getAttribute('src') || '';
-                    const title = frame.getAttribute('title') || '';
-                    if (!/elfsight/i.test(src + ' ' + title)) continue;
+            function positionChat() {
+                document.querySelectorAll(launcherSelector).forEach(node => {
+                    node.style.setProperty('bottom', offset, 'important');
+                });
 
-                    let target = frame;
-                    while (target.parentElement &&
-                           target.parentElement !== document.body &&
-                           getComputedStyle(target).position !== 'fixed') {
-                        target = target.parentElement;
+                document.querySelectorAll('iframe').forEach(frame => {
+                    const identity = [
+                        frame.getAttribute('src') || '',
+                        frame.getAttribute('title') || '',
+                        frame.id || '',
+                        frame.className || ''
+                    ].join(' ').toLowerCase();
+                    if (!identity.includes('elfsight') && !identity.includes(widgetId)) return;
+
+                    let node = frame;
+                    while (node.parentElement && node.parentElement !== document.body
+                        && getComputedStyle(node).position !== 'fixed') {
+                        node = node.parentElement;
                     }
-
-                    const rect = target.getBoundingClientRect();
-                    const fixed = getComputedStyle(target).position === 'fixed';
-                    const small = rect.width > 20 && rect.height > 20 &&
-                                  rect.width <= 160 && rect.height <= 160;
-                    const nearBottom = rect.bottom > window.innerHeight - 150;
-
-                    if (fixed && small && nearBottom) {
-                        target.classList.add('median-elfsight-launcher-offset');
-                    }
-                }
+                    if (getComputedStyle(node).position !== 'fixed') return;
+                    const rect = node.getBoundingClientRect();
+                    // A floating launcher is compact. Don't move expanded chats.
+                    if (rect.width < 24 || rect.width > 160 ||
+                        rect.height < 24 || rect.height > 160 ||
+                        rect.right < window.innerWidth - 200) return;
+                    node.style.setProperty('bottom', offset, 'important');
+                    node.style.setProperty('top', 'auto', 'important');
+                });
             }
 
-            const observer = new MutationObserver(moveMedianChatLauncher);
-            observer.observe(document.body, { childList: true, subtree: true });
-            moveMedianChatLauncher();
-            window.addEventListener('load', moveMedianChatLauncher, { once: true });
+            let scheduled = false;
+            function schedulePosition() {
+                if (scheduled) return;
+                scheduled = true;
+                requestAnimationFrame(() => {
+                    scheduled = false;
+                    positionChat();
+                });
+            }
+            const observer = new MutationObserver(schedulePosition);
+            observer.observe(document.body, {childList: true, subtree: true});
+            schedulePosition();
+            window.addEventListener('load', schedulePosition, {once: true});
         })();
     </script>
 @endif
