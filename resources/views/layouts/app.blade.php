@@ -43,6 +43,19 @@
                 max-height: calc(100dvh - 116px - env(safe-area-inset-bottom, 0px));
             }
         }
+
+        /* Elfsight may inject a separate floating iframe outside its mount node.
+           Shift only the small launcher container, never the full chat window. */
+        body.median-app-mode .median-elfsight-launcher-offset {
+            transform: translateY(calc(-92px - env(safe-area-inset-bottom, 0px))) !important;
+        }
+
+        /* Ensure the Account tab is always reachable if third-party positioning
+           changes again; visual overlap is still checked on real devices. */
+        body.median-app-mode .median-app-bottom-nav {
+            z-index: 2147483646 !important;
+            isolation: isolate;
+        }
     </style>
 
     <script>
@@ -115,5 +128,46 @@
         data-elfsight-app-lazy
     ></div>
 
+
+@if(session('median_app_mode'))
+    <script>
+        (function () {
+            'use strict';
+
+            // Elfsight can render its floating launcher in a small fixed iframe.
+            // Offset only that launcher; do not shift full-screen chat dialogs.
+            function moveMedianChatLauncher() {
+                const frames = document.querySelectorAll('iframe');
+                for (const frame of frames) {
+                    const src = frame.getAttribute('src') || '';
+                    const title = frame.getAttribute('title') || '';
+                    if (!/elfsight/i.test(src + ' ' + title)) continue;
+
+                    let target = frame;
+                    while (target.parentElement &&
+                           target.parentElement !== document.body &&
+                           getComputedStyle(target).position !== 'fixed') {
+                        target = target.parentElement;
+                    }
+
+                    const rect = target.getBoundingClientRect();
+                    const fixed = getComputedStyle(target).position === 'fixed';
+                    const small = rect.width > 20 && rect.height > 20 &&
+                                  rect.width <= 160 && rect.height <= 160;
+                    const nearBottom = rect.bottom > window.innerHeight - 150;
+
+                    if (fixed && small && nearBottom) {
+                        target.classList.add('median-elfsight-launcher-offset');
+                    }
+                }
+            }
+
+            const observer = new MutationObserver(moveMedianChatLauncher);
+            observer.observe(document.body, { childList: true, subtree: true });
+            moveMedianChatLauncher();
+            window.addEventListener('load', moveMedianChatLauncher, { once: true });
+        })();
+    </script>
+@endif
 </body>
 </html>
