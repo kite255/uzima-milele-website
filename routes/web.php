@@ -152,6 +152,9 @@ Route::get(
     EmailCampaignClickController::class
 )->name('email-campaigns.click');
 
+/* Median app account hub; web authorization still controls protected pages. */
+Route::view('/app/account', 'app.account')->name('app.account');
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard Redirect
