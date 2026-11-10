@@ -67,6 +67,23 @@ class MedianAccountAndResetTest extends TestCase
         $this->get(route('terms-and-conditions'))->assertOk();
     }
 
+    public function test_account_deletion_information_is_accessible_to_guests_and_signed_in_users(): void
+    {
+        $this->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('Kufuta Akaunti')
+            ->assertSee('href="'.route('account-deletion').'"', false);
+
+        $this->actingAs(User::factory()->create())
+            ->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('Kufuta Akaunti');
+
+        $this->get(route('account-deletion'))->assertOk();
+    }
+
     public function test_password_reset_link_shows_new_password_form_and_preserves_google_account(): void
     {
         $user = User::factory()->create(['google_id' => 'google-test-id']);
