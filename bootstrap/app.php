@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Trust all upstream proxies so HTTPS and OAuth parameters are preserved
         $middleware->trustProxies(at: '*');
+        $middleware->web(append: [\App\Http\Middleware\RememberMedianAppMode::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
