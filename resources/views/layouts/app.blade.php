@@ -58,20 +58,24 @@
             : 0;
     @endphp
 
-    {{-- MAIN NAVIGATION --}}
-    @includeIf('partials.navbar', [
-        'unreadNotificationsCount' => $unreadNotificationsCount
-    ])
+    @if(session('median_app_mode'))
+        @include('partials.median-app-navigation')
+    @else
+        @includeIf('partials.navbar', [
+            'unreadNotificationsCount' => $unreadNotificationsCount
+        ])
+    @endif
 
     {{-- PAGE CONTENT --}}
-    <main class="min-h-screen">
+    <main class="min-h-screen {{ session('median_app_mode') ? 'pb-24' : '' }}">
         @yield('content')
     </main>
 
-    {{-- FOOTER --}}
-    @includeIf('partials.footer', [
-        'unreadNotificationsCount' => $unreadNotificationsCount
-    ])
+    @unless(session('median_app_mode'))
+        @includeIf('partials.footer', [
+            'unreadNotificationsCount' => $unreadNotificationsCount
+        ])
+    @endunless
 
     {{-- Alpine Collapse plugin for smooth dropdown / accordion --}}
     <script
