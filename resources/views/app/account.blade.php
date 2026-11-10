@@ -35,6 +35,10 @@
             <span>Sera ya Faragha</span>
             <span aria-hidden="true">&rsaquo;</span>
         </a>
+        <a href="{{ route('terms-and-conditions') }}" class="mt-3 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 font-semibold text-primary">
+            <span>Masharti na Vigezo</span>
+            <span aria-hidden="true">&rsaquo;</span>
+        </a>
     </section>
 </section>
 @endsection
