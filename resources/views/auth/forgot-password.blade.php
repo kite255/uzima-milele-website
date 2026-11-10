@@ -380,7 +380,7 @@
                     </h1>
 
                     <p>
-                        Weka barua pepe yako, tutakutumia kiungo cha kubadili nenosiri lako.
+                        Weka barua pepe ya akaunti yako. Tutakutumia kiungo salama cha kuweka au kubadili nenosiri la Uzima Milele. Kama ulijisajili kwa Google, tumia barua pepe hiyohiyo; masomo na maendeleo yako yataendelea kuwepo.
                     </p>
 
                 </div>
