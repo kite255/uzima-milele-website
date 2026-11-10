@@ -50,6 +50,23 @@ class MedianAccountAndResetTest extends TestCase
         $this->get(route('privacy-policy'))->assertOk();
     }
 
+    public function test_terms_link_is_visible_in_median_account_for_guests_and_members(): void
+    {
+        $this->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('Masharti na Vigezo')
+            ->assertSee('href="'.route('terms-and-conditions').'"', false);
+
+        $this->actingAs(User::factory()->create())
+            ->withSession(['median_app_mode' => true])
+            ->get(route('app.account'))
+            ->assertOk()
+            ->assertSee('Masharti na Vigezo');
+
+        $this->get(route('terms-and-conditions'))->assertOk();
+    }
+
     public function test_password_reset_link_shows_new_password_form_and_preserves_google_account(): void
     {
         $user = User::factory()->create(['google_id' => 'google-test-id']);
