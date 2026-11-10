@@ -20,7 +20,7 @@
                 ['route' => 'home', 'label' => 'Nyumbani', 'symbol' => '⌂', 'active' => request()->routeIs('home')],
                 ['route' => 'lessons.index', 'label' => 'Masomo', 'symbol' => '▤', 'active' => request()->routeIs('lessons.*')],
                 ['route' => 'devotions.index', 'label' => 'Tafakari', 'symbol' => '✧', 'active' => request()->routeIs('devotions.*')],
-                ['route' => auth()->check() ? 'student.dashboard' : 'login', 'label' => 'Masomo Yangu', 'symbol' => '✓', 'active' => request()->routeIs('student.*')],
+                ['route' => auth()->check() ? 'dashboard' : 'login', 'label' => 'Masomo Yangu', 'symbol' => '✓', 'active' => request()->routeIs('student.*')],
                 ['route' => auth()->check() ? 'profile.edit' : 'register', 'label' => 'Akaunti', 'symbol' => '○', 'active' => request()->routeIs('profile.*')],
             ];
         @endphp
