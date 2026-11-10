@@ -28,5 +28,13 @@
         </div>
         <p class="mt-5 text-sm leading-6 text-gray-600">Uliingia kwa kutumia Google hapo awali? Tumia barua pepe ileile kuomba kiungo cha kuweka nenosiri la Uzima Milele.</p>
     @endauth
+
+    <section aria-label="Faragha na taarifa" class="mt-8">
+        <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Faragha na Taarifa</h2>
+        <a href="{{ route('privacy-policy') }}" class="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 font-semibold text-primary">
+            <span>Sera ya Faragha</span>
+            <span aria-hidden="true">&rsaquo;</span>
+        </a>
+    </section>
 </section>
 @endsection
