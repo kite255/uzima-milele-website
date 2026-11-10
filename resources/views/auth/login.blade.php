@@ -718,6 +718,15 @@
 
                     @endif
 
+                    @if($forgotPasswordUrl)
+                        <p class="register-text">
+                            Ulijisajili kwa Google lakini huwezi kuingia kwenye app?
+                            <a href="{{ $forgotPasswordUrl }}">
+                                Weka nenosiri la Uzima Milele kwa barua pepe yako ileile.
+                            </a>
+                        </p>
+                    @endif
+
                     @if($googleLoginUrl)
 
                         <div class="divider">
