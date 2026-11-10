@@ -28,6 +28,21 @@
         body {
             overflow-x: hidden;
         }
+
+        /* The chatbot launcher must remain clear of Median's bottom navigation.
+           Elfsight can render in an iframe, so also set its vertical offset
+           in the Elfsight dashboard if these selectors do not reach it. */
+        body.median-app-mode [class*="FloatingButton__FloatingButtonContainer"],
+        body.median-app-mode [class*="Widget__Component"],
+        body.median-app-mode [class*="Window__Content"] {
+            bottom: calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+
+        @media (max-width: 640px) {
+            body.median-app-mode [class*="Window__Content"] {
+                max-height: calc(100dvh - 116px - env(safe-area-inset-bottom, 0px));
+            }
+        }
     </style>
 
     <script>
@@ -50,7 +65,7 @@
     </script>
 </head>
 
-<body class="font-lato bg-gray-50 text-gray-900 antialiased">
+<body class="font-lato bg-gray-50 text-gray-900 antialiased {{ session('median_app_mode') ? 'median-app-mode' : '' }}">
 
     @php
         $unreadNotificationsCount = auth()->check()
@@ -67,7 +82,7 @@
     @endif
 
     {{-- PAGE CONTENT --}}
-    <main class="min-h-screen {{ session('median_app_mode') ? 'pb-24' : '' }}">
+    <main class="min-h-screen {{ session('median_app_mode') ? 'pb-28' : '' }}">
         @yield('content')
     </main>
 
