@@ -5,6 +5,12 @@
             <img src="{{ asset('logo.png') }}" alt="" class="h-9 w-auto max-w-12 object-contain">
             <span class="truncate font-black text-navy">Uzima Milele</span>
         </a>
+        @guest
+            <a href="{{ route('login') }}"
+               class="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primaryDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                Ingia
+            </a>
+        @endguest
     </div>
 </header>
 
