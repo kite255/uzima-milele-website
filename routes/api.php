@@ -81,6 +81,8 @@ Route::prefix('mobile/v1')
 Route::prefix('mobile/v1/study')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Api\Mobile\StudyController::class, 'login'])
         ->middleware('throttle:10,1');
+    Route::post('/login/google', [\App\Http\Controllers\Api\Mobile\StudyController::class, 'googleLogin'])
+        ->middleware('throttle:10,1');
 
     Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         $controller = \App\Http\Controllers\Api\Mobile\StudyController::class;

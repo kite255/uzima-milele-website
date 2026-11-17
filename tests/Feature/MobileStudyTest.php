@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\User;
+use Firebase\JWT\JWT;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 use Tests\TestCase;
 
 class MobileStudyTest extends TestCase
@@ -29,6 +32,7 @@ class MobileStudyTest extends TestCase
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('google_id')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('role');
@@ -149,6 +153,61 @@ class MobileStudyTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();
         $this->getJson($base)->assertUnauthorized();
+    }
+
+    public function test_google_login_verifies_the_token_and_links_an_existing_verified_gmail_student(): void
+    {
+        $clientId = 'study-web-client.apps.googleusercontent.com';
+        config(['services.google.client_id' => $clientId]);
+        $subject = '12345678901234567890';
+        $student = User::factory()->create([
+            'role' => 'student',
+            'email' => 'learner@gmail.com',
+            'email_verified_at' => now(),
+        ]);
+        $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
+        $rsa = openssl_pkey_get_details($key)['rsa'];
+        $provider = new class ($this->app['request'], $clientId, $rsa) extends GoogleProvider
+        {
+            public function __construct($request, string $clientId, private array $rsa)
+            {
+                parent::__construct($request, $clientId, 'unused-secret', '/auth/google/callback');
+            }
+
+            protected function getGoogleJwks()
+            {
+                return ['keys' => [[
+                    'kty' => 'RSA', 'alg' => 'RS256', 'kid' => 'test-key',
+                    'n' => JWT::urlsafeB64Encode($this->rsa['n']),
+                    'e' => JWT::urlsafeB64Encode($this->rsa['e']),
+                ]]];
+            }
+        };
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+        $claims = [
+            'iss' => 'https://accounts.google.com',
+            'aud' => $clientId,
+            'sub' => $subject,
+            'email' => $student->email,
+            'email_verified' => true,
+            'exp' => now()->addMinute()->timestamp,
+        ];
+        $endpoint = '/api/mobile/v1/study/login/google';
+        $signed = fn (array $overrides = []) => JWT::encode(
+            array_replace($claims, $overrides), $key, 'RS256', 'test-key',
+        );
+
+        $this->postJson($endpoint, ['id_token' => 'opaque-token'])->assertUnprocessable();
+        $this->postJson($endpoint, ['id_token' => $signed(['aud' => 'another-client'])])->assertUnprocessable();
+        $this->postJson($endpoint, ['id_token' => $signed(['email_verified' => false])])->assertUnprocessable();
+        $this->postJson($endpoint, ['id_token' => $signed(['exp' => now()->subMinute()->timestamp])])->assertUnprocessable();
+        $this->postJson($endpoint, ['id_token' => $signed(['sub' => 'different-subject', 'email' => 'new@gmail.com'])])
+            ->assertForbidden();
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+
+        $token = $this->postJson($endpoint, ['id_token' => $signed()])->assertOk()->json('data.token');
+        $this->assertSame($subject, $student->fresh()->google_id);
+        $this->withToken($token)->getJson('/api/mobile/v1/study/resume')->assertOk();
     }
 
     private function topic($module, string $slug): LessonTopic

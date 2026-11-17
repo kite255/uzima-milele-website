@@ -10,6 +10,7 @@ use App\Models\LessonProgress;
 use App\Models\LessonTopic;
 use App\Models\User;
 use App\Notifications\LessonEnrolledNotification;
+use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Socialite\Facades\Socialite;
 
 class StudyController extends Controller
 {
@@ -39,6 +41,65 @@ class StudyController extends Controller
         }
 
         RateLimiter::clear($request->throttleKey());
+
+        return $this->studySession($student);
+    }
+
+    public function googleLogin(Request $request): JsonResponse
+    {
+        // Socialite verifies the signature and audience for JWTs. Reject opaque
+        // access tokens so this endpoint always takes Socialite's ID token path.
+        $input = $request->validate([
+            'id_token' => ['required', 'string', 'min:101', 'max:8192', 'regex:/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/D'],
+        ]);
+        abort_if(blank(config('services.google.client_id')), 503, 'Kuingia kwa Google hakujasanidiwa.');
+
+        try {
+            $identity = Socialite::driver('google')
+                ->setHttpClient(new Client(['connect_timeout' => 3, 'timeout' => 8]))
+                ->userFromToken($input['id_token']);
+        } catch (\Exception) {
+            throw ValidationException::withMessages(['id_token' => 'Utambulisho wa Google haujathibitishwa.']);
+        }
+
+        $claims = $identity->getRaw();
+        $subject = $identity->getId();
+        $email = $identity->getEmail();
+        if (! is_string($subject) || $subject === '' || strlen($subject) > 255 ||
+            ! is_string($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL) ||
+            ($claims['email_verified'] ?? null) !== true ||
+            ! is_int($claims['exp'] ?? null) || $claims['exp'] <= time()) {
+            throw ValidationException::withMessages(['id_token' => 'Utambulisho wa Google haujathibitishwa.']);
+        }
+
+        $student = DB::transaction(function () use ($subject, $email) {
+            $linked = User::query()->where('google_id', $subject)->first();
+            if ($linked) {
+                return $linked->role === 'student' ? $linked : null;
+            }
+
+            // Google controls @gmail.com addresses. Other email providers need
+            // an existing Google subject link, even if Google verified the email.
+            if (! str_ends_with(strtolower($email), '@gmail.com')) {
+                return null;
+            }
+            $user = User::query()->where('email', strtolower($email))->lockForUpdate()->first();
+            if (! $user || $user->role !== 'student' || $user->email_verified_at === null ||
+                ($user->google_id !== null && $user->google_id !== $subject)) {
+                return null;
+            }
+
+            $user->update(['google_id' => $subject]);
+
+            return $user;
+        });
+        abort_unless($student instanceof User, 403, 'Akaunti hii ya Google haijaunganishwa na akaunti ya mwanafunzi.');
+
+        return $this->studySession($student);
+    }
+
+    private function studySession(User $student): JsonResponse
+    {
         $token = $student->createToken('Uzima Milele Flutter', ['study'], now()->addDay());
 
         return response()->json(['data' => ['token' => $token->plainTextToken]])
