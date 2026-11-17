@@ -15,7 +15,7 @@ class PublicContentController extends Controller
     /**
      * Convert stored HTML into plain text for native Flutter reading.
      */
-    private static function plain(?string $value): string
+    public static function plain(?string $value): string
     {
         $text = $value ?? '';
 
