@@ -114,13 +114,16 @@ class MobileStudyTest extends TestCase
         $this->topic($second, 'tumaini');
         $base = '/api/mobile/v1/study/lessons/biblia';
 
+        $resume = '/api/mobile/v1/study/resume';
+        $this->getJson($resume)->assertUnauthorized();
         $this->getJson($base)->assertUnauthorized();
         $token = $this->postJson('/api/mobile/v1/study/login', [
             'email' => $user->email,
             'password' => 'password',
         ])->assertOk()->json('data.token');
 
-        $this->withToken($token)->getJson($base)->assertOk()->assertJsonPath('data.enrolled', false);
+        $this->withToken($token)->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
+        $this->getJson($base)->assertOk()->assertJsonPath('data.enrolled', false);
         $this->getJson($base.'/topics/imani')->assertForbidden();
         $this->postJson($base.'/enroll')->assertOk()->assertJsonPath('data.enrolled', true);
         $this->postJson($base.'/enroll')->assertOk();
@@ -137,6 +140,11 @@ class MobileStudyTest extends TestCase
         $this->assertDatabaseCount('lesson_progress', 1);
         $this->assertDatabaseHas('lesson_progress', ['user_id' => $user->id, 'lesson_topic_id' => $topic->id]);
         $this->getJson($base)->assertOk()->assertJsonPath('data.resume_topic', 'tumaini');
+        $this->getJson($resume)->assertOk()
+            ->assertJsonPath('data.lesson', ['slug' => 'biblia', 'title' => 'Biblia'])
+            ->assertJsonPath('data.topic', ['slug' => 'tumaini', 'title' => 'tumaini']);
+        $this->postJson($base.'/topics/tumaini/complete')->assertOk();
+        $this->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
         $this->deleteJson('/api/mobile/v1/study/session')->assertNoContent();
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();

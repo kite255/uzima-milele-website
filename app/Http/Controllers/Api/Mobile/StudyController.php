@@ -62,25 +62,47 @@ class StudyController extends Controller
         $completed = [];
 
         if ($enrolled && $canStart) {
-            $modules = $this->modules($lesson);
-            $topics = $modules->flatMap(fn ($module) => $module->publishedTopics);
-            $done = LessonProgress::query()->where('user_id', $student->id)
-                ->where('lesson_id', $lesson->id)->pluck('lesson_topic_id')->flip();
-            $completed = $topics->filter(fn ($topic) => $done->has($topic->id))->pluck('slug')->values();
-            foreach ($modules as $module) {
-                $resume = $module->publishedTopics->first(fn ($topic) => ! $done->has($topic->id))?->slug;
-                if ($resume || ! $module->isCompletedBy($student)) {
-                    break;
-                }
-            }
+            [$resume, $completed] = $this->progress($student, $lesson);
         }
 
         return $this->data([
             'enrolled' => $enrolled,
             'can_start' => $canStart,
             'completed_topics' => $completed,
-            'resume_topic' => $resume,
+            'resume_topic' => $resume?->slug,
         ]);
+    }
+
+    public function resume(Request $request): JsonResponse
+    {
+        $student = $this->student($request);
+        $enrolledLessonIds = $student->lessonEnrollments()->select('lesson_id')
+            ->whereHas('lesson', fn ($query) => $query->where('is_published', true));
+        $lessonIds = LessonProgress::query()
+            ->where('user_id', $student->id)
+            ->whereIn('lesson_id', $enrolledLessonIds)
+            ->groupBy('lesson_id')
+            ->orderByRaw('MAX(completed_at) DESC')
+            ->orderByDesc('lesson_id')
+            ->pluck('lesson_id');
+        $lessons = Lesson::query()->whereKey($lessonIds->all())->get()->keyBy('id');
+
+        foreach ($lessonIds as $lessonId) {
+            $lesson = $lessons->get($lessonId);
+            if (! $lesson?->is_published || ! $lesson->canBeStartedBy($student)) {
+                continue;
+            }
+
+            [$topic] = $this->progress($student, $lesson);
+            if ($topic) {
+                return $this->data([
+                    'lesson' => ['slug' => $lesson->slug, 'title' => $lesson->title],
+                    'topic' => ['slug' => $topic->slug, 'title' => $topic->title],
+                ]);
+            }
+        }
+
+        return $this->data(['lesson' => null, 'topic' => null]);
     }
 
     public function enroll(Request $request, Lesson $lesson): JsonResponse
@@ -160,6 +182,24 @@ class StudyController extends Controller
     private function isEnrolled(User $student, Lesson $lesson): bool
     {
         return $student->lessonEnrollments()->where('lesson_id', $lesson->id)->exists();
+    }
+
+    private function progress(User $student, Lesson $lesson): array
+    {
+        $modules = $this->modules($lesson);
+        $topics = $modules->flatMap(fn ($module) => $module->publishedTopics);
+        $done = LessonProgress::query()->where('user_id', $student->id)
+            ->where('lesson_id', $lesson->id)->pluck('lesson_topic_id')->flip();
+        $completed = $topics->filter(fn ($topic) => $done->has($topic->id))->pluck('slug')->values();
+
+        foreach ($modules as $module) {
+            $resume = $module->publishedTopics->first(fn ($topic) => ! $done->has($topic->id));
+            if ($resume || ! $module->isCompletedBy($student)) {
+                return [$resume, $completed];
+            }
+        }
+
+        return [null, $completed];
     }
 
     private function modules(Lesson $lesson)
