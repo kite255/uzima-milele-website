@@ -20,6 +20,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GoogleProvider;
 
 class StudyController extends Controller
 {
@@ -52,10 +53,15 @@ class StudyController extends Controller
         $input = $request->validate([
             'id_token' => ['required', 'string', 'min:101', 'max:8192', 'regex:/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/D'],
         ]);
-        abort_if(blank(config('services.google.client_id')), 503, 'Kuingia kwa Google hakujasanidiwa.');
+        $clientId = config('services.google.mobile_web_client_id') ?: config('services.google.client_id');
+        abort_if(blank($clientId), 503, 'Kuingia kwa Google hakujasanidiwa.');
 
         try {
-            $identity = Socialite::driver('google')
+            $identity = Socialite::buildProvider(GoogleProvider::class, [
+                'client_id' => $clientId,
+                'client_secret' => '',
+                'redirect' => '',
+            ])
                 ->setHttpClient(new Client(['connect_timeout' => 3, 'timeout' => 8]))
                 ->userFromToken($input['id_token']);
         } catch (\Exception) {

@@ -158,7 +158,11 @@ class MobileStudyTest extends TestCase
     public function test_google_login_verifies_the_token_and_links_an_existing_verified_gmail_student(): void
     {
         $clientId = 'study-web-client.apps.googleusercontent.com';
-        config(['services.google.client_id' => $clientId]);
+        $websiteClientId = 'website-web-client.apps.googleusercontent.com';
+        config([
+            'services.google.client_id' => $websiteClientId,
+            'services.google.mobile_web_client_id' => $clientId,
+        ]);
         $subject = '12345678901234567890';
         $student = User::factory()->create([
             'role' => 'student',
@@ -183,7 +187,12 @@ class MobileStudyTest extends TestCase
                 ]]];
             }
         };
-        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+        Socialite::shouldReceive('buildProvider')
+            ->with(GoogleProvider::class, [
+                'client_id' => $clientId,
+                'client_secret' => '',
+                'redirect' => '',
+            ])->andReturn($provider);
         $claims = [
             'iss' => 'https://accounts.google.com',
             'aud' => $clientId,
@@ -198,7 +207,7 @@ class MobileStudyTest extends TestCase
         );
 
         $this->postJson($endpoint, ['id_token' => 'opaque-token'])->assertUnprocessable();
-        $this->postJson($endpoint, ['id_token' => $signed(['aud' => 'another-client'])])->assertUnprocessable();
+        $this->postJson($endpoint, ['id_token' => $signed(['aud' => $websiteClientId])])->assertUnprocessable();
         $this->postJson($endpoint, ['id_token' => $signed(['email_verified' => false])])->assertUnprocessable();
         $this->postJson($endpoint, ['id_token' => $signed(['exp' => now()->subMinute()->timestamp])])->assertUnprocessable();
         $this->postJson($endpoint, ['id_token' => $signed(['sub' => 'different-subject', 'email' => 'new@gmail.com'])])
@@ -207,6 +216,7 @@ class MobileStudyTest extends TestCase
 
         $token = $this->postJson($endpoint, ['id_token' => $signed()])->assertOk()->json('data.token');
         $this->assertSame($subject, $student->fresh()->google_id);
+        $this->assertSame($websiteClientId, config('services.google.client_id'));
         $this->withToken($token)->getJson('/api/mobile/v1/study/resume')->assertOk();
     }
 
