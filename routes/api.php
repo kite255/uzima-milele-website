@@ -91,6 +91,8 @@ Route::prefix('mobile/v1/study')->group(function () {
         Route::get('/lessons/{lesson:slug}', [$controller, 'status']);
         Route::post('/lessons/{lesson:slug}/enroll', [$controller, 'enroll']);
         Route::get('/lessons/{lesson:slug}/topics/{slug}', [$controller, 'topic']);
+        Route::get('/lessons/{lesson:slug}/quizzes/{quiz}', [$controller, 'quiz']);
+        Route::post('/lessons/{lesson:slug}/quizzes/{quiz}', [$controller, 'submitQuiz']);
         Route::post('/lessons/{lesson:slug}/topics/{slug}/complete', [$controller, 'complete']);
     });
 });
