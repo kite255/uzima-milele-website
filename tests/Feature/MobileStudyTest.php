@@ -89,15 +89,45 @@ class MobileStudyTest extends TestCase
         Schema::create('quizzes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('module_id')->nullable();
+            $table->foreignId('lesson_id')->nullable();
             $table->foreignId('lesson_topic_id')->nullable();
+            $table->string('title')->default('Mtihani');
+            $table->string('quiz_type')->default('kupimwa');
+            $table->unsignedInteger('pass_mark')->default(70);
             $table->boolean('is_published');
             $table->boolean('is_required');
+            $table->timestamps();
+        });
+        Schema::create('questions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('quiz_id')->constrained();
+            $table->text('question');
+            $table->string('type');
+            $table->string('correct_answer')->nullable();
+            $table->json('options')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->unsignedInteger('sort_order')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('quiz_attempts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('quiz_id')->constrained();
+            $table->foreignId('user_id')->constrained();
+            $table->unsignedInteger('score');
+            $table->unsignedInteger('correct_answers');
+            $table->unsignedInteger('total_questions');
+            $table->boolean('passed');
             $table->timestamps();
         });
         Schema::create('quiz_results', function (Blueprint $table) {
             $table->id();
             $table->foreignId('quiz_id')->constrained();
             $table->foreignId('user_id')->constrained();
+            $table->string('user_name')->nullable();
+            $table->foreignId('lesson_topic_id')->nullable();
+            $table->unsignedInteger('score')->default(0);
+            $table->unsignedInteger('correct')->default(0);
+            $table->unsignedInteger('total')->default(0);
             $table->boolean('passed');
             $table->timestamps();
         });
@@ -132,27 +162,100 @@ class MobileStudyTest extends TestCase
         $this->postJson($base.'/enroll')->assertOk()->assertJsonPath('data.enrolled', true);
         $this->postJson($base.'/enroll')->assertOk();
         $this->assertDatabaseCount('lesson_enrollments', 1);
+        $this->getJson($resume)->assertOk()->assertJsonPath('data.topic.slug', 'imani');
+        $this->getJson($base)->assertOk()->assertJsonPath('data.locked_topics', ['tumaini']);
         $this->getJson($base.'/topics/tumaini')->assertForbidden();
         $quiz = $topic->quiz()->create(['is_published' => true, 'is_required' => true]);
         $this->getJson($base.'/topics/imani')->assertOk()
             ->assertJsonPath('data.content', 'Soma Biblia.')
             ->assertJsonPath('data.can_complete', false);
         $this->postJson($base.'/topics/imani/complete')->assertUnprocessable();
-        $quiz->results()->create(['user_id' => $user->id, 'passed' => true]);
+        $question = $quiz->questions()->create([
+            'question' => 'Kweli au si kweli?', 'type' => 'true_false', 'correct_answer' => 'true',
+        ]);
+        $moduleQuiz = $first->quizzes()->create(['is_published' => true, 'is_required' => true]);
+        $moduleQuestion = $moduleQuiz->questions()->create([
+            'question' => 'Chagua jibu.', 'type' => 'multiple_choice',
+            'options' => [['text' => 'Ndiyo', 'is_correct' => true], ['text' => 'Hapana', 'is_correct' => false]],
+        ]);
+        $finalQuiz = $lesson->finalQuiz()->create(['is_published' => true, 'is_required' => true]);
+        $finalQuestion = $finalQuiz->questions()->create([
+            'question' => 'Kweli au si kweli?', 'type' => 'true_false', 'correct_answer' => 'false',
+        ]);
+        $quizPath = $base.'/quizzes/'.$quiz->id;
+        $moduleQuizPath = $base.'/quizzes/'.$moduleQuiz->id;
+        $finalQuizPath = $base.'/quizzes/'.$finalQuiz->id;
+        $this->getJson($moduleQuizPath)->assertForbidden();
+        $this->postJson($finalQuizPath, ['answers' => [$finalQuestion->id => 'false']])->assertForbidden();
+        $this->getJson($quizPath)->assertOk()
+            ->assertJsonPath('data.questions.0.id', $question->id)
+            ->assertJsonMissingPath('data.questions.0.correct_answer');
+        $otherLesson = Lesson::create(['title' => 'Nyingine', 'slug' => 'nyingine', 'is_published' => true]);
+        $otherModule = $otherLesson->modules()->create(['title' => 'Nyingine', 'order' => 1, 'is_published' => true]);
+        $otherTopic = $this->topic($otherModule, 'rafiki');
+        $otherQuiz = $otherTopic->quiz()->create(['is_published' => true, 'is_required' => true]);
+        $this->getJson($base.'/quizzes/'.$otherQuiz->id)->assertNotFound();
+        $this->postJson($quizPath, ['answers' => [$question->id => 'other']])->assertUnprocessable();
+        $this->assertDatabaseCount('quiz_attempts', 0);
+        $this->postJson($quizPath, ['answers' => [$question->id => 'false']])->assertOk()
+            ->assertJsonPath('data.passed', false);
+        $this->assertDatabaseCount('lesson_progress', 0);
+        $this->postJson($quizPath, ['answers' => [$question->id => 'true']])->assertOk()
+            ->assertJsonPath('data.passed', true);
+        $this->assertDatabaseCount('lesson_progress', 1);
         $this->postJson($base.'/topics/imani/complete')->assertOk()->assertJsonPath('data.completed', true);
         $this->postJson($base.'/topics/imani/complete')->assertOk();
         $this->assertDatabaseCount('lesson_progress', 1);
         $this->assertDatabaseHas('lesson_progress', ['user_id' => $user->id, 'lesson_topic_id' => $topic->id]);
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.resume_topic', null)
+            ->assertJsonPath('data.resume_quiz.id', $moduleQuiz->id);
+        $this->getJson($resume.'?include_quizzes=1')->assertOk()->assertJsonPath('data.quiz.id', $moduleQuiz->id);
+        $this->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
+        $this->getJson($base.'/topics/tumaini')->assertForbidden();
+        $this->getJson($moduleQuizPath)->assertOk()->assertJsonPath('data.questions.0.options.0.label', 'Ndiyo')
+            ->assertJsonMissingPath('data.questions.0.options.0.is_correct');
+        $this->postJson($moduleQuizPath, ['answers' => [$moduleQuestion->id => '1']])->assertOk()
+            ->assertJsonPath('data.passed', false);
+        $this->getJson($base.'/topics/tumaini')->assertForbidden();
+        $this->postJson($moduleQuizPath, ['answers' => [$moduleQuestion->id => '0']])->assertOk()
+            ->assertJsonPath('data.passed', true);
         $this->getJson($base)->assertOk()->assertJsonPath('data.resume_topic', 'tumaini');
         $this->getJson($resume)->assertOk()
             ->assertJsonPath('data.lesson', ['slug' => 'biblia', 'title' => 'Biblia'])
             ->assertJsonPath('data.topic', ['slug' => 'tumaini', 'title' => 'tumaini']);
         $this->postJson($base.'/topics/tumaini/complete')->assertOk();
+        $this->getJson($resume.'?include_quizzes=1')->assertOk()->assertJsonPath('data.quiz.id', $finalQuiz->id);
+        $this->getJson($base)->assertOk()->assertJsonPath('data.lesson_completed', false);
+        $this->postJson($finalQuizPath, ['answers' => [$finalQuestion->id => 'false']])->assertOk();
+        $this->getJson($base)->assertOk()->assertJsonPath('data.lesson_completed', true);
         $this->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
         $this->deleteJson('/api/mobile/v1/study/session')->assertNoContent();
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();
         $this->getJson($base)->assertUnauthorized();
+    }
+
+    public function test_the_website_quiz_keeps_its_result_and_review(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $topic = $this->topic($module, 'imani');
+        $quiz = $topic->quiz()->create(['is_published' => true, 'is_required' => true]);
+        $question = $quiz->questions()->create([
+            'question' => 'Kweli au si kweli?', 'type' => 'true_false', 'correct_answer' => 'true',
+        ]);
+
+        $this->actingAs($student)
+            ->post(action([\App\Http\Controllers\QuizController::class, 'submit'], ['quiz' => $quiz->id]), [
+                'question_'.$question->id => 'true',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('result.passed', true)
+            ->assertSessionHas('result.score', 100)
+            ->assertSessionHas('review.'.$question->id.'.correct_answer', 'true');
+        $this->assertDatabaseHas('lesson_progress', ['user_id' => $student->id, 'lesson_topic_id' => $topic->id]);
     }
 
     public function test_google_login_verifies_the_token_and_links_an_existing_verified_gmail_student(): void

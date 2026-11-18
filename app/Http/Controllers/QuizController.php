@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonEnrollment;
-use App\Models\LessonProgress;
 use App\Models\Quiz;
-use App\Models\QuizAttempt;
-use App\Models\QuizResult;
+use App\Services\GradeStudyQuiz;
 use Illuminate\Http\Request;
 
 class QuizController extends Controller
@@ -40,7 +38,7 @@ class QuizController extends Controller
         return view('quiz.show', compact('quiz'));
     }
 
-    public function submit(Request $request, Quiz $quiz)
+    public function submit(Request $request, Quiz $quiz, GradeStudyQuiz $grader)
     {
         if (! auth()->check()) {
             return redirect()
@@ -86,125 +84,17 @@ class QuizController extends Controller
             '*.required' => 'Tafadhali jibu maswali yote kabla ya kuwasilisha.',
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Mark Quiz
-        |--------------------------------------------------------------------------
-        */
-        $totalQuestions = $quiz->questions->count();
-        $correctAnswers = 0;
-        $review = [];
-
-        foreach ($quiz->questions as $question) {
-            $userAnswer = $request->input(
-                'question_' . $question->id
-            );
-
-            $isCorrect = $question->isCorrect($userAnswer);
-
-            if ($isCorrect) {
-                $correctAnswers++;
-            }
-
-            $correctAnswer =
-                $question->type === 'multiple_choice'
-                    ? $question->getCorrectOptionIndex()
-                    : $question->correct_answer;
-
-            $review[$question->id] = [
-                'user_answer' => (string) $userAnswer,
-                'correct_answer' => (string) $correctAnswer,
-                'is_correct' => $isCorrect,
-                'explanation' => $question->explanation,
-            ];
-        }
-
-        $score = round(
-            ($correctAnswers / $totalQuestions) * 100
-        );
-
-        $passed =
-            $score >= (int) $quiz->pass_mark;
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Quiz Attempt
-        |--------------------------------------------------------------------------
-        |
-        | This record is important for MODULE quizzes.
-        |
-        | Under the current module completion rule:
-        |
-        | - A required module quiz only needs to be attempted.
-        | - It does not need to be passed for the module to count as completed.
-        |
-        */
-        QuizAttempt::create([
-            'user_id' => auth()->id(),
-            'quiz_id' => $quiz->id,
-            'score' => $score,
-            'correct_answers' => $correctAnswers,
-            'total_questions' => $totalQuestions,
-            'passed' => $passed,
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Quiz Result
-        |--------------------------------------------------------------------------
-        */
-        QuizResult::create([
-            'quiz_id' => $quiz->id,
-            'user_id' => auth()->id(),
-            'user_name' => auth()->user()->name,
-            'lesson_topic_id' => $quiz->lesson_topic_id,
-            'score' => $score,
-            'correct' => $correctAnswers,
-            'total' => $totalQuestions,
-            'passed' => $passed,
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Topic Completion Logic
-        |--------------------------------------------------------------------------
-        |
-        | Only TOPIC quizzes can directly mark a topic as completed.
-        |
-        | Required topic quiz:
-        | - Must be passed.
-        |
-        | Module quiz:
-        | - Does not create LessonProgress.
-        | - QuizAttempt itself proves it was taken.
-        |
-        | Final quiz:
-        | - Does not create LessonProgress.
-        |
-        */
-        if (
-            $passed
-            && $quiz->lesson_topic_id
-            && $quiz->topic?->module
-        ) {
-            LessonProgress::updateOrCreate(
-                [
-                    'user_id' => auth()->id(),
-                    'lesson_id' => $quiz->topic->module->lesson_id,
-                    'lesson_topic_id' => $quiz->lesson_topic_id,
-                ],
-                [
-                    'completed_at' => now(),
-                ]
-            );
-        }
+        $answers = $quiz->questions->mapWithKeys(
+            fn ($question) => [$question->id => $request->input('question_' . $question->id)]
+        )->all();
+        ['result' => $result, 'review' => $review] = $grader->grade($quiz, $request->user(), $answers);
 
         /*
         |--------------------------------------------------------------------------
         | Result Message
         |--------------------------------------------------------------------------
         */
-        $message = $passed
+        $message = $result['passed']
             ? 'Hongera! Umefaulu quiz hii.'
             : 'Hujafaulu bado. Unaweza kurudia tena.';
 
@@ -213,15 +103,7 @@ class QuizController extends Controller
             ->with([
                 'success' => $message,
 
-                'result' => [
-                    'score' => $score,
-                    'passed' => $passed,
-                    'correct' => $correctAnswers,
-                    'total' => $totalQuestions,
-                    'pass_mark' => (int) $quiz->pass_mark,
-                    'quiz_type' => $quiz->quiz_type,
-                    'is_required' => (bool) $quiz->is_required,
-                ],
+                'result' => $result,
 
                 'review' => $review,
             ]);
