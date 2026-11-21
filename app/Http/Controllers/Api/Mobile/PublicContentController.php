@@ -162,6 +162,7 @@ class PublicContentController extends Controller
                     'level' => (string) (
                         $item->level ?? ''
                     ),
+                    'cover_image_url' => self::lessonCoverUrl($item),
                     'date' => $item->created_at
                         ?->format('Y-m-d') ?? '',
                     'url' => route('lessons.show', [
@@ -221,9 +222,7 @@ class PublicContentController extends Controller
                     ?->format('Y-m-d') ?? '',
 
                 'duration_label' => $item->estimated_duration_label,
-                'cover_image_url' => $item->cover_image
-                    ? url(Storage::disk('public')->url($item->cover_image))
-                    : null,
+                'cover_image_url' => self::lessonCoverUrl($item),
                 'certificate_available' => $item->modules->isNotEmpty(),
                 'final_quiz' => $finalQuiz ? [
                     'question_count' => (int) $finalQuiz->active_questions_count,
@@ -369,5 +368,12 @@ class PublicContentController extends Controller
                 ]
             )->values(),
         ]);
+    }
+
+    private static function lessonCoverUrl(Lesson $item): ?string
+    {
+        return $item->cover_image
+            ? url(Storage::disk('public')->url($item->cover_image))
+            : null;
     }
 }

@@ -83,6 +83,9 @@ class MobileCourseOverviewTest extends TestCase
             'cover_image' => 'lesson-covers/biblia.jpg',
             'is_published' => true,
         ]);
+        $this->getJson('/api/mobile/v1/lessons')
+            ->assertOk()
+            ->assertJsonPath('data.0.cover_image_url', url(Storage::disk('public')->url($lesson->cover_image)));
         Module::create([
             'lesson_id' => $lesson->id,
             'title' => 'Utangulizi',
@@ -127,6 +130,10 @@ class MobileCourseOverviewTest extends TestCase
             'slug' => 'somo-jipya',
             'is_published' => true,
         ]);
+        $this->getJson('/api/mobile/v1/lessons')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['cover_image_url']]])
+            ->assertJsonPath('data.0.cover_image_url', null);
         Module::create([
             'lesson_id' => $lesson->id,
             'title' => 'Rasimu',
