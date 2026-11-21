@@ -282,37 +282,36 @@
             border: 0;
         }
 
-      .qr-block {
-    width: 82mm;
-    margin: -2mm auto 0 auto;
-    text-align: center;
-}
+        .qr-block {
+            margin-top: -2mm;
+        }
 
-     .qr-box {
-    display: inline-block;
-    width: 26mm;
-    height: 26mm;
-    border: 1px solid #E5E7EB;
-    padding: 1.5mm;
-    background: #ffffff;
-    border-radius: 2.5mm;
-    text-align: center;
-}
+        .qr-box {
+            display: block;
+            box-sizing: content-box;
+            width: 23mm;
+            margin: 0 auto;
+            padding: 1.5mm;
+            border: 1px solid #E5E7EB;
+            border-radius: 2.5mm;
+            background: #ffffff;
+            text-decoration: none;
+        }
 
-     .qr-img {
-    width: 23mm;
-    height: 23mm;
-    display: block;
-    border: 0;
-}
+        .qr-img {
+            display: block;
+            width: 23mm;
+            height: 23mm;
+            border: 0;
+        }
 
-   .qr-title {
-    font-size: 7px;
-    font-weight: bold;
-    margin-top: 2.2mm;
-    text-transform: uppercase;
-    color: #0E3D4F;
-}
+        .qr-title {
+            font-size: 7px;
+            font-weight: bold;
+            margin-top: 2.2mm;
+            text-transform: uppercase;
+            color: #0E3D4F;
+        }
 
         .verify-url {
             display: none !important;
@@ -474,11 +473,9 @@
 
         <div class="auth-cell">
             <div class="qr-block">
-                <div class="qr-box">
-                    <a href="{{ $verifyUrl }}">
-                        <img src="{{ $qrSrc }}" class="qr-img" alt="Certificate QR Code">
-                    </a>
-                </div>
+                <a class="qr-box" href="{{ $verifyUrl }}">
+                    <img src="{{ $qrSrc }}" class="qr-img" alt="Certificate QR Code">
+                </a>
                 <div class="qr-title">Scan to Verify</div>
             </div>
         </div>

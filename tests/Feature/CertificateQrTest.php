@@ -24,7 +24,7 @@ class CertificateQrTest extends TestCase
 
         $verificationUrl = route('certificates.verify', $certificate->certificate_number);
         $this->assertSame(1, preg_match(
-            '/<a href="'.preg_quote($verificationUrl, '/').'">\s*<img src="data:image\/svg\+xml;base64,[A-Za-z0-9+\/=]+"/',
+            '/<a class="qr-box" href="'.preg_quote($verificationUrl, '/').'">\s*<img src="data:image\/svg\+xml;base64,[A-Za-z0-9+\/=]+"/',
             $html,
         ), 'The certificate should embed a QR image linked to its verification page.');
     }
