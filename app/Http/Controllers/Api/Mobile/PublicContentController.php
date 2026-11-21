@@ -8,6 +8,7 @@ use App\Models\Lesson;
 use App\Models\Testimonial;
 use App\Models\WatotoVideo;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PublicContentController extends Controller
@@ -182,6 +183,12 @@ class PublicContentController extends Controller
             ->where('slug', $slug)
             ->where('is_published', true)
             ->with([
+                'finalQuiz' => fn ($query) => $query
+                    ->where('is_published', true)
+                    ->withCount([
+                        'questions as active_questions_count' => fn ($questions) => $questions->active(),
+                    ]),
+
                 'modules' => fn ($query) => $query
                     ->where('is_published', true)
                     ->orderBy('order'),
@@ -191,6 +198,8 @@ class PublicContentController extends Controller
                     ->orderBy('order'),
             ])
             ->firstOrFail();
+
+        $finalQuiz = $item->finalQuiz;
 
         return response()->json([
             'data' => [
@@ -210,6 +219,17 @@ class PublicContentController extends Controller
                 ),
                 'date' => $item->created_at
                     ?->format('Y-m-d') ?? '',
+
+                'duration_label' => $item->estimated_duration_label,
+                'cover_image_url' => $item->cover_image
+                    ? url(Storage::disk('public')->url($item->cover_image))
+                    : null,
+                'certificate_available' => $item->modules->isNotEmpty(),
+                'final_quiz' => $finalQuiz ? [
+                    'question_count' => (int) $finalQuiz->active_questions_count,
+                    'pass_mark' => $finalQuiz->pass_mark,
+                    'required_for_certificate' => $finalQuiz->is_required,
+                ] : null,
 
                 'modules' => $item->modules->map(
                     static fn ($module) => [
