@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\User;
+use App\Services\CertificatePdf;
+use Barryvdh\DomPDF\PDF as DomPdf;
 use Firebase\JWT\JWT;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -134,6 +137,7 @@ class MobileStudyTest extends TestCase
             $table->boolean('passed');
             $table->timestamps();
         });
+        (require database_path('migrations/2026_04_30_130701_create_certificates_table.php'))->up();
         (require database_path('migrations/2026_11_16_200000_create_personal_access_tokens_table.php'))->up();
 
         // The assignment service has its own tests and production tables.
@@ -230,13 +234,134 @@ class MobileStudyTest extends TestCase
         $this->postJson($base.'/topics/tumaini/complete')->assertOk();
         $this->getJson($resume.'?include_quizzes=1')->assertOk()->assertJsonPath('data.quiz.id', $finalQuiz->id);
         $this->getJson($base)->assertOk()->assertJsonPath('data.lesson_completed', false);
+        $this->postJson($finalQuizPath, ['answers' => [$finalQuestion->id => 'true']])->assertOk()
+            ->assertJsonPath('data.passed', false);
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.lesson_completed', false)
+            ->assertJsonPath('data.final_quiz_score', null)
+            ->assertJsonPath('data.certificate_issued', false);
         $this->postJson($finalQuizPath, ['answers' => [$finalQuestion->id => 'false']])->assertOk();
-        $this->getJson($base)->assertOk()->assertJsonPath('data.lesson_completed', true);
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.lesson_completed', true)
+            ->assertJsonPath('data.final_quiz_score', 100)
+            ->assertJsonPath('data.certificate_issued', false);
+        $this->assertDatabaseCount('certificates', 0);
         $this->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
         $this->deleteJson('/api/mobile/v1/study/session')->assertNoContent();
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();
         $this->getJson($base)->assertUnauthorized();
+    }
+
+    public function test_completion_shows_the_students_best_passing_published_final_quiz_score(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $other = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $final = $lesson->finalQuiz()->create(['is_published' => true, 'is_required' => true]);
+        $draft = $lesson->finalQuiz()->create(['is_published' => false, 'is_required' => true]);
+        $base = '/api/mobile/v1/study/lessons/biblia';
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->postJson($base.'/enroll')->assertOk();
+        $this->postJson($base.'/topics/imani/complete')->assertOk();
+
+        $final->results()->create(['user_id' => $student->id, 'score' => 80, 'passed' => true]);
+        $final->results()->create(['user_id' => $student->id, 'score' => 95, 'passed' => false]);
+        $final->results()->create(['user_id' => $other->id, 'score' => 100, 'passed' => true]);
+        $final->attempts()->create([
+            'user_id' => $student->id, 'score' => 90, 'passed' => true,
+            'correct_answers' => 9, 'total_questions' => 10,
+        ]);
+        $draft->results()->create(['user_id' => $student->id, 'score' => 100, 'passed' => true]);
+
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.lesson_completed', true)
+            ->assertJsonPath('data.final_quiz_score', 90)
+            ->assertJsonPath('data.certificate_issued', false);
+    }
+
+    public function test_completed_course_with_optional_final_quiz_reports_a_recorded_zero(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $final = $lesson->finalQuiz()->create(['is_published' => true, 'is_required' => false]);
+        $base = '/api/mobile/v1/study/lessons/biblia';
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->postJson($base.'/enroll')->assertOk();
+        $this->postJson($base.'/topics/imani/complete')->assertOk();
+
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.lesson_completed', true)
+            ->assertJsonPath('data.final_quiz_score', null);
+        $final->results()->create(['user_id' => $student->id, 'score' => 0, 'passed' => false]);
+
+        $this->getJson($base)->assertOk()->assertJsonPath('data.final_quiz_score', 0);
+    }
+
+    public function test_only_the_owner_can_download_an_already_issued_certificate(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $other = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $base = '/api/mobile/v1/study/lessons/biblia';
+        $download = $base.'/certificate';
+
+        $this->getJson($download)->assertUnauthorized();
+        $this->withToken($student->createToken('Study test', ['account'])->plainTextToken)
+            ->getJson($download)->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->postJson($base.'/enroll')->assertOk();
+        $this->postJson($base.'/topics/imani/complete')->assertOk();
+
+        Certificate::create([
+            'lesson_id' => $lesson->id, 'user_id' => $other->id,
+            'certificate_number' => 'UZM-OTHER', 'issued_at' => now(),
+        ]);
+        $this->getJson($download)->assertNotFound();
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.lesson_completed', true)
+            ->assertJsonPath('data.certificate_issued', false);
+        $this->assertDatabaseCount('certificates', 1);
+
+        Certificate::create([
+            'lesson_id' => $lesson->id, 'user_id' => $student->id,
+            'certificate_number' => 'UZM-OWNER', 'issued_at' => now(),
+        ]);
+        $this->getJson($base)->assertOk()->assertJsonPath('data.certificate_issued', true);
+
+        $pdf = $this->getJson($download)->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonStructure(['data' => ['pdf_base64']])
+            ->assertJsonMissingPath('data.url')
+            ->json('data.pdf_base64');
+
+        $this->assertStringStartsWith('%PDF-', base64_decode($pdf, true));
+        $this->assertDatabaseCount('certificates', 2);
+    }
+
+    public function test_certificate_download_rejects_an_oversized_pdf(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        Certificate::create([
+            'lesson_id' => $lesson->id, 'user_id' => $student->id,
+            'certificate_number' => 'UZM-OWNER', 'issued_at' => now(),
+        ]);
+        $domPdf = $this->mock(DomPdf::class);
+        $domPdf->shouldReceive('output')->once()->andReturn(str_repeat('x', 5 * 1024 * 1024 + 1));
+        $this->mock(CertificatePdf::class)->shouldReceive('render')->once()->andReturn($domPdf);
+
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken)
+            ->getJson('/api/mobile/v1/study/lessons/biblia/certificate')
+            ->assertStatus(500)
+            ->assertJsonMissingPath('data.pdf_base64');
     }
 
     public function test_the_website_quiz_keeps_its_result_and_review(): void

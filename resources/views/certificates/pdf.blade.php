@@ -502,12 +502,16 @@
                 <div class="qr-box">
                     @if($qrSvg)
                         <div class="qr-svg">{!! $qrSvg !!}</div>
-                    @else
+                    @elseif($allowRemoteQr ?? true)
                         <img src="{{ $fallbackQrSrc }}" class="qr-img" alt="Certificate QR Code">
+                    @else
+                        <a href="{{ $verifyUrl }}">Verify certificate</a>
                     @endif
                 </div>
 
-                <div class="qr-title">Scan to Verify</div>
+                @if($qrSvg || ($allowRemoteQr ?? true))
+                    <div class="qr-title">Scan to Verify</div>
+                @endif
             </div>
         </div>
     </div>

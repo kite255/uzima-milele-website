@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\LessonProgress;
@@ -12,9 +13,11 @@ use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\User;
 use App\Notifications\LessonEnrolledNotification;
+use App\Services\CertificatePdf;
 use App\Services\GradeStudyQuiz;
 use App\Services\MobileLessonTopicMedia;
 use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +32,8 @@ use Laravel\Socialite\Two\GoogleProvider;
 
 class StudyController extends Controller
 {
+    private const MAX_CERTIFICATE_PDF_BYTES = 5 * 1024 * 1024;
+
     public function login(LoginRequest $request): JsonResponse
     {
         $request->ensureIsNotRateLimited();
@@ -131,6 +136,7 @@ class StudyController extends Controller
         $enrolled = $this->isEnrolled($student, $lesson);
         $canStart = $lesson->canBeStartedBy($student);
         $progress = $enrolled && $canStart ? $this->progress($student, $lesson) : null;
+        $completed = $progress['lesson_completed'] ?? false;
 
         return $this->data([
             'enrolled' => $enrolled,
@@ -139,8 +145,25 @@ class StudyController extends Controller
             'locked_topics' => $progress['locked_topics'] ?? [],
             'resume_topic' => ($progress['topic'] ?? null)?->slug,
             'resume_quiz' => $this->quizSummary($progress['quiz'] ?? null),
-            'lesson_completed' => $progress['lesson_completed'] ?? false,
+            'lesson_completed' => $completed,
+            'final_quiz_score' => $completed ? $this->finalQuizScore($student, $lesson) : null,
+            'certificate_issued' => $this->certificateFor($student, $lesson)->exists(),
         ]);
+    }
+
+    public function certificate(Request $request, Lesson $lesson, CertificatePdf $pdf): JsonResponse
+    {
+        $student = $this->student($request);
+        abort_unless($lesson->is_published, 404);
+
+        $certificate = $this->certificateFor($student, $lesson)
+            ->with(['user', 'lesson'])
+            ->firstOrFail();
+
+        $contents = $pdf->render($certificate, allowRemoteQr: false)->output();
+        abort_if(strlen($contents) > self::MAX_CERTIFICATE_PDF_BYTES, 500, 'Cheti hiki hakiwezi kupakuliwa kwa sasa.');
+
+        return $this->data(['pdf_base64' => base64_encode($contents)]);
     }
 
     public function resume(Request $request): JsonResponse
@@ -352,6 +375,34 @@ class StudyController extends Controller
     private function isEnrolled(User $student, Lesson $lesson): bool
     {
         return $student->lessonEnrollments()->where('lesson_id', $lesson->id)->exists();
+    }
+
+    private function certificateFor(User $student, Lesson $lesson): Builder
+    {
+        return Certificate::query()->where('user_id', $student->id)->where('lesson_id', $lesson->id);
+    }
+
+    private function finalQuizScore(User $student, Lesson $lesson): ?int
+    {
+        $quiz = $lesson->getPublishedFinalQuiz();
+        if (! $quiz) {
+            return null;
+        }
+
+        $results = $quiz->results()->where('user_id', $student->id);
+        $attempts = $quiz->attempts()->where('user_id', $student->id);
+
+        if ($quiz->is_required) {
+            $results->where('passed', true);
+            $attempts->where('passed', true);
+        }
+
+        $resultScore = $results->max('score');
+        $attemptScore = $attempts->max('score');
+
+        return $resultScore === null && $attemptScore === null
+            ? null
+            : max((int) $resultScore, (int) $attemptScore);
     }
 
     private function progress(User $student, Lesson $lesson): array

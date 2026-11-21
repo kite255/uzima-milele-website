@@ -6,7 +6,7 @@ use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\QuizResult;
 use App\Notifications\CertificateIssuedNotification;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\CertificatePdf;
 use Illuminate\Support\Str;
 
 class CertificateController extends Controller
@@ -272,7 +272,7 @@ class CertificateController extends Controller
     | Download Certificate PDF
     |--------------------------------------------------------------------------
     */
-    public function download(string $certificateNumber)
+    public function download(string $certificateNumber, CertificatePdf $pdf)
     {
         $certificate = Certificate::with([
             'user',
@@ -289,21 +289,7 @@ class CertificateController extends Controller
             403
         );
 
-        $pdf = Pdf::loadView(
-            'certificates.pdf',
-            [
-                'certificate' => $certificate,
-            ]
-        )
-            ->setPaper('a4', 'landscape')
-            ->setOptions([
-                'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
-                'dpi' => 96,
-            ]);
-
-        return $pdf->download(
+        return $pdf->render($certificate)->download(
             $certificate->certificate_number . '.pdf'
         );
     }
