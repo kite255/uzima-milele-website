@@ -110,12 +110,13 @@ class StudyController extends Controller
 
     private function studySession(User $student): JsonResponse
     {
-        $token = $student->createToken('Uzima Milele Flutter', ['study'], now()->addDay());
+        $expiresAt = now()->addDay();
+        $token = $student->createToken('Uzima Milele Flutter', ['study'], $expiresAt);
 
         return response()->json(['data' => [
             'token' => $token->plainTextToken,
             'name' => $student->name,
-            'expires_at' => now()->addDay()->toIso8601String(),
+            'expires_at' => $expiresAt->toIso8601String(),
         ]])
             ->header('Cache-Control', 'no-store');
     }
