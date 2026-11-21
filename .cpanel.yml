@@ -6,7 +6,8 @@ deployment:
     - /bin/mkdir -p $DEPLOYPATH
 
     - /bin/cp -R app $DEPLOYPATH
-    - /bin/cp -R bootstrap $DEPLOYPATH
+    - /bin/mkdir -p "$DEPLOYPATH/bootstrap/cache"
+    - /bin/cp bootstrap/*.php "$DEPLOYPATH/bootstrap/"
     - /bin/cp -R config $DEPLOYPATH
     - /bin/cp -R database $DEPLOYPATH
     - /bin/cp -R public $DEPLOYPATH
@@ -19,3 +20,5 @@ deployment:
     - /bin/cp package.json $DEPLOYPATH
     - /bin/cp package-lock.json $DEPLOYPATH
     - /bin/cp artisan $DEPLOYPATH
+
+    - cd "$DEPLOYPATH" && php artisan config:clear && php artisan package:discover
