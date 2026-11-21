@@ -43,6 +43,7 @@ class MobileStudyTest extends TestCase
             $table->id();
             $table->string('title');
             $table->string('slug')->unique();
+            $table->string('cover_image')->nullable();
             $table->boolean('is_published');
             $table->timestamps();
         });
@@ -60,6 +61,8 @@ class MobileStudyTest extends TestCase
             $table->string('title');
             $table->string('slug')->unique();
             $table->text('content')->nullable();
+            $table->string('video_url')->nullable();
+            $table->string('pdf')->nullable();
             $table->unsignedInteger('order')->default(1);
             $table->boolean('is_published');
             $table->timestamps();
@@ -256,6 +259,75 @@ class MobileStudyTest extends TestCase
             ->assertSessionHas('result.score', 100)
             ->assertSessionHas('review.'.$question->id.'.correct_answer', 'true');
         $this->assertDatabaseHas('lesson_progress', ['user_id' => $student->id, 'lesson_topic_id' => $topic->id]);
+    }
+
+    public function test_topic_returns_existing_video_pdf_and_inline_media_in_content_order(): void
+    {
+        config(['filesystems.disks.public.url' => 'https://study.example.test/storage']);
+        $user = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create([
+            'title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true,
+            'cover_image' => 'lessons/covers/biblia.jpg',
+        ]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $topic = $this->topic($module, 'imani');
+        $topic->update([
+            'content' => '<h2>Imani</h2><p>Mwanzo</p><img src="/storage/topics/mandhari.jpg" alt="Mandhari">'
+                .'<p>Mwisho</p><audio><source src="/storage/topics/sauti.mp3" type="audio/mpeg"></audio>'
+                .'<video src="https://cdn.example.test/video.mp4"></video>'
+                .'<iframe src="https://www.youtube.com/embed/abcdefghijk"></iframe>',
+            'video_url' => 'https://youtu.be/abcdefghijk',
+            'pdf' => 'lessons/topics/pdfs/Imani ya leo.pdf',
+        ]);
+        $lesson->enrollments()->create(['user_id' => $user->id]);
+
+        $response = $this->withToken($user->createToken('test')->plainTextToken)
+            ->getJson('https://study.example.test/api/mobile/v1/study/lessons/biblia/topics/imani');
+
+        $response->assertOk()
+            ->assertJsonPath('data.title', 'imani')
+            ->assertJsonPath('data.video_url', 'https://youtu.be/abcdefghijk')
+            ->assertJsonPath('data.pdf_url', 'https://study.example.test/storage/lessons/topics/pdfs/Imani%20ya%20leo.pdf')
+            ->assertJsonPath('data.cover_image_url', 'https://study.example.test/storage/lessons/covers/biblia.jpg')
+            ->assertJsonPath('data.completed', false)
+            ->assertJsonPath('data.can_complete', true);
+        $this->assertStringContainsString('Mwanzo', $response->json('data.content'));
+        $html = $response->json('data.content_html');
+        $this->assertStringContainsString(
+            '<h2>Imani</h2><p>Mwanzo</p><img src="https://study.example.test/storage/topics/mandhari.jpg" alt="Mandhari"><p>Mwisho</p>',
+            $html,
+        );
+        $this->assertMatchesRegularExpression('/<audio\b[^>]*src="https:\/\/study\.example\.test\/storage\/topics\/sauti\.mp3"/', $html);
+        $this->assertStringContainsString('src="https://cdn.example.test/video.mp4"', $html);
+        $this->assertStringContainsString('src="https://www.youtube-nocookie.com/embed/abcdefghijk"', $html);
+    }
+
+    public function test_topic_drops_unsafe_media_and_active_html(): void
+    {
+        $user = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $topic = $this->topic($module, 'imani');
+        $topic->update([
+            'content' => '<p onclick="doSomething()">Soma <strong>Biblia</strong>.</p>'
+                .'<script>doSomething()</script><img src="data:image/svg+xml,unsafe" onerror="doSomething()">'
+                .'<a href="javascript:doSomething()">Rejea</a>'
+                .'<video src="http://media.example.test/unsafe.mp4"></video>'
+                .'<iframe src="https://www.youtube.com.evil.test/embed/abcdefghijk" srcdoc="unsafe"></iframe>',
+            'video_url' => 'https://user:pass@media.example.test/video.mp4',
+            'pdf' => 'javascript:doSomething()',
+        ]);
+        $lesson->enrollments()->create(['user_id' => $user->id]);
+
+        $response = $this->withToken($user->createToken('test')->plainTextToken)
+            ->getJson('/api/mobile/v1/study/lessons/biblia/topics/imani');
+
+        $response->assertOk()->assertJsonPath('data.video_url', null)->assertJsonPath('data.pdf_url', null);
+        $html = $response->json('data.content_html');
+        $this->assertIsString($html);
+        $this->assertStringContainsString('<p>Soma <strong>Biblia</strong>.</p>', $html);
+        $this->assertStringContainsString('Rejea', $html);
+        $this->assertDoesNotMatchRegularExpression('/<script|onclick|onerror|javascript:|<img|<video|<iframe|srcdoc|unsafe|doSomething/', $html);
     }
 
     public function test_google_login_verifies_the_token_and_links_an_existing_verified_gmail_student(): void

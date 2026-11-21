@@ -13,6 +13,7 @@ use App\Models\Quiz;
 use App\Models\User;
 use App\Notifications\LessonEnrolledNotification;
 use App\Services\GradeStudyQuiz;
+use App\Services\MobileLessonTopicMedia;
 use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -206,7 +207,7 @@ class StudyController extends Controller
         return $this->status($request, $lesson);
     }
 
-    public function topic(Request $request, Lesson $lesson, string $slug): JsonResponse
+    public function topic(Request $request, Lesson $lesson, string $slug, MobileLessonTopicMedia $media): JsonResponse
     {
         $student = $this->student($request);
         $topic = $this->accessibleTopic($student, $lesson, $slug);
@@ -217,6 +218,10 @@ class StudyController extends Controller
         return $this->data([
             'title' => $topic->title,
             'content' => PublicContentController::plain($topic->content),
+            'content_html' => $media->contentHtml($topic->content),
+            'video_url' => $media->videoUrl($topic->video_url),
+            'pdf_url' => $media->publicFileUrl($topic->pdf),
+            'cover_image_url' => $media->publicFileUrl($lesson->cover_image),
             'completed' => $completed,
             'can_complete' => $quiz === null,
             'quiz' => $this->quizSummary($quiz),
