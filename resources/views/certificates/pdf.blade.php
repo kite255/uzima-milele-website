@@ -306,18 +306,6 @@
     border: 0;
 }
 
-       .qr-svg {
-    width: 23mm;
-    height: 23mm;
-    display: block;
-}
-
-      .qr-svg svg {
-    width: 23mm;
-    height: 23mm;
-    display: block;
-}
-
    .qr-title {
     font-size: 7px;
     font-weight: bold;
@@ -398,20 +386,7 @@
         ? 'data:image/png;base64,' . base64_encode(file_get_contents($signaturePath))
         : '';
 
-    $qrSvg = null;
-
-    if (class_exists(\SimpleSoftwareIO\QrCode\Facades\QrCode::class)) {
-        try {
-            $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
-                ->size(150)
-                ->margin(1)
-                ->generate($verifyUrl);
-        } catch (\Throwable $e) {
-            $qrSvg = null;
-        }
-    }
-
-    $fallbackQrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($verifyUrl);
+    $qrSrc = \App\Services\CertificatePdf::verificationQr($verifyUrl);
 @endphp
 
 <div class="certificate">
@@ -500,18 +475,11 @@
         <div class="auth-cell">
             <div class="qr-block">
                 <div class="qr-box">
-                    @if($qrSvg)
-                        <div class="qr-svg">{!! $qrSvg !!}</div>
-                    @elseif($allowRemoteQr ?? true)
-                        <img src="{{ $fallbackQrSrc }}" class="qr-img" alt="Certificate QR Code">
-                    @else
-                        <a href="{{ $verifyUrl }}">Verify certificate</a>
-                    @endif
+                    <a href="{{ $verifyUrl }}">
+                        <img src="{{ $qrSrc }}" class="qr-img" alt="Certificate QR Code">
+                    </a>
                 </div>
-
-                @if($qrSvg || ($allowRemoteQr ?? true))
-                    <div class="qr-title">Scan to Verify</div>
-                @endif
+                <div class="qr-title">Scan to Verify</div>
             </div>
         </div>
     </div>

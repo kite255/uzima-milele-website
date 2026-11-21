@@ -183,7 +183,7 @@ class StudyController extends Controller
             ->with(['user', 'lesson'])
             ->firstOrFail();
 
-        $contents = $pdf->render($certificate, allowRemoteQr: false)->output();
+        $contents = $pdf->render($certificate)->output();
         abort_if(strlen($contents) > self::MAX_CERTIFICATE_PDF_BYTES, 500, 'Cheti hiki hakiwezi kupakuliwa kwa sasa.');
 
         return $this->data(['pdf_base64' => base64_encode($contents)]);
