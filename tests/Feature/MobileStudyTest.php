@@ -767,6 +767,12 @@ class MobileStudyTest extends TestCase
             ->assertJsonPath('data.questions.0.lesson_title', 'Biblia')
             ->assertJsonPath('data.next_before_id', null)
             ->assertJsonMissingPath('data.questions.0.user_id');
+        $question->refresh()->update(['status' => LessonQuestion::STATUS_PENDING]);
+        $this->getJson($history)->assertOk()
+            ->assertJsonPath('data.questions.0.status', LessonQuestion::STATUS_ANSWERED);
+        $question->update(['status' => LessonQuestion::STATUS_CLOSED]);
+        $this->getJson($history)->assertOk()
+            ->assertJsonPath('data.questions.0.status', LessonQuestion::STATUS_CLOSED);
         $question->update(['is_published' => false]);
         $this->getJson($history)->assertOk()->assertJsonCount(0, 'data.questions');
         $question->update(['is_published' => true]);

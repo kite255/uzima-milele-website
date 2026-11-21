@@ -355,11 +355,15 @@ class StudyController extends Controller
 
     private function studentQuestion(LessonQuestion $question): array
     {
+        $status = $question->status === LessonQuestion::STATUS_PENDING && filled($question->answer)
+            ? LessonQuestion::STATUS_ANSWERED
+            : $question->status;
+
         return [
             'id' => $question->id,
             'question' => $question->question,
             'answer' => $question->answer,
-            'status' => $question->status,
+            'status' => $status,
             'lesson_title' => $question->lesson?->title,
             'topic_title' => $question->lessonTopic?->title,
         ];
