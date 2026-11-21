@@ -289,9 +289,8 @@
         .qr-box {
             display: block;
             box-sizing: content-box;
-            width: 23mm;
+            width: 26mm;
             margin: 0 auto;
-            padding: 1.5mm;
             border: 1px solid #E5E7EB;
             border-radius: 2.5mm;
             background: #ffffff;
@@ -300,8 +299,8 @@
 
         .qr-img {
             display: block;
-            width: 23mm;
-            height: 23mm;
+            width: 26mm;
+            height: 26mm;
             border: 0;
         }
 
