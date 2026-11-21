@@ -112,7 +112,11 @@ class StudyController extends Controller
     {
         $token = $student->createToken('Uzima Milele Flutter', ['study'], now()->addDay());
 
-        return response()->json(['data' => ['token' => $token->plainTextToken]])
+        return response()->json(['data' => [
+            'token' => $token->plainTextToken,
+            'name' => $student->name,
+            'expires_at' => now()->addDay()->toIso8601String(),
+        ]])
             ->header('Cache-Control', 'no-store');
     }
 
