@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\QuizResult;
-use App\Notifications\CertificateIssuedNotification;
 use App\Services\CertificatePdf;
-use Illuminate\Support\Str;
+use App\Services\IssueLessonCertificate;
 
 class CertificateController extends Controller
 {
@@ -30,7 +29,7 @@ class CertificateController extends Controller
     | - Required module quiz attempted.
     |
     */
-    public function issue(Lesson $lesson)
+    public function issue(Lesson $lesson, IssueLessonCertificate $issuer)
     {
         $user = auth()->user();
 
@@ -198,34 +197,10 @@ class CertificateController extends Controller
         | student and lesson.
         |
         */
-        $certificate = Certificate::firstOrCreate(
-            [
-                'user_id' => $user->id,
-                'lesson_id' => $lesson->id,
-            ],
-            [
-                'certificate_number' => $this->generateCertificateNumber(),
-                'issued_at' => now(),
-            ]
-        );
+        $certificate = $issuer->issue($lesson, $user);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Notification
-        |--------------------------------------------------------------------------
-        |
-        | Send notification only when certificate has just been created.
-        |
-        */
         if ($certificate->wasRecentlyCreated) {
-            $certificate->load([
-                'lesson',
-                'user',
-            ]);
-
-            $user->notify(
-                new CertificateIssuedNotification($certificate)
-            );
+            $issuer->notify($certificate, $user);
         }
 
         return redirect()
@@ -343,28 +318,5 @@ class CertificateController extends Controller
             'certificates.verify',
             compact('certificate')
         );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Certificate Number Generator
-    |--------------------------------------------------------------------------
-    */
-    private function generateCertificateNumber(): string
-    {
-        do {
-            $number =
-                'UZM-'
-                . now()->format('Y')
-                . '-'
-                . strtoupper(Str::random(8));
-        } while (
-            Certificate::where(
-                'certificate_number',
-                $number
-            )->exists()
-        );
-
-        return $number;
     }
 }

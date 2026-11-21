@@ -90,6 +90,7 @@ Route::prefix('mobile/v1/study')->group(function () {
         Route::get('/resume', [$controller, 'resume']);
         Route::get('/lessons/{lesson:slug}', [$controller, 'status']);
         Route::get('/lessons/{lesson:slug}/certificate', [$controller, 'certificate']);
+        Route::post('/lessons/{lesson:slug}/certificate', [$controller, 'claimCertificate']);
         Route::post('/lessons/{lesson:slug}/enroll', [$controller, 'enroll']);
         Route::get('/lessons/{lesson:slug}/topics/{slug}', [$controller, 'topic']);
         Route::get('/lessons/{lesson:slug}/quizzes/{quiz}', [$controller, 'quiz']);

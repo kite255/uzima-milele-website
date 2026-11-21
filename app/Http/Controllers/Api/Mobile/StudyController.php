@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\LessonEnrolledNotification;
 use App\Services\CertificatePdf;
 use App\Services\GradeStudyQuiz;
+use App\Services\IssueLessonCertificate;
 use App\Services\MobileLessonTopicMedia;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Builder;
@@ -137,6 +138,7 @@ class StudyController extends Controller
         $canStart = $lesson->canBeStartedBy($student);
         $progress = $enrolled && $canStart ? $this->progress($student, $lesson) : null;
         $completed = $progress['lesson_completed'] ?? false;
+        $certificateIssued = $this->certificateFor($student, $lesson)->exists();
 
         return $this->data([
             'enrolled' => $enrolled,
@@ -147,8 +149,27 @@ class StudyController extends Controller
             'resume_quiz' => $this->quizSummary($progress['quiz'] ?? null),
             'lesson_completed' => $completed,
             'final_quiz_score' => $completed ? $this->finalQuizScore($student, $lesson) : null,
-            'certificate_issued' => $this->certificateFor($student, $lesson)->exists(),
+            'certificate_issued' => $certificateIssued,
+            'certificate_eligible' => ! $certificateIssued && $enrolled && $lesson->isCompletedBy($student),
         ]);
+    }
+
+    public function claimCertificate(Request $request, Lesson $lesson, IssueLessonCertificate $issuer): JsonResponse
+    {
+        $student = $this->student($request);
+        abort_unless($lesson->is_published, 404);
+        abort_unless($this->isEnrolled($student, $lesson), 403, 'Jiunge na somo hili kwanza.');
+
+        if (! $this->certificateFor($student, $lesson)->exists()) {
+            abort_unless($lesson->isCompletedBy($student), 422, 'Kamilisha somo hili ili kupata cheti.');
+
+            $certificate = $issuer->issue($lesson, $student);
+            if ($certificate->wasRecentlyCreated) {
+                defer(fn () => $issuer->notify($certificate, $student));
+            }
+        }
+
+        return $this->data(['certificate_issued' => true, 'certificate_eligible' => false]);
     }
 
     public function certificate(Request $request, Lesson $lesson, CertificatePdf $pdf): JsonResponse

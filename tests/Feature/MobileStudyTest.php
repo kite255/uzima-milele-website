@@ -6,6 +6,7 @@ use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\LessonTopic;
 use App\Models\User;
+use App\Notifications\CertificateIssuedNotification;
 use App\Services\CertificatePdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 use Firebase\JWT\JWT;
@@ -225,6 +226,8 @@ class MobileStudyTest extends TestCase
         $this->postJson($moduleQuizPath, ['answers' => [$moduleQuestion->id => '1']])->assertOk()
             ->assertJsonPath('data.passed', false);
         $this->getJson($base.'/topics/tumaini')->assertForbidden();
+        $this->getJson($base)->assertOk()->assertJsonPath('data.certificate_eligible', false);
+        $this->postJson($base.'/certificate')->assertUnprocessable();
         $this->postJson($moduleQuizPath, ['answers' => [$moduleQuestion->id => '0']])->assertOk()
             ->assertJsonPath('data.passed', true);
         $this->getJson($base)->assertOk()->assertJsonPath('data.resume_topic', 'tumaini');
@@ -239,12 +242,15 @@ class MobileStudyTest extends TestCase
         $this->getJson($base)->assertOk()
             ->assertJsonPath('data.lesson_completed', false)
             ->assertJsonPath('data.final_quiz_score', null)
-            ->assertJsonPath('data.certificate_issued', false);
+            ->assertJsonPath('data.certificate_issued', false)
+            ->assertJsonPath('data.certificate_eligible', false);
+        $this->postJson($base.'/certificate')->assertUnprocessable();
         $this->postJson($finalQuizPath, ['answers' => [$finalQuestion->id => 'false']])->assertOk();
         $this->getJson($base)->assertOk()
             ->assertJsonPath('data.lesson_completed', true)
             ->assertJsonPath('data.final_quiz_score', 100)
-            ->assertJsonPath('data.certificate_issued', false);
+            ->assertJsonPath('data.certificate_issued', false)
+            ->assertJsonPath('data.certificate_eligible', true);
         $this->assertDatabaseCount('certificates', 0);
         $this->getJson($resume)->assertOk()->assertJsonPath('data.lesson', null);
         $this->deleteJson('/api/mobile/v1/study/session')->assertNoContent();
@@ -296,10 +302,76 @@ class MobileStudyTest extends TestCase
 
         $this->getJson($base)->assertOk()
             ->assertJsonPath('data.lesson_completed', true)
-            ->assertJsonPath('data.final_quiz_score', null);
+            ->assertJsonPath('data.final_quiz_score', null)
+            ->assertJsonPath('data.certificate_eligible', true);
         $final->results()->create(['user_id' => $student->id, 'score' => 0, 'passed' => false]);
 
         $this->getJson($base)->assertOk()->assertJsonPath('data.final_quiz_score', 0);
+    }
+
+    public function test_a_student_can_claim_only_their_own_certificate_once_after_completing_the_lesson(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $other = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $base = '/api/mobile/v1/study/lessons/biblia';
+        $claim = $base.'/certificate';
+
+        $this->postJson($claim)->assertUnauthorized();
+        $this->withToken($student->createToken('Account only', ['account'])->plainTextToken)
+            ->postJson($claim)->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->getJson($base)->assertOk()->assertJsonPath('data.certificate_eligible', false);
+        $this->postJson($claim)->assertForbidden();
+        $this->postJson($base.'/enroll')->assertOk();
+        $this->postJson($claim)->assertUnprocessable();
+        $this->assertDatabaseCount('certificates', 0);
+
+        $this->postJson($base.'/topics/imani/complete')->assertOk();
+        Certificate::create([
+            'lesson_id' => $lesson->id, 'user_id' => $other->id,
+            'certificate_number' => 'UZM-OTHER', 'issued_at' => now(),
+        ]);
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.certificate_issued', false)
+            ->assertJsonPath('data.certificate_eligible', true);
+
+        $issued = ['data' => ['certificate_issued' => true, 'certificate_eligible' => false]];
+        $this->postJson($claim)->assertOk()->assertExactJson($issued);
+        $certificate = Certificate::where('user_id', $student->id)->sole();
+        $this->assertSame($lesson->id, $certificate->lesson_id);
+        $this->assertMatchesRegularExpression('/^UZM-\d{4}-[A-Z0-9]{8}$/', $certificate->certificate_number);
+        $this->postJson($claim)->assertOk()->assertExactJson($issued);
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.certificate_issued', true)
+            ->assertJsonPath('data.certificate_eligible', false);
+        $this->assertDatabaseCount('certificates', 2);
+        Notification::assertSentToTimes($student, CertificateIssuedNotification::class, 1);
+        Notification::assertNotSentTo($other, CertificateIssuedNotification::class);
+
+        $lesson->update(['is_published' => false]);
+        $this->getJson($base)->assertNotFound();
+        $this->postJson($claim)->assertNotFound();
+    }
+
+    public function test_a_failed_certificate_notification_does_not_fail_a_claim_or_run_again_on_retry(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $base = '/api/mobile/v1/study/lessons/biblia';
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->postJson($base.'/enroll')->assertOk();
+        $this->postJson($base.'/topics/imani/complete')->assertOk();
+
+        Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('Notification delivery failed'));
+        $this->postJson($base.'/certificate')->assertOk()->assertJsonPath('data.certificate_issued', true);
+        $this->postJson($base.'/certificate')->assertOk()->assertJsonPath('data.certificate_issued', true);
+        $this->assertDatabaseCount('certificates', 1);
     }
 
     public function test_only_the_owner_can_download_an_already_issued_certificate(): void
@@ -330,11 +402,16 @@ class MobileStudyTest extends TestCase
             ->assertJsonPath('data.certificate_issued', false);
         $this->assertDatabaseCount('certificates', 1);
 
-        Certificate::create([
-            'lesson_id' => $lesson->id, 'user_id' => $student->id,
-            'certificate_number' => 'UZM-OWNER', 'issued_at' => now(),
-        ]);
-        $this->getJson($base)->assertOk()->assertJsonPath('data.certificate_issued', true);
+        $this->actingAs($student, 'web')->post(route('certificates.issue', $lesson->id))->assertRedirect();
+        $certificate = Certificate::where('user_id', $student->id)->sole();
+        $this->actingAs($student, 'web')->post(route('certificates.issue', $lesson->id))
+            ->assertRedirect(route('certificates.show', $certificate->certificate_number));
+        $this->app['auth']->forgetGuards();
+        $this->getJson($base)->assertOk()
+            ->assertJsonPath('data.certificate_issued', true)
+            ->assertJsonPath('data.certificate_eligible', false);
+        $this->postJson($download)->assertOk()->assertJsonPath('data.certificate_issued', true);
+        Notification::assertSentToTimes($student, CertificateIssuedNotification::class, 1);
 
         $pdf = $this->getJson($download)->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private')
