@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Certificate;
 use App\Models\Lesson;
+use App\Models\LessonProgress;
 use App\Models\LessonTopic;
 use App\Models\User;
 use App\Notifications\CertificateIssuedNotification;
@@ -48,6 +49,7 @@ class MobileStudyTest extends TestCase
             $table->string('title');
             $table->string('slug')->unique();
             $table->string('cover_image')->nullable();
+            $table->foreignId('prerequisite_lesson_id')->nullable()->constrained('lessons');
             $table->boolean('is_published');
             $table->timestamps();
         });
@@ -257,6 +259,108 @@ class MobileStudyTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();
         $this->getJson($base)->assertUnauthorized();
+    }
+
+    public function test_my_courses_requires_a_student_study_token_and_returns_an_empty_list(): void
+    {
+        $endpoint = '/api/mobile/v1/study/my-courses';
+        $student = User::factory()->create(['role' => 'student']);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->getJson($endpoint)->assertUnauthorized();
+        $this->withToken($student->createToken('Account only', ['account'])->plainTextToken)
+            ->getJson($endpoint)->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($admin->createToken('Study test', ['study'])->plainTextToken)
+            ->getJson($endpoint)->assertUnauthorized();
+        $this->app['auth']->forgetGuards();
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken)
+            ->getJson($endpoint)->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertExactJson(['data' => ['courses' => []]]);
+    }
+
+    public function test_my_courses_returns_only_the_students_published_enrollments_and_their_progress(): void
+    {
+        config(['filesystems.disks.public.url' => 'https://study.example.test/storage']);
+        $endpoint = '/api/mobile/v1/study/my-courses';
+        $student = User::factory()->create(['role' => 'student']);
+        $other = User::factory()->create(['role' => 'student']);
+        $course = Lesson::create([
+            'title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true,
+            'cover_image' => 'lessons/covers/biblia.jpg',
+        ]);
+        $otherCourse = Lesson::create(['title' => 'Nyingine', 'slug' => 'nyingine', 'is_published' => true]);
+        $draft = Lesson::create(['title' => 'Rasimu', 'slug' => 'rasimu', 'is_published' => false]);
+        $locked = Lesson::create([
+            'title' => 'Pili', 'slug' => 'pili', 'is_published' => true,
+            'prerequisite_lesson_id' => $course->id,
+        ]);
+        $module = $course->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        $second = $this->topic($module, 'tumaini');
+        $second->update(['order' => 2]);
+        $this->topic($module, 'rasimu-ya-mada')->update(['is_published' => false]);
+        $draftModule = $course->modules()->create(['title' => 'Rasimu', 'order' => 2, 'is_published' => false]);
+        $this->topic($draftModule, 'mada-iliyofichwa');
+        $lockedModule = $locked->modules()->create(['title' => 'Pili', 'order' => 1, 'is_published' => true]);
+        $this->topic($lockedModule, 'subira');
+        $final = $course->finalQuiz()->create(['title' => 'Mtihani wa mwisho', 'is_published' => true, 'is_required' => true]);
+        $student->lessonEnrollments()->forceCreate(['lesson_id' => $draft->id, 'enrolled_at' => now()]);
+        $student->lessonEnrollments()->forceCreate(['lesson_id' => $locked->id, 'enrolled_at' => now()]);
+        $other->lessonEnrollments()->forceCreate(['lesson_id' => $otherCourse->id, 'enrolled_at' => now()]);
+        LessonProgress::create([
+            'user_id' => $other->id, 'lesson_id' => $course->id,
+            'lesson_topic_id' => $second->id, 'completed_at' => now(),
+        ]);
+        Certificate::create([
+            'lesson_id' => $course->id, 'user_id' => $other->id,
+            'certificate_number' => 'UZM-OTHER', 'issued_at' => now(),
+        ]);
+        $final->results()->create(['user_id' => $other->id, 'score' => 100, 'passed' => true]);
+
+        $courseUrl = '/api/mobile/v1/study/lessons/biblia';
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken);
+        $this->postJson($courseUrl.'/enroll')->assertOk();
+        $this->postJson($courseUrl.'/topics/imani/complete')->assertOk();
+
+        $this->getJson($endpoint)->assertOk()->assertExactJson(['data' => ['courses' => [[
+            'slug' => 'biblia', 'title' => 'Biblia',
+            'cover_image_url' => 'https://study.example.test/storage/lessons/covers/biblia.jpg',
+            'can_start' => true, 'lesson_completed' => false, 'completed_topic_count' => 1,
+            'total_topic_count' => 2, 'next_title' => 'tumaini', 'final_quiz_score' => null,
+            'certificate_issued' => false, 'certificate_eligible' => false,
+        ], [
+            'slug' => 'pili', 'title' => 'Pili', 'cover_image_url' => null,
+            'can_start' => false, 'lesson_completed' => false, 'completed_topic_count' => 0,
+            'total_topic_count' => 1, 'next_title' => null, 'final_quiz_score' => null,
+            'certificate_issued' => false, 'certificate_eligible' => false,
+        ]]]]);
+
+        $this->postJson($courseUrl.'/topics/tumaini/complete')->assertOk();
+        $this->getJson($endpoint)->assertOk()
+            ->assertJsonPath('data.courses.0.next_title', 'Mtihani wa mwisho')
+            ->assertJsonPath('data.courses.0.lesson_completed', false)
+            ->assertJsonPath('data.courses.0.final_quiz_score', null);
+
+        $final->results()->create(['user_id' => $student->id, 'score' => 90, 'passed' => true]);
+        $this->getJson($endpoint)->assertOk()
+            ->assertJsonPath('data.courses.0.completed_topic_count', 2)
+            ->assertJsonPath('data.courses.0.lesson_completed', true)
+            ->assertJsonPath('data.courses.0.next_title', null)
+            ->assertJsonPath('data.courses.0.final_quiz_score', 90)
+            ->assertJsonPath('data.courses.0.certificate_eligible', true)
+            ->assertJsonPath('data.courses.1.can_start', true)
+            ->assertJsonPath('data.courses.1.next_title', 'subira');
+
+        $this->postJson($courseUrl.'/certificate')->assertOk();
+        $course->update(['prerequisite_lesson_id' => $otherCourse->id]);
+        $this->getJson($endpoint)->assertOk()
+            ->assertJsonPath('data.courses.0.can_start', false)
+            ->assertJsonPath('data.courses.0.lesson_completed', true)
+            ->assertJsonPath('data.courses.0.final_quiz_score', 90)
+            ->assertJsonPath('data.courses.0.certificate_issued', true)
+            ->assertJsonPath('data.courses.0.certificate_eligible', false);
     }
 
     public function test_completion_shows_the_students_best_passing_published_final_quiz_score(): void

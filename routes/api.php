@@ -88,6 +88,7 @@ Route::prefix('mobile/v1/study')->group(function () {
         $controller = \App\Http\Controllers\Api\Mobile\StudyController::class;
         Route::delete('/session', [$controller, 'logout']);
         Route::get('/resume', [$controller, 'resume']);
+        Route::get('/my-courses', [$controller, 'myCourses']);
         Route::get('/lessons/{lesson:slug}', [$controller, 'status']);
         Route::get('/lessons/{lesson:slug}/certificate', [$controller, 'certificate']);
         Route::post('/lessons/{lesson:slug}/certificate', [$controller, 'claimCertificate']);

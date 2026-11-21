@@ -19,8 +19,10 @@ use App\Services\IssueLessonCertificate;
 use App\Services\MobileLessonTopicMedia;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -191,17 +193,7 @@ class StudyController extends Controller
     {
         $student = $this->student($request);
         $includeQuizzes = $request->boolean('include_quizzes');
-        $lastCompletion = LessonProgress::query()
-            ->where('user_id', $student->id)
-            ->whereColumn('lesson_id', 'lesson_enrollments.lesson_id')
-            ->selectRaw('MAX(completed_at)');
-        $enrollments = $student->lessonEnrollments()
-            ->whereHas('lesson', fn ($query) => $query->where('is_published', true))
-            ->with('lesson')
-            ->orderByDesc($lastCompletion)
-            ->orderByDesc('enrolled_at')
-            ->orderByDesc('id')
-            ->get();
+        $enrollments = $this->publishedEnrollments($student)->with('lesson')->get();
 
         foreach ($enrollments as $enrollment) {
             $lesson = $enrollment->lesson;
@@ -222,6 +214,57 @@ class StudyController extends Controller
         }
 
         return $this->data(['lesson' => null, 'topic' => null, 'quiz' => null]);
+    }
+
+    public function myCourses(Request $request, MobileLessonTopicMedia $media): JsonResponse
+    {
+        $student = $this->student($request);
+        $enrollments = $this->publishedEnrollments($student)
+            ->with([
+                'lesson.prerequisiteLesson',
+                'lesson.publishedModules' => fn ($query) => $query->orderBy('id')->with('publishedTopics'),
+            ])
+            ->get();
+
+        if ($enrollments->isEmpty()) {
+            return $this->data(['courses' => []]);
+        }
+
+        $lessonIds = $enrollments->pluck('lesson_id');
+        $completions = LessonProgress::query()->where('user_id', $student->id)
+            ->whereIn('lesson_id', $lessonIds)->get(['lesson_id', 'lesson_topic_id'])->groupBy('lesson_id');
+        $issuedCertificates = Certificate::query()->where('user_id', $student->id)
+            ->whereIn('lesson_id', $lessonIds)->pluck('lesson_id')->flip();
+
+        $courses = [];
+        foreach ($enrollments as $enrollment) {
+            $lesson = $enrollment->lesson;
+            if (! $lesson?->is_published) {
+                continue;
+            }
+
+            $done = $completions->get($lesson->id, collect())->pluck('lesson_topic_id')->flip();
+            $progress = $this->progress($student, $lesson, $done);
+            $canStart = $lesson->canBeStartedBy($student);
+            $completed = $progress['lesson_completed'];
+            $certificateIssued = $issuedCertificates->has($lesson->id);
+
+            $courses[] = [
+                'slug' => $lesson->slug,
+                'title' => $lesson->title,
+                'cover_image_url' => $media->publicFileUrl($lesson->cover_image),
+                'can_start' => $canStart,
+                'lesson_completed' => $completed,
+                'completed_topic_count' => $progress['completed_topics']->count(),
+                'total_topic_count' => $progress['total_topic_count'],
+                'next_title' => $canStart ? ($progress['topic']?->title ?? $progress['quiz']?->title) : null,
+                'final_quiz_score' => $completed ? $this->finalQuizScore($student, $lesson) : null,
+                'certificate_issued' => $certificateIssued,
+                'certificate_eligible' => ! $certificateIssued && $completed,
+            ];
+        }
+
+        return $this->data(['courses' => $courses]);
     }
 
     public function enroll(Request $request, Lesson $lesson): JsonResponse
@@ -398,6 +441,20 @@ class StudyController extends Controller
         return $student->lessonEnrollments()->where('lesson_id', $lesson->id)->exists();
     }
 
+    private function publishedEnrollments(User $student): HasMany
+    {
+        $lastCompletion = LessonProgress::query()
+            ->where('user_id', $student->id)
+            ->whereColumn('lesson_id', 'lesson_enrollments.lesson_id')
+            ->selectRaw('MAX(completed_at)');
+
+        return $student->lessonEnrollments()
+            ->whereHas('lesson', fn ($query) => $query->where('is_published', true))
+            ->orderByDesc($lastCompletion)
+            ->orderByDesc('enrolled_at')
+            ->orderByDesc('id');
+    }
+
     private function certificateFor(User $student, Lesson $lesson): Builder
     {
         return Certificate::query()->where('user_id', $student->id)->where('lesson_id', $lesson->id);
@@ -426,11 +483,11 @@ class StudyController extends Controller
             : max((int) $resultScore, (int) $attemptScore);
     }
 
-    private function progress(User $student, Lesson $lesson): array
+    private function progress(User $student, Lesson $lesson, ?Collection $done = null): array
     {
         $modules = $this->modules($lesson);
         $topics = $modules->flatMap(fn ($module) => $module->publishedTopics);
-        $done = LessonProgress::query()->where('user_id', $student->id)
+        $done ??= LessonProgress::query()->where('user_id', $student->id)
             ->where('lesson_id', $lesson->id)->pluck('lesson_topic_id')->flip();
         $completed = $topics->filter(fn ($topic) => $done->has($topic->id))->pluck('slug')->values();
 
@@ -460,6 +517,7 @@ class StudyController extends Controller
             'topic' => $resume,
             'quiz' => $quiz,
             'completed_topics' => $completed,
+            'total_topic_count' => $topics->count(),
             'locked_topics' => $locked,
             'lesson_completed' => ! $blocked && $modules->isNotEmpty() && $quiz === null,
         ];
@@ -467,6 +525,10 @@ class StudyController extends Controller
 
     private function modules(Lesson $lesson)
     {
+        if ($lesson->relationLoaded('publishedModules')) {
+            return $lesson->publishedModules;
+        }
+
         return $lesson->modules()->where('is_published', true)->reorder('order')->orderBy('id')
             ->with('publishedTopics')->get();
     }
