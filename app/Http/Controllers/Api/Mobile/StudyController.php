@@ -8,11 +8,13 @@ use App\Models\Certificate;
 use App\Models\Lesson;
 use App\Models\LessonEnrollment;
 use App\Models\LessonProgress;
+use App\Models\LessonQuestion;
 use App\Models\LessonTopic;
 use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\User;
 use App\Notifications\LessonEnrolledNotification;
+use App\Services\AskLessonQuestion;
 use App\Services\CertificatePdf;
 use App\Services\GradeStudyQuiz;
 use App\Services\IssueLessonCertificate;
@@ -313,6 +315,54 @@ class StudyController extends Controller
             'can_complete' => $quiz === null,
             'quiz' => $this->quizSummary($quiz),
         ]);
+    }
+
+    public function askTopicQuestion(Request $request, Lesson $lesson, string $slug, AskLessonQuestion $questions): JsonResponse
+    {
+        $student = $this->student($request);
+        $topic = $this->accessibleTopic($student, $lesson, $slug);
+        $validated = $request->validate(['question' => AskLessonQuestion::QUESTION_RULES]);
+        $enrollment = $student->lessonEnrollments()->where('lesson_id', $lesson->id)->first();
+        abort_unless($enrollment, 403, 'Jiunge na somo hili kwanza.');
+
+        $question = $questions->submit($enrollment, $lesson, $validated['question'], $topic);
+
+        return $this->data($this->studentQuestion($question))->setStatusCode(201);
+    }
+
+    public function myQuestions(Request $request): JsonResponse
+    {
+        $student = $this->student($request);
+        $validated = $request->validate(['before_id' => ['sometimes', 'required', 'integer', 'min:1']]);
+        $before = $validated['before_id'] ?? null;
+        $pageSize = 20;
+        $questions = LessonQuestion::query()
+            ->where('user_id', $student->id)
+            ->where('is_published', true)
+            ->notHidden()
+            ->with(['lesson:id,title', 'lessonTopic:id,title'])
+            ->when($before, fn ($query) => $query->where('id', '<', $before))
+            ->orderByDesc('id')
+            ->limit($pageSize + 1)
+            ->get();
+        $items = $questions->take($pageSize);
+
+        return $this->data([
+            'questions' => $items->map($this->studentQuestion(...))->all(),
+            'next_before_id' => $questions->count() > $pageSize ? $items->last()->id : null,
+        ]);
+    }
+
+    private function studentQuestion(LessonQuestion $question): array
+    {
+        return [
+            'id' => $question->id,
+            'question' => $question->question,
+            'answer' => $question->answer,
+            'status' => $question->status,
+            'lesson_title' => $question->lesson?->title,
+            'topic_title' => $question->lessonTopic?->title,
+        ];
     }
 
     public function complete(Request $request, Lesson $lesson, string $slug): JsonResponse

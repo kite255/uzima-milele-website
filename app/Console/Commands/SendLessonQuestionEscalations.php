@@ -7,6 +7,7 @@ use App\Models\LessonQuestion;
 use App\Models\User;
 use App\Notifications\LessonQuestionEscalatedNotification;
 use App\Notifications\LessonQuestionReminderNotification;
+use App\Services\LessonQuestionRecipients;
 use Illuminate\Console\Command;
 
 class SendLessonQuestionEscalations extends Command
@@ -15,23 +16,23 @@ class SendLessonQuestionEscalations extends Command
 
     protected $description = 'Send reminders and escalation emails for unanswered lesson questions';
 
-    public function handle(): int
+    public function handle(LessonQuestionRecipients $recipients): int
     {
         LessonQuestion::query()
             ->pending()
             ->whereNull('answered_at')
             ->where('created_at', '<=', now()->subHours(24))
             ->with(['lesson.leadInstructor', 'lesson.instructor', 'user'])
-            ->chunkById(100, function ($questions): void {
+            ->chunkById(100, function ($questions) use ($recipients): void {
                 foreach ($questions as $question) {
-                    $this->processQuestion($question);
+                    $this->processQuestion($question, $recipients);
                 }
             });
 
         return self::SUCCESS;
     }
 
-    private function processQuestion(LessonQuestion $question): void
+    private function processQuestion(LessonQuestion $question, LessonQuestionRecipients $recipients): void
     {
         $enrollment = LessonEnrollment::query()
             ->with('followUpInstructor')
@@ -39,12 +40,11 @@ class SendLessonQuestionEscalations extends Command
             ->where('user_id', $question->user_id)
             ->first();
 
-        $followUp = $enrollment?->followUpInstructor;
-        $lead = $question->lesson?->leadInstructor;
-        $legacy = $question->lesson?->instructor;
+        $followUp = $recipients->followUp($enrollment);
+        $courseInstructor = $recipients->courseInstructor($question->lesson);
 
         if (! $question->instructor_reminded_at) {
-            $recipient = $followUp ?: $lead ?: $legacy;
+            $recipient = $followUp ?? $courseInstructor;
 
             if ($recipient) {
                 $recipient->notify(new LessonQuestionReminderNotification($question));
@@ -56,7 +56,7 @@ class SendLessonQuestionEscalations extends Command
             $question->created_at->lte(now()->subHours(48))
             && ! $question->lead_escalated_at
         ) {
-            $recipient = $lead ?: $legacy;
+            $recipient = $courseInstructor;
 
             if ($recipient && (! $followUp || $recipient->id !== $followUp->id)) {
                 $recipient->notify(new LessonQuestionEscalatedNotification($question, 'lead'));

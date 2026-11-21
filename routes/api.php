@@ -89,11 +89,14 @@ Route::prefix('mobile/v1/study')->group(function () {
         Route::delete('/session', [$controller, 'logout']);
         Route::get('/resume', [$controller, 'resume']);
         Route::get('/my-courses', [$controller, 'myCourses']);
+        Route::get('/my-questions', [$controller, 'myQuestions']);
         Route::get('/lessons/{lesson:slug}', [$controller, 'status']);
         Route::get('/lessons/{lesson:slug}/certificate', [$controller, 'certificate']);
         Route::post('/lessons/{lesson:slug}/certificate', [$controller, 'claimCertificate']);
         Route::post('/lessons/{lesson:slug}/enroll', [$controller, 'enroll']);
         Route::get('/lessons/{lesson:slug}/topics/{slug}', [$controller, 'topic']);
+        Route::post('/lessons/{lesson:slug}/topics/{slug}/questions', [$controller, 'askTopicQuestion'])
+            ->middleware('throttle:10,1,study-question:');
         Route::get('/lessons/{lesson:slug}/quizzes/{quiz}', [$controller, 'quiz']);
         Route::post('/lessons/{lesson:slug}/quizzes/{quiz}', [$controller, 'submitQuiz']);
         Route::post('/lessons/{lesson:slug}/topics/{slug}/complete', [$controller, 'complete']);

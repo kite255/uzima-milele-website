@@ -4,10 +4,16 @@ namespace Tests\Feature;
 
 use App\Models\Certificate;
 use App\Models\Lesson;
+use App\Models\LessonEnrollment;
+use App\Models\LessonQuestion;
 use App\Models\LessonProgress;
 use App\Models\LessonTopic;
 use App\Models\User;
 use App\Notifications\CertificateIssuedNotification;
+use App\Notifications\LessonQuestionAskedNotification;
+use App\Notifications\LessonQuestionAnsweredNotification;
+use App\Notifications\LessonQuestionEscalatedNotification;
+use App\Notifications\LessonQuestionReminderNotification;
 use App\Services\CertificatePdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 use Firebase\JWT\JWT;
@@ -50,6 +56,8 @@ class MobileStudyTest extends TestCase
             $table->string('slug')->unique();
             $table->string('cover_image')->nullable();
             $table->foreignId('prerequisite_lesson_id')->nullable()->constrained('lessons');
+            $table->foreignId('lead_instructor_id')->nullable()->constrained('users');
+            $table->foreignId('instructor_id')->nullable()->constrained('users');
             $table->boolean('is_published');
             $table->timestamps();
         });
@@ -77,6 +85,7 @@ class MobileStudyTest extends TestCase
             $table->id();
             $table->foreignId('user_id')->constrained();
             $table->foreignId('lesson_id')->constrained();
+            $table->foreignId('follow_up_instructor_id')->nullable()->constrained('users');
             $table->timestamp('enrolled_at')->nullable();
             $table->string('study_pace')->nullable();
             $table->unsignedInteger('study_hours_per_week')->nullable();
@@ -142,6 +151,10 @@ class MobileStudyTest extends TestCase
         });
         (require database_path('migrations/2026_04_30_130701_create_certificates_table.php'))->up();
         (require database_path('migrations/2026_11_16_200000_create_personal_access_tokens_table.php'))->up();
+        (require database_path('migrations/2026_05_02_213507_create_lesson_questions_table.php'))->up();
+        (require database_path('migrations/2026_05_17_082635_add_lesson_topic_id_and_visibility_to_lesson_questions_table.php'))->up();
+        (require database_path('migrations/2026_09_10_190114_create_lesson_follow_up_instructor_table.php'))->up();
+        (require database_path('migrations/2026_10_01_210000_add_question_escalation_timestamps_to_lesson_questions_table.php'))->up();
 
         // The assignment service has its own tests and production tables.
         $this->mock(\App\Services\FollowUpInstructorAssignmentService::class)
@@ -699,6 +712,122 @@ class MobileStudyTest extends TestCase
         $this->assertSame($subject, $student->fresh()->google_id);
         $this->assertSame($websiteClientId, config('services.google.client_id'));
         $this->withToken($token)->getJson('/api/mobile/v1/study/resume')->assertOk();
+    }
+
+    public function test_a_student_can_ask_about_an_accessible_topic_and_read_only_their_own_questions(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $other = User::factory()->create(['role' => 'student']);
+        $instructor = User::factory()->create(['role' => 'instructor']);
+        $unassigned = User::factory()->create(['role' => 'instructor']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $topic = $this->topic($module, 'imani');
+        $draft = $this->topic($module, 'rasimu');
+        $draft->update(['is_published' => false]);
+        $history = '/api/mobile/v1/study/my-questions';
+        $base = '/api/mobile/v1/study/lessons/biblia/topics';
+        $payload = ['question' => 'Naomba ufafanuzi kuhusu imani.', 'visibility' => 'public'];
+
+        $this->getJson($history)->assertUnauthorized();
+        $token = $student->createToken('Study test', ['study'])->plainTextToken;
+        $this->withToken($token);
+        $this->postJson($base.'/imani/questions', $payload)->assertForbidden();
+        LessonEnrollment::create([
+            'user_id' => $student->id,
+            'lesson_id' => $lesson->id,
+            'follow_up_instructor_id' => $instructor->id,
+        ]);
+        $this->postJson($base.'/rasimu/questions', $payload)->assertNotFound();
+        $this->postJson($base.'/imani/questions', ['question' => 'Hi'])->assertUnprocessable();
+        $this->postJson($base.'/imani/questions', $payload)->assertCreated()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.topic_title', $topic->title);
+
+        $question = LessonQuestion::query()->sole();
+        $this->assertSame($topic->id, $question->lesson_topic_id);
+        $this->assertSame(LessonQuestion::VISIBILITY_PRIVATE, $question->visibility);
+        Notification::assertSentTo($instructor, LessonQuestionAskedNotification::class);
+
+        $answer = [
+            'answer' => 'Imani ni kumtegemea Mungu.',
+            'visibility' => 'private',
+            'is_published' => true,
+        ];
+        $reply = route('instructor.questions.update', $question);
+        $this->actingAs($unassigned, 'web')->put($reply, $answer)->assertForbidden();
+        $this->actingAs($instructor, 'web')->put($reply, $answer)
+            ->assertRedirect(route('instructor.questions.index'));
+        Notification::assertSentTo($student, LessonQuestionAnsweredNotification::class);
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token);
+        $this->getJson($history)->assertOk()
+            ->assertJsonCount(1, 'data.questions')
+            ->assertJsonPath('data.questions.0.answer', 'Imani ni kumtegemea Mungu.')
+            ->assertJsonPath('data.questions.0.lesson_title', 'Biblia')
+            ->assertJsonPath('data.next_before_id', null)
+            ->assertJsonMissingPath('data.questions.0.user_id');
+        $question->update(['is_published' => false]);
+        $this->getJson($history)->assertOk()->assertJsonCount(0, 'data.questions');
+        $question->update(['is_published' => true]);
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($other->createToken('Study test', ['study'])->plainTextToken)
+            ->getJson($history)->assertOk()->assertJsonCount(0, 'data.questions');
+    }
+
+    public function test_an_unassigned_question_does_not_notify_a_legacy_instructor_without_access(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $legacy = User::factory()->create(['role' => 'instructor']);
+        $followUp = User::factory()->create(['role' => 'instructor']);
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create([
+            'title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true, 'instructor_id' => $legacy->id,
+        ]);
+        $lesson->followUpInstructors()->attach($followUp->id);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $this->topic($module, 'imani');
+        LessonEnrollment::create(['user_id' => $student->id, 'lesson_id' => $lesson->id]);
+
+        $this->withToken($student->createToken('Study test', ['study'])->plainTextToken)
+            ->postJson('/api/mobile/v1/study/lessons/biblia/topics/imani/questions', [
+                'question' => 'Naomba ufafanuzi kuhusu imani.',
+            ])->assertCreated();
+        Notification::assertSentTo($admin, LessonQuestionAskedNotification::class);
+        Notification::assertNotSentTo($legacy, LessonQuestionAskedNotification::class);
+        Notification::assertNotSentTo($followUp, LessonQuestionAskedNotification::class);
+
+        LessonQuestion::query()->sole()->forceFill(['created_at' => now()->subHours(73)])->save();
+        $this->artisan('lessons:send-question-escalations')->assertSuccessful();
+        Notification::assertSentTo($admin, LessonQuestionEscalatedNotification::class);
+        Notification::assertNotSentTo($legacy, LessonQuestionEscalatedNotification::class);
+        Notification::assertNotSentTo($legacy, LessonQuestionReminderNotification::class);
+    }
+
+    public function test_web_questions_keep_the_topic_and_reject_a_topic_from_another_course(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $lesson = Lesson::create(['title' => 'Biblia', 'slug' => 'biblia', 'is_published' => true]);
+        $module = $lesson->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $topic = $this->topic($module, 'imani');
+        $other = Lesson::create(['title' => 'Maombi', 'slug' => 'maombi', 'is_published' => true]);
+        $otherModule = $other->modules()->create(['title' => 'Kwanza', 'order' => 1, 'is_published' => true]);
+        $otherTopic = $this->topic($otherModule, 'ombi');
+        LessonEnrollment::create(['user_id' => $student->id, 'lesson_id' => $lesson->id]);
+
+        $route = route('lessons.questions.store', ['lesson' => $lesson->slug]);
+        $this->actingAs($student)->post($route, [
+            'question' => 'Naomba ufafanuzi kuhusu imani.',
+            'lesson_topic_id' => $otherTopic->id,
+        ])->assertSessionHasErrors('lesson_topic_id');
+        $this->assertDatabaseCount('lesson_questions', 0);
+
+        $this->actingAs($student)->post($route, [
+            'question' => 'Naomba ufafanuzi kuhusu imani.',
+            'lesson_topic_id' => $topic->id,
+        ])->assertSessionHas('success');
+        $this->assertSame($topic->id, LessonQuestion::query()->sole()->lesson_topic_id);
     }
 
     private function topic($module, string $slug): LessonTopic
