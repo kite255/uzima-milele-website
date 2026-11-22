@@ -63,7 +63,7 @@ class PublicContentController extends Controller
 
         return response()->json([
             'data' => $items->map(
-                static fn (Devotion $item) => [
+                static fn (Devotion $item, int $index) => [
                     'title' => (string) $item->title,
                     'slug' => (string) $item->slug,
                     'excerpt' => Str::limit(
@@ -78,6 +78,7 @@ class PublicContentController extends Controller
                     'url' => route('devotions.show', [
                         'slug' => $item->slug,
                     ]),
+                    ...($index === 0 ? self::devotionScripture($item) : []),
                 ]
             )->values(),
         ]);
@@ -110,12 +111,7 @@ class PublicContentController extends Controller
                 'feature_text' => self::plain(
                     $item->feature_text
                 ),
-                'scripture_reference' => (string) (
-                    $item->scripture_reference ?? ''
-                ),
-                'scripture_text' => self::plain(
-                    $item->scripture_text
-                ),
+                ...self::devotionScripture($item),
                 'ellen_white_quote' => self::plain(
                     $item->ellen_white_quote
                 ),
@@ -131,6 +127,14 @@ class PublicContentController extends Controller
                 ]),
             ],
         ]);
+    }
+
+    private static function devotionScripture(Devotion $item): array
+    {
+        return [
+            'scripture_reference' => (string) ($item->scripture_reference ?? ''),
+            'scripture_text' => self::plain($item->scripture_text),
+        ];
     }
 
     /**
