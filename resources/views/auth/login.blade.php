@@ -841,21 +841,37 @@
                 try {
                     bridge().login({callback: async function (response) {
                         try {
-                            if (!response?.idToken) throw new Error();
-                            const result = await fetch(@json(route('median.google.login')), {
+                            if (!response?.idToken) {
+                                const nativeError = typeof response?.error === 'string' ? response.error : '';
+                                const category = /cancel/i.test(nativeError) ? 'NATIVE_CANCELLED'
+                                    : /credential|account/i.test(nativeError) ? 'NATIVE_CREDENTIAL'
+                                    : /config|developer|client/i.test(nativeError) ? 'NATIVE_CONFIG'
+                                    : 'NATIVE_NO_TOKEN';
+                                error.textContent = 'Google haikurudisha uthibitisho. (' + category + ')';
+                                return;
+                            }
+                            const result = await fetch(@json(route('median.google.login', [], false)), {
                                 method: 'POST', credentials: 'same-origin',
                                 headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': @json(csrf_token())},
                                 body: JSON.stringify({id_token: response.idToken})
                             });
-                            if (!result.ok) throw new Error();
-                            window.location.assign(@json(url('/dashboard')));
+                            if (!result.ok) {
+                                const data = await result.json().catch(() => ({}));
+                                const code = typeof data.code === 'string' && /^[A-Z_]{1,50}$/.test(data.code)
+                                    ? data.code : 'HTTP_' + result.status;
+                                error.textContent = 'Google login haijakamilika. (' + code + ')';
+                                return;
+                            }
+                            const data = await result.json();
+                            if (data.ok !== true) throw new Error();
+                            window.location.assign('/dashboard');
                         } catch (_) {
-                            error.textContent = 'Google login haijakamilika. Jaribu tena au tumia nenosiri.';
+                            error.textContent = 'Google login haijakamilika. (NETWORK_OR_RESPONSE)';
                         } finally { button.disabled = false; }
                     }});
                 } catch (_) {
                     button.disabled = false;
-                    error.textContent = 'Google login haipatikani. Tumia nenosiri.';
+                    error.textContent = 'Google login haipatikani. (NATIVE_BRIDGE)';
                 }
             });
         })();
