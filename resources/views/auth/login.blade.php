@@ -727,7 +727,7 @@
                         </p>
                     @endif
 
-                    @if(session('median_app_mode') && config('services.google.median_client_id'))
+                    @if(session('median_app_mode') && config('services.google.median_client_id') && config('services.google.median_login_enabled'))
                         <div id="median-google-section" hidden>
                             <div class="divider">au</div>
                             <button type="button" class="google-btn" id="median-google-button">Endelea kwa kutumia Google</button>
@@ -821,7 +821,7 @@
             }
         });
     </script>
-    @if(session('median_app_mode') && config('services.google.median_client_id'))
+    @if(session('median_app_mode') && config('services.google.median_client_id') && config('services.google.median_login_enabled'))
     <script>
         (function () {
             const section = document.getElementById('median-google-section');
