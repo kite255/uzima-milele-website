@@ -841,19 +841,42 @@
                 try {
                     bridge().login({callback: async function (response) {
                         try {
-                            if (!response?.idToken) {
-                                const nativeError = typeof response?.error === 'string' ? response.error : '';
-                                const category = /cancel/i.test(nativeError) ? 'NATIVE_CANCELLED'
-                                    : /credential|account/i.test(nativeError) ? 'NATIVE_CREDENTIAL'
-                                    : /config|developer|client/i.test(nativeError) ? 'NATIVE_CONFIG'
+                            // Some bridge versions serialize the callback payload as JSON.
+                            if (typeof response === 'string') {
+                                try { response = JSON.parse(response); } catch (_) { response = null; }
+                            }
+                            const idToken = typeof response?.idToken === 'string' ? response.idToken.trim() : '';
+                            if (!idToken) {
+                                const native = response?.error;
+                                const raw = typeof native === 'string' ? native
+                                    : typeof native?.message === 'string' ? native.message
+                                    : typeof native?.description === 'string' ? native.description : '';
+                                const category = /cancel/i.test(raw) ? 'NATIVE_CANCELLED'
+                                    : /config|developer|client|signing/i.test(raw) ? 'NATIVE_CONFIG'
+                                    : /credential|account/i.test(raw) ? 'NATIVE_CREDENTIAL'
                                     : 'NATIVE_NO_TOKEN';
-                                error.textContent = 'Google haikurudisha uthibitisho. (' + category + ')';
+                                // Display only bounded, sanitized native error text locally.
+                                // Never display the callback payload or send native details to the server.
+                                const detail = raw
+                                    .replace(/https?:\/\/\S+/gi, '[url]')
+                                    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+                                    .replace(/\b(?:Bearer\s+)?[A-Za-z0-9_+/=-]{24,}(?:\.[A-Za-z0-9_+/=-]+)*/gi, '[redacted]')
+                                    .replace(/\b(?:token|secret|password|authorization|credential)\s*[:=]\s*\S+/gi, '[redacted]')
+                                    .replace(/[\x00-\x1f\x7f]/g, ' ')
+                                    .slice(0, 240);
+                                const nativeCode = typeof native?.code === 'number' ? String(native.code)
+                                    : typeof native?.code === 'string' && /^[A-Z0-9_-]{1,32}$/i.test(native.code) ? native.code : '';
+                                const shape = response === null || response === undefined ? 'empty callback'
+                                    : typeof response !== 'object' ? typeof response
+                                    : 'error=' + (native != null ? 'present' : 'absent') + ', idToken=absent';
+                                error.textContent = 'Google haikurudisha uthibitisho. (' + category + ') '
+                                    + [nativeCode, detail, shape].filter(Boolean).join(' | ');
                                 return;
                             }
                             const result = await fetch(@json(route('median.google.login', [], false)), {
                                 method: 'POST', credentials: 'same-origin',
                                 headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': @json(csrf_token())},
-                                body: JSON.stringify({id_token: response.idToken})
+                                body: JSON.stringify({id_token: idToken})
                             });
                             if (!result.ok) {
                                 const data = await result.json().catch(() => ({}));
