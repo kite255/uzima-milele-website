@@ -40,6 +40,7 @@ return [
 
   'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
+        'median_client_id' => env('MEDIAN_GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => '/auth/google/callback', // <-- Change this to a relative path
     ],

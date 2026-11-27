@@ -539,3 +539,4 @@ Route::middleware('auth')
     });
 
 require __DIR__.'/auth.php';
+Route::post('/auth/median/google', \\App\\Http\\Controllers\\Auth\\MedianGoogleAuthController::class)->middleware('throttle:10,1')->name('median.google.login');

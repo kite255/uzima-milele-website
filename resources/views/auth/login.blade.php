@@ -727,6 +727,14 @@
                         </p>
                     @endif
 
+                    @if(session('median_app_mode') && config('services.google.median_client_id'))
+                        <div id="median-google-section" hidden>
+                            <div class="divider">au</div>
+                            <button type="button" class="google-btn" id="median-google-button">Endelea kwa kutumia Google</button>
+                            <p id="median-google-error" role="alert" class="register-text"></p>
+                        </div>
+                    @endif
+
                     @if($googleLoginUrl && ! session('median_app_mode'))
 
                         <div class="divider">
@@ -813,6 +821,46 @@
             }
         });
     </script>
+    @if(session('median_app_mode') && config('services.google.median_client_id'))
+    <script>
+        (function () {
+            const section = document.getElementById('median-google-section');
+            const button = document.getElementById('median-google-button');
+            const error = document.getElementById('median-google-error');
+            const bridge = () => window.median?.socialLogin?.google;
+            function reveal() {
+                if (typeof bridge()?.login === 'function') section.hidden = false;
+            }
+            reveal();
+            document.addEventListener('DOMContentLoaded', reveal);
+            window.addEventListener('load', reveal);
+            setTimeout(reveal, 1000);
+            button.addEventListener('click', function () {
+                button.disabled = true;
+                error.textContent = '';
+                try {
+                    bridge().login({callback: async function (response) {
+                        try {
+                            if (!response?.idToken) throw new Error();
+                            const result = await fetch(@json(route('median.google.login')), {
+                                method: 'POST', credentials: 'same-origin',
+                                headers: {'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': @json(csrf_token())},
+                                body: JSON.stringify({id_token: response.idToken})
+                            });
+                            if (!result.ok) throw new Error();
+                            window.location.assign(@json(url('/dashboard')));
+                        } catch (_) {
+                            error.textContent = 'Google login haijakamilika. Jaribu tena au tumia nenosiri.';
+                        } finally { button.disabled = false; }
+                    }});
+                } catch (_) {
+                    button.disabled = false;
+                    error.textContent = 'Google login haipatikani. Tumia nenosiri.';
+                }
+            });
+        })();
+    </script>
+    @endif
 
 </body>
 </html>
