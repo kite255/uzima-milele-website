@@ -25,6 +25,9 @@ class CreateAppRelease extends CreateRecord
             throw ValidationException::withMessages(['data.apk_upload' => 'Select an APK file up to 150 MB.']);
         }
 
+        if (!class_exists(ZipArchive::class)) {
+            throw ValidationException::withMessages(['data.apk_upload' => 'PHP Zip extension is required. Contact the hosting administrator.']);
+        }
         $zip = new ZipArchive;
         if ($zip->open($file->getRealPath(), ZipArchive::CHECKCONS) !== true) {
             throw ValidationException::withMessages(['data.apk_upload' => 'Invalid APK archive.']);

@@ -26,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Livewire validates temporary uploads before the resource-specific rules run.
+        // Other upload fields retain their own configured validation limits.
+        config(['livewire.temporary_file_upload.rules' => ['required', 'file', 'max:153600']]);
+
         $this->loadRoutesFrom(
             base_path('routes/instructor-enrollment-links.php')
         );
