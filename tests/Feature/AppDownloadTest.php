@@ -28,7 +28,7 @@ class AppDownloadTest extends TestCase
         ]);
         $this->get('/download/android')->assertNotFound();
         $release->update(['published_at' => now()]);
-        $this->get('/download/app')->assertOk()->assertSee('1.1.0')->assertSee('Pakua kwa Android');
+        $this->get('/download/app')->assertOk()->assertSee('1.1.0')->assertSee('Pakua')->assertDontSee('Mabadiliko katika toleo hili');
         $this->get('/download/android')->assertOk()->assertDownload('Uzima-Milele-1.1.0.apk');
         $this->assertSame(1, $release->fresh()->downloads);
         $release->update(['published_at' => null]);
