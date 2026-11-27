@@ -51,10 +51,10 @@
             <p class="mt-4 text-sm text-gray-500">APK haisakinishwi kwenye iPhone.</p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-            <h2 class="text-lg font-black text-navy mb-4">Jinsi ya kusakinisha</h2>
+            <h2 class="text-lg font-black text-navy mb-4">Jinsi ya kuweka programu kwenye simu</h2>
             <ol class="space-y-3 text-sm text-gray-700">
-                @foreach(['Pakua na ufungue faili la APK.', 'Ikiombwa, ruhusu usakinishaji kutoka chanzo hiki kwa muda.', 'Sakinisha programu, kisha zima ruhusa hiyo.'] as $step)
-                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{{ $loop->iteration }}</span><span class="pt-0.5">{{ $step }}</span></li>
+                @foreach(['Pakua faili la programu (APK), kisha lifungue.', 'Endapo simu itahitaji ruhusa, iruhusu kuweka programu kutoka chanzo hicho.', 'Bonyeza Install, kisha fungua programu ya Uzima Milele.'] as $step)
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">{{ $loop->iteration }}</span><span class="pt-0.5">@if($loop->last)Bonyeza <strong>Install</strong>, kisha fungua programu ya Uzima Milele.@else{{ $step }}@endif</span></li>
                 @endforeach
             </ol>
         </div>
