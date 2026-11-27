@@ -49,6 +49,9 @@ Route::get('/', function () {
 Route::get('/download/app', [\App\Http\Controllers\AppDownloadController::class, 'index'])->name('app.download.page');
 Route::get('/download/android', [\App\Http\Controllers\AppDownloadController::class, 'download'])->name('app.download.android');
 
+Route::view('/app-launch/register', 'launch.register')->name('launch.register');
+Route::post('/app-launch/register', [\App\Http\Controllers\LaunchRegistrationController::class,'store'])->middleware('throttle:5,1')->name('launch.store');
+
 /*
 |--------------------------------------------------------------------------
 | Google Login
