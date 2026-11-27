@@ -33,6 +33,9 @@ class MedianAppModeTest extends TestCase
     {
         config(['services.google.median_client_id' => 'test-client.apps.googleusercontent.com']);
         $this->get('/?app=1')->assertOk();
+        $this->get('/login')->assertOk()->assertDontSee('median-google-button');
+        config(['services.google.median_login_enabled' => true]);
+        $this->get('/?app=1')->assertOk();
         $this->get('/login')->assertOk()->assertSee('median-google-button');
         $this->postJson('/auth/median/google', [])->assertUnprocessable();
         $this->get('/?app=0')->assertOk();
