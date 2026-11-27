@@ -46,6 +46,9 @@ Route::get('/', function () {
     );
 })->name('home');
 
+Route::get('/download/app', [\App\Http\Controllers\AppDownloadController::class, 'index'])->name('app.download.page');
+Route::get('/download/android', [\App\Http\Controllers\AppDownloadController::class, 'download'])->name('app.download.android');
+
 /*
 |--------------------------------------------------------------------------
 | Google Login

@@ -98,6 +98,21 @@
 
 </section>
 
+@unless(session('median_app_mode'))
+    @php($androidRelease = \App\Models\AppRelease::current())
+    @if($androidRelease && $androidRelease->fileAvailable())
+        <section class="bg-navy text-white py-8">
+            <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-black">Uzima Milele kwenye simu yako</h2>
+                    <p class="text-white/90 mt-1">Pakua programu rasmi ya Android.</p>
+                </div>
+                <a href="{{ route('app.download.page') }}" class="bg-accent text-navy px-6 py-3 rounded-xl font-black">Pakua Programu</a>
+            </div>
+        </section>
+    @endif
+@endunless
+
 {{-- ABOUT --}}
 <section class="bg-white py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4">
